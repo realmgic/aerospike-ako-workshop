@@ -19,7 +19,7 @@ spec:
       serviceAccount: local-volume-node-cleanup-controller
       containers:
         - name: local-volume-node-cleanup-controller
-          image: registry.k8s.io/sig-storage/local-volume-node-cleanup:v2.7.0
+          image: registry.k8s.io/sig-storage/local-volume-node-cleanup:v2.8.0
           args:
             - "--storageclass-names=local-ssd"
             - "--pvc-deletion-delay=60s"
