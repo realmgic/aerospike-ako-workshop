@@ -1,0 +1,11 @@
+# Template: aerospike-cluster Helm values for Path B
+# Copy to helm/ and edit marked fields only.
+replicas: 3  # TRAINEE EDIT — maps to spec.size
+
+image:
+  repository: aerospike/aerospike-server-enterprise
+  tag: "8.1.0.0"
+
+enableDynamicConfigUpdate: true
+
+# Add lab-specific values below (rackConfig, operations, k8sNodeBlockList, etc.)

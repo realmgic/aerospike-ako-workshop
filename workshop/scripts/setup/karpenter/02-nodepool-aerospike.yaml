@@ -1,0 +1,42 @@
+# NodePool for Aerospike workload — instance type from NODE_TYPE (workshop.env).
+# Substitute KARPENTER_* and NODE_TYPE env vars before apply.
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: ${KARPENTER_NODEPOOL_NAME}
+spec:
+  template:
+    metadata:
+      labels:
+        workshop.aerospike.com/workload: aerospike
+        workshop.aerospike.com/node-pool: baseline
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: ${KARPENTER_NODECLASS_NAME}
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: [amd64]
+        - key: kubernetes.io/os
+          operator: In
+          values: [linux]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: [on-demand]
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values: ["${NODE_TYPE}"]
+        - key: topology.kubernetes.io/zone
+          operator: In
+          values: ["${NODE_ZONE_A}", "${NODE_ZONE_B}"]
+      expireAfter: 720h
+      terminationGracePeriod: 600s
+  limits:
+    cpu: "128"
+    memory: 512Gi
+  disruption:
+    consolidationPolicy: "${KARPENTER_CONSOLIDATION}"
+    consolidateAfter: 30m
+  weight: 10

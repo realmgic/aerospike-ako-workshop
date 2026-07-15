@@ -1,0 +1,413 @@
+# AKO Training Lab Registry
+# Single source of truth for lab metadata, dependencies, and validation status.
+# Add new labs by copying _templates/lab-walkthrough.md and appending here.
+#
+# node_provisioning: orthogonal to deploy_paths — [eksctl] | [eksctl, karpenter]
+# Main-cluster labs support both unless noted. Lab 2.6 upgrade-lab is eksctl-only.
+# Lab 2.5 k8sNodeBlockList is eksctl-only (see eksctl_only_features).
+
+sections:
+  - id: "00-environment-setup"
+    title: Environment Setup
+    path: sections/00-environment-setup
+    status: active
+  - id: "01-scaling-and-capacity"
+    title: Scaling & Capacity
+    path: sections/01-scaling-and-capacity
+    status: active
+  - id: "02-maintenance-and-upgrade"
+    title: Maintenance & Upgrade
+    path: sections/02-maintenance-and-upgrade
+    status: active
+  - id: "03-future-section"
+    title: Reserved for future sections
+    path: sections/03-future-section
+    status: stub
+
+labs:
+  - id: "0.1"
+    title: Prerequisites
+    section: "00-environment-setup"
+    guide: sections/00-environment-setup/01-prerequisites.md
+    eks_cluster: null
+    ako_min_version: null
+    deploy_paths: []
+    artifacts: {}
+    scripts: [scripts/setup/01-validate-client.sh]
+    depends_on: []
+    doc_urls:
+      - https://aerospike.com/docs/kubernetes/install/olm/
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
+  - id: "0.2"
+    title: EKS cluster bootstrap
+    section: "00-environment-setup"
+    guide: sections/00-environment-setup/02-eks-cluster.md
+    guide_karpenter: sections/00-environment-setup/02-eks-cluster-karpenter.md
+    eks_cluster: my-cluster
+    ako_min_version: null
+    deploy_paths: [kubectl]
+    node_provisioning: [eksctl, karpenter]
+    artifacts:
+      kubectl: [clusters/main-cluster.yaml]
+    artifacts_karpenter:
+      kubectl:
+        - clusters/main-cluster-karpenter.yaml
+        - scripts/setup/karpenter/
+    scripts:
+      - scripts/setup/02-bootstrap-eks.sh
+      - scripts/setup/karpenter/setup-all-karpenter.sh
+    depends_on: ["0.1"]
+    doc_urls:
+      - https://docs.aws.amazon.com/eks/latest/userguide/getting-started.html
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
+  - id: "0.3"
+    title: Install AKO
+    section: "00-environment-setup"
+    guide: sections/00-environment-setup/03-install-ako-olm.md
+    guide_helm: sections/00-environment-setup/03-install-ako-helm.md
+    eks_cluster: my-cluster
+    ako_min_version: "4.2.0"
+    deploy_paths: [kubectl, helm]
+    node_provisioning: [eksctl, karpenter]
+    artifacts:
+      kubectl: []
+      helm: [helm/operator-values.yaml]
+    scripts:
+      - scripts/setup/03-install-ako.sh
+    depends_on: ["0.2"]
+    doc_urls:
+      - https://aerospike.com/docs/kubernetes/install/olm/
+      - https://aerospike.com/docs/kubernetes/install/helm/
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
+  - id: "0.4"
+    title: Install akoctl and RBAC
+    section: "00-environment-setup"
+    guide: sections/00-environment-setup/04-install-akoctl.md
+    eks_cluster: my-cluster
+    ako_min_version: null
+    deploy_paths: [kubectl, helm]
+    node_provisioning: [eksctl, karpenter]
+    artifacts: {}
+    scripts: [scripts/setup/04-install-akoctl.sh]
+    depends_on: ["0.3"]
+    doc_urls:
+      - https://aerospike.com/docs/kubernetes/manage/akoctl/
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
+  - id: "0.5"
+    title: Storage layer
+    section: "00-environment-setup"
+    guide: sections/00-environment-setup/05-storage-layer.md
+    eks_cluster: my-cluster
+    ako_min_version: null
+    deploy_paths: [kubectl, helm]
+    node_provisioning: [eksctl, karpenter]
+    artifacts:
+      kubectl: [scripts/setup/nvme-bootstrap-daemonset.yaml, config/disk-layouts.yaml]
+    scripts:
+      - scripts/setup/05-setup-ebs-storage.sh
+      - scripts/setup/06-setup-local-storage.sh
+    depends_on: ["0.4"]
+    doc_urls:
+      - https://aerospike.com/docs/kubernetes/install/configure/storage/
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
+  - id: "0.6"
+    title: Secrets and validate platform
+    section: "00-environment-setup"
+    guide: sections/00-environment-setup/06-secrets-and-validation.md
+    eks_cluster: my-cluster
+    ako_min_version: null
+    deploy_paths: [kubectl, helm]
+    node_provisioning: [eksctl, karpenter]
+    artifacts: {}
+    scripts:
+      - scripts/setup/07-deploy-secrets.sh
+      - scripts/setup/08-validate-environment.sh
+    depends_on: ["0.5"]
+    doc_urls: []
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
+  - id: "1.1"
+    title: Horizontal scaling
+    section: "01-scaling-and-capacity"
+    guide: sections/01-scaling-and-capacity/01-horizontal-scaling.md
+    eks_cluster: my-cluster
+    ako_min_version: "4.2.0"
+    deploy_paths: [kubectl, helm]
+    node_provisioning: [eksctl, karpenter]
+    karpenter_observe: [nodeclaims, nodes]
+    artifacts:
+      kubectl: [manifests/dim-cluster.yaml, manifests/dim-cluster-scale-5.yaml]
+      helm: [helm/dim-cluster-values.yaml, helm/dim-cluster-scale-5-values.yaml]
+    scripts: [scripts/labs/prepare-lab.sh, scripts/labs/lab-nodes.sh, scripts/labs/deploy-dim-cluster.sh, scripts/labs/deploy-dim-cluster-helm.sh]
+    depends_on: ["0.6"]
+    doc_urls:
+      - https://aerospike.com/docs/kubernetes/manage/configure/scaling
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
+  - id: "1.2"
+    title: Rack awareness basics
+    section: "01-scaling-and-capacity"
+    guide: sections/01-scaling-and-capacity/02-rack-awareness-basics.md
+    eks_cluster: my-cluster
+    ako_min_version: "4.2.0"
+    deploy_paths: [kubectl, helm]
+    node_provisioning: [eksctl, karpenter]
+    artifacts:
+      kubectl: [manifests/dim-cluster.yaml, manifests/dim-cluster-with-racks.yaml]
+      helm: [helm/dim-cluster-values.yaml, helm/dim-cluster-with-racks-values.yaml]
+    scripts: [scripts/labs/prepare-lab.sh, scripts/labs/lab-nodes.sh]
+    doc_urls:
+      - https://aerospike.com/docs/kubernetes/manage/configure/rack-awareness
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
+  - id: "1.3"
+    title: Vertical scaling & rack revision
+    section: "01-scaling-and-capacity"
+    guide: sections/01-scaling-and-capacity/03-rack-revision.md
+    eks_cluster: my-cluster
+    ako_min_version: "4.2.0"
+    deploy_paths: [kubectl, helm]
+    node_provisioning: [eksctl, karpenter]
+    karpenter_observe: [nodeclaims, nodes]
+    artifacts:
+      kubectl: [manifests/rack-cluster-v1.yaml, manifests/rack-cluster-v2-revision.yaml]
+      helm: [helm/rack-cluster-v1-values.yaml, helm/rack-cluster-v2-revision-values.yaml]
+    scripts: [scripts/labs/prepare-lab.sh, scripts/labs/lab-nodes.sh, scripts/labs/deploy-rack-cluster.sh]
+    depends_on: ["0.6"]
+    doc_urls:
+      - https://aerospike.com/docs/kubernetes/manage/configure/scaling
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
+  - id: "1.4"
+    title: Rack replacement
+    section: "01-scaling-and-capacity"
+    guide: sections/01-scaling-and-capacity/04-rack-replacement.md
+    eks_cluster: my-cluster
+    ako_min_version: "4.2.0"
+    deploy_paths: [kubectl, helm]
+    node_provisioning: [eksctl, karpenter]
+    artifacts:
+      kubectl: [manifests/rack-cluster-v1.yaml, manifests/rack-cluster-replacement.yaml]
+      helm: [helm/rack-cluster-v1-values.yaml, helm/rack-cluster-replacement-values.yaml]
+    scripts: [scripts/labs/prepare-lab.sh, scripts/labs/lab-nodes.sh, scripts/labs/deploy-rack-cluster.sh]
+    depends_on: ["0.6"]
+    doc_urls:
+      - https://aerospike.com/docs/kubernetes/manage/configure/scaling
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
+  - id: "1.5"
+    title: Replication factor change
+    section: "01-scaling-and-capacity"
+    run_after: ["2.2"]
+    guide: sections/01-scaling-and-capacity/05-replication-factor.md
+    eks_cluster: my-cluster
+    ako_min_version: "4.4.0"
+    deploy_paths: [kubectl, helm]
+    node_provisioning: [eksctl, karpenter]
+    artifacts:
+      kubectl: [manifests/dim-cluster.yaml, manifests/replication-factor-rf3.yaml]
+      helm: [helm/dim-cluster-values.yaml, helm/replication-factor-rf3-values.yaml]
+    scripts: [scripts/labs/prepare-lab.sh, scripts/labs/lab-nodes.sh, scripts/labs/deploy-dim-cluster.sh, scripts/labs/deploy-dim-cluster-helm.sh]
+    depends_on: ["2.2"]
+    doc_urls:
+      - https://aerospike.com/docs/kubernetes/manage/configure/replication-factor
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
+  - id: "2.1"
+    title: akoctl install configuration and log collection
+    section: "02-maintenance-and-upgrade"
+    guide: sections/02-maintenance-and-upgrade/01-akoctl.md
+    eks_cluster: my-cluster
+    ako_min_version: null
+    deploy_paths: [kubectl, helm]
+    node_provisioning: [eksctl, karpenter]
+    artifacts: {}
+    scripts:
+      - scripts/setup/04-install-akoctl.sh
+      - scripts/labs/akoctl-collectinfo.sh
+    depends_on: ["0.6"]
+    doc_urls:
+      - https://aerospike.com/docs/kubernetes/manage/akoctl/
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
+  - id: "2.2"
+    title: Upgrade AKO sequential
+    section: "02-maintenance-and-upgrade"
+    guide: sections/02-maintenance-and-upgrade/02-upgrade-ako.md
+    eks_cluster: my-cluster
+    ako_min_version: "4.2.0"
+    deploy_paths: [kubectl, helm]
+    node_provisioning: [eksctl, karpenter]
+    artifacts:
+      helm: [helm/operator-values.yaml]
+    scripts:
+      - scripts/labs/upgrade-ako/upgrade-step-olm.sh
+      - scripts/labs/upgrade-ako/upgrade-step-helm.sh
+      - scripts/labs/upgrade-ako/verify-ako-version.sh
+    depends_on: ["2.1"]
+    doc_urls:
+      - https://aerospike.com/docs/kubernetes/manage/upgrade/upgrading-operator
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
+  - id: "2.3"
+    title: Upgrade Aerospike DB
+    section: "02-maintenance-and-upgrade"
+    guide: sections/02-maintenance-and-upgrade/03-upgrade-aerospike-db.md
+    eks_cluster: my-cluster
+    ako_min_version: "4.5.0"
+    deploy_paths: [kubectl, helm]
+    node_provisioning: [eksctl, karpenter]
+    artifacts:
+      kubectl: [manifests/aerospike-upgrade.yaml]
+      helm: [helm/aerospike-upgrade-values.yaml]
+    scripts: [scripts/labs/deploy-dim-cluster.sh]
+    depends_on: ["2.2"]
+    doc_urls:
+      - https://aerospike.com/docs/kubernetes/install/deploy/upgrade-aerospike/
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
+  - id: "2.4"
+    title: On-demand operations
+    section: "02-maintenance-and-upgrade"
+    guide: sections/02-maintenance-and-upgrade/04-on-demand-operations.md
+    eks_cluster: my-cluster
+    ako_min_version: "4.4.0"
+    deploy_paths: [kubectl, helm]
+    node_provisioning: [eksctl, karpenter]
+    artifacts:
+      kubectl: [manifests/pod-restart-op.yaml]
+      helm: [helm/pod-restart-op-values.yaml]
+    scripts: []
+    depends_on: ["2.3"]
+    doc_urls:
+      - https://aerospike.com/docs/kubernetes/manage/configure/on-demand-operations
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
+  - id: "2.5"
+    title: K8s worker node maintenance
+    section: "02-maintenance-and-upgrade"
+    guide: sections/02-maintenance-and-upgrade/05-k8s-node-maintenance.md
+    guide_karpenter: sections/02-maintenance-and-upgrade/05-k8s-node-maintenance-karpenter.md
+    eks_cluster: my-cluster
+    ako_min_version: "4.4.0"
+    deploy_paths: [kubectl, helm]
+    node_provisioning: [eksctl, karpenter]
+    eksctl_only_features: [k8sNodeBlockList]
+    artifacts:
+      kubectl: [manifests/node-blocklist.yaml]
+      helm: [helm/node-blocklist-values.yaml]
+    scripts: []
+    depends_on: ["2.4"]
+    doc_urls:
+      - https://aerospike.com/docs/kubernetes/manage/node-maintenance
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
+  - id: "2.6"
+    title: K8s control plane upgrade
+    section: "02-maintenance-and-upgrade"
+    guide: sections/02-maintenance-and-upgrade/06-k8s-control-plane-upgrade.md
+    eks_cluster: my-cluster-k8s-upgrade
+    ako_min_version: null
+    deploy_paths: [kubectl, helm]
+    node_provisioning: [eksctl]
+    node_provisioning_note: "Upgrade-lab cluster always uses eksctl MNG — independent of main cluster NODE_PROVISIONING"
+    artifacts:
+      kubectl: [manifests/upgrade-lab-dim-cluster.yaml, clusters/upgrade-lab-cluster.yaml]
+    scripts:
+      - scripts/labs/prepare-lab.sh
+      - scripts/setup/upgrade-lab/setup-upgrade-lab.sh
+      - scripts/setup/upgrade-lab/setup-upgrade-lab-post-bootstrap.sh
+      - scripts/setup/upgrade-lab/upgrade-control-plane.sh
+      - scripts/setup/upgrade-lab/upgrade-nodegroup.sh
+      - scripts/setup/upgrade-lab/validate-post-upgrade.sh
+      - scripts/lib/kubecontext.sh
+    depends_on: ["0.6", "0.7"]
+    doc_urls:
+      - https://docs.aws.amazon.com/eks/latest/userguide/update-cluster.html
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
+curriculum_order:
+  - "0.1"
+  - "0.2"
+  - "0.3"
+  - "0.4"
+  - "0.5"
+  - "0.6"
+  - "1.1"
+  - "1.2"
+  - "1.3"
+  - "1.4"
+  - "2.1"
+  - "2.2"
+  - "1.5"
+  - "2.3"
+  - "2.4"
+  - "2.5"
+  - "2.6"
+
+future_sections:
+  - id: "03-backup-and-restore"
+    title: Backup & Restore
+  - id: "04-monitoring"
+    title: Monitoring & Observability
+  - id: "05-security"
+    title: Security and TLS
+  - id: "06-strong-consistency"
+    title: Strong Consistency
+
+node_provisioning_defaults:
+  main_cluster: [eksctl, karpenter]
+  upgrade_lab: [eksctl]
+
+karpenter_validation:
+  status: draft
+  walkthrough: validation/karpenter-walkthrough.md
+  validated_on: null
+  validated_with:
+    karpenter: null
+    ako: null
+    k8s: null
+  validator: null
+  notes: >
+    Run full main curriculum once on EKS with NODE_PROVISIONING=karpenter.
+    Lab 2.6 remains on separate eksctl upgrade-lab cluster.
+    Lab 2.5 blocklist path is eksctl-only.

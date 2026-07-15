@@ -1,0 +1,28 @@
+# eksctl ClusterConfig reference for upgrade-lab (Lab 2.6) — NOT applied directly.
+# Bootstrap uses CLI flags in scripts/setup/upgrade-lab/00-bootstrap-eks.sh:
+#
+#   UPGRADE_LAB_CLUSTER_NAME   (default my-cluster-k8s-upgrade)
+#   UPGRADE_LAB_NODEGROUP_NAME (default ng-upgrade-lab)
+#   UPGRADE_LAB_NODE_TYPE       (default i8g.2xlarge)
+#   UPGRADE_LAB_NODE_COUNT      (default 3)
+#
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: my-cluster-k8s-upgrade
+  region: us-east-1
+  version: "1.31"
+availabilityZones:
+  - us-east-1c
+  - us-east-1d
+managedNodeGroups:
+  - name: ${UPGRADE_LAB_NODEGROUP_NAME}
+    instanceType: i8g.2xlarge
+    desiredCapacity: 3
+    minSize: 3
+    maxSize: 3
+    availabilityZones:
+      - us-east-1c
+    ssh:
+      allow: true
+      publicKeyName: aerolab-base_us-east-1

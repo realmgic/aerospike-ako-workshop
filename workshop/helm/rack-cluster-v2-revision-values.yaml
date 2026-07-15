@@ -1,0 +1,165 @@
+replicas: 4
+
+image:
+  repository: aerospike/aerospike-server-enterprise
+  tag: "8.1.0.0"
+
+rackConfig:
+  namespaces:
+    - test
+  racks:
+    - id: 1
+      zone: us-east-1c
+      revision: "v2"
+      storage:
+        filesystemVolumePolicy:
+          cascadeDelete: true
+          initMethod: deleteFiles
+        blockVolumePolicy:
+          cascadeDelete: true
+          initMethod: blkdiscardWithHeaderCleanup
+          wipeMethod: blkdiscard
+        volumes:
+          - name: workdir
+            aerospike:
+              path: /opt/aerospike
+            source:
+              persistentVolume:
+                storageClass: ssd
+                volumeMode: Filesystem
+                size: 3Gi
+          - name: ns
+            aerospike:
+              path: /dev/data/local1
+            source:
+              persistentVolume:
+                storageClass: local-ssd
+                volumeMode: Block
+                accessModes: ["ReadWriteOnce"]
+                size: 512Gi
+          - name: ns2
+            aerospike:
+              path: /dev/data/local2
+            source:
+              persistentVolume:
+                storageClass: local-ssd
+                volumeMode: Block
+                accessModes: ["ReadWriteOnce"]
+                size: 512Gi
+          - name: aerospike-config-secret
+            source:
+              secret:
+                secretName: aerospike-secret
+            aerospike:
+              path: /etc/aerospike/secret
+    - id: 2
+      zone: us-east-1d
+      revision: "v2"
+      storage:
+        filesystemVolumePolicy:
+          cascadeDelete: true
+          initMethod: deleteFiles
+        blockVolumePolicy:
+          cascadeDelete: true
+          initMethod: blkdiscardWithHeaderCleanup
+          wipeMethod: blkdiscard
+        volumes:
+          - name: workdir
+            aerospike:
+              path: /opt/aerospike
+            source:
+              persistentVolume:
+                storageClass: ssd
+                volumeMode: Filesystem
+                size: 3Gi
+          - name: ns
+            aerospike:
+              path: /dev/data/local1
+            source:
+              persistentVolume:
+                storageClass: local-ssd
+                volumeMode: Block
+                accessModes: ["ReadWriteOnce"]
+                size: 512Gi
+          - name: ns2
+            aerospike:
+              path: /dev/data/local2
+            source:
+              persistentVolume:
+                storageClass: local-ssd
+                volumeMode: Block
+                accessModes: ["ReadWriteOnce"]
+                size: 512Gi
+          - name: aerospike-config-secret
+            source:
+              secret:
+                secretName: aerospike-secret
+            aerospike:
+              path: /etc/aerospike/secret
+
+podSpec:
+  nodeSelector:
+    workshop.aerospike.com/node-pool: vertical
+  multiPodPerHost: false
+  aerospikeContainer:
+    resources:
+      requests:
+        cpu: "15"
+        memory: 115Gi
+      limits:
+        cpu: "15"
+        memory: 115Gi
+  sidecars:
+    - name: aerospike-prometheus-exporter
+      image: aerospike/aerospike-prometheus-exporter:1.32.0
+      ports:
+        - containerPort: 9145
+          name: exporter
+      env:
+        - name: AS_AUTH_USER
+          value: exporter
+        - name: AS_AUTH_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: auth-exporter-secret
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+
+aerospikeAccessControl:
+  users:
+    - name: admin
+      secretName: auth-secret
+      roles:
+        - sys-admin
+        - user-admin
+    - name: exporter
+      secretName: auth-exporter-secret
+      roles: []
+
+
+aerospikeConfig:
+  service:
+    feature-key-file: /etc/aerospike/secret/features.conf
+  security: {}
+  network:
+    service:
+      port: 3000
+    fabric:
+      port: 3001
+    heartbeat:
+      port: 3002
+  namespaces:
+    - name: test
+      replication-factor: 2
+      indexes-memory-budget: 98956046499  # 80% of 115.2 GiB
+      storage-engine:
+        type: device
+        devices:
+          - /dev/data/local1
+          - /dev/data/local2

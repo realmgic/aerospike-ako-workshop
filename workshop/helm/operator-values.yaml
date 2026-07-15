@@ -1,0 +1,6 @@
+# AKO operator Helm values (Path B)
+watchNamespaces: aerospike
+safePodEviction:
+  enable: true
+logging:
+  level: info

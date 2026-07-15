@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: local-volume-node-cleanup-controller
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: local-volume-node-cleanup
+    workshop.aerospike.com/component: local-storage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: local-volume-node-cleanup
+  template:
+    metadata:
+      labels:
+        app: local-volume-node-cleanup
+    spec:
+      serviceAccount: local-volume-node-cleanup-controller
+      containers:
+        - name: local-volume-node-cleanup-controller
+          image: registry.k8s.io/sig-storage/local-volume-node-cleanup:v2.7.0
+          args:
+            - "--storageclass-names=local-ssd"
+            - "--pvc-deletion-delay=60s"
+            - "--stale-pv-discovery-interval=10s"
+          ports:
+            - name: metrics
+              containerPort: 8080

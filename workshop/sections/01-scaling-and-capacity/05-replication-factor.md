@@ -1,0 +1,149 @@
+# Lab 1.5 — Change Replication Factor
+
+| Field | Value |
+|-------|-------|
+| Lab ID | `1.5` |
+| Section | Scaling & Capacity |
+| Run after | **[Lab 2.2](../02-maintenance-and-upgrade/02-upgrade-ako.md)** (AKO 4.4.0+) |
+| EKS cluster | `my-cluster` |
+| Aerospike cluster | `aerocluster` |
+| AKO min version | **4.4.0** |
+| Aerospike baseline | dim 3-node on `${NODEGROUP_NAME}` (same as Lab 1.1 / 2.2), RF=2 |
+| Deploy path | both |
+| Duration | ~15 min |
+| Validation status | `draft` |
+| Official docs | [Replication factor](https://aerospike.com/docs/kubernetes/manage/configure/replication-factor) |
+
+## Takeaway
+
+For AP namespaces, AKO **4.4.0+** applies `replication-factor` changes dynamically — **no rolling restart** — when `enableDynamicConfigUpdate: true`. Change **only** RF for **one** namespace per apply.
+
+## Prerequisites
+
+- **Lab 2.2 complete** — AKO at 4.4.0 or later
+- Aerospike Database 6.0+
+- AP namespace only (not SC)
+
+## Node requirements
+
+| Item | Value |
+|------|-------|
+| Instance | `i8g.2xlarge` × 4 on `${NODEGROUP_NAME}` (≥3 required for dim cluster) |
+| Reset | **Light** (database only — keeps 2xl nodegroup) |
+
+## Phase 0 — Prepare lab
+
+```bash
+./scripts/labs/prepare-lab.sh 1.5
+```
+
+**Expected:** Light reset tears down any existing Aerospike cluster; `${NODEGROUP_NAME}` (`ng-aerospike-2xl`) remains; 4× `i8g.2xlarge` Ready.
+
+If continuing directly from **Lab 2.2** with the dim cluster still Running and RF=2, skip the reset:
+
+```bash
+./scripts/labs/prepare-lab.sh 1.5 --skip-reset
+```
+
+## Starting state
+
+```bash
+kubectl get csv -n operators | grep -E '4\.4\.[01]'
+# or
+helm list -n operators
+```
+
+**Pass:** AKO version ≥ 4.4.0.
+
+## Deploy baseline
+
+Same dim cluster as Lab 1.1 / 2.2 (RF=2 in namespace `test`):
+
+```bash
+./scripts/labs/deploy-dim-cluster.sh       # Path A
+# or
+./scripts/labs/deploy-dim-cluster-helm.sh  # Path B
+```
+
+**Expected:** 3 pods Running on `${NODEGROUP_NAME}`; RF=2 in CR status.
+
+Skip this section if you used `--skip-reset` and the dim cluster from Lab 2.2 is already Running with RF=2.
+
+## Steps
+
+### Path A — kubectl
+
+1. Confirm RF=2 (CR and Aerospike runtime):
+   ```bash
+   kubectl -n aerospike describe aerospikecluster aerocluster | grep -i replication
+   kubectl run -it --rm aerospike-tool-rf -n aerospike --restart=Never \
+     --image=aerospike/aerospike-tools:latest -- \
+     asadm -h aerocluster -U admin -P admin123 -e "show config like replication-factor"
+   ```
+   **Pass:** CR shows RF=2; all nodes report `replication-factor 2`.
+2. Apply **only** RF change:
+   ```bash
+   kubectl apply -f manifests/replication-factor-rf3.yaml
+   ```
+   **Expected:** No pod rolling restart; operator reconciles config.
+3. Verify RF=3 in CR status and on nodes.
+
+### Path B — Helm
+
+Baseline (if not already deployed):
+
+```bash
+helm upgrade --install aerocluster aerospike/aerospike-cluster \
+  -n aerospike -f helm/dim-cluster-values.yaml --version=4.4.1
+```
+
+RF change:
+
+```bash
+helm upgrade aerocluster aerospike/aerospike-cluster \
+  -n aerospike -f helm/replication-factor-rf3-values.yaml --version=4.4.1
+```
+
+## Verify (pass/fail)
+
+```bash
+./scripts/labs/lab-nodes.sh 1.5 validate
+```
+
+1. CR status shows RF=3 for namespace `test`
+2. Pods remain `Running` (same pod names/ages as before apply)
+3. asadm:
+
+   ```bash
+   kubectl run -it --rm aerospike-tool -n aerospike --restart=Never \
+     --image=aerospike/aerospike-tools:latest -- \
+     asadm -h aerocluster -U admin -P admin123 -e "show config like replication-factor"
+   ```
+
+   **Pass:** All nodes report `replication-factor 3`.
+
+## Constraints
+
+| Rule | Detail |
+|------|--------|
+| Change scope | Only `replication-factor` in one apply |
+| Namespaces | One namespace per update |
+| Not supported | SC namespaces; combined config changes |
+
+## Troubleshooting
+
+- Mixed RF during node restart → allow AKO to converge
+- Reconciler stuck → see [dynamic config docs](https://aerospike.com/docs/kubernetes/manage/configure/dynamic-config)
+
+## Curriculum note
+
+Listed in Section 1 but **run after Lab 2.2** despite section number.
+
+## Teardown / handoff
+
+Continue to [Lab 2.3](../02-maintenance-and-upgrade/03-upgrade-aerospike-db.md). Run `./scripts/reset-cluster.sh --yes` only when done for the day or before a hard wipe.
+
+## References
+
+- [Replication factor](https://aerospike.com/docs/kubernetes/manage/configure/replication-factor)
+- [Release notes KO-485](https://aerospike.com/docs/kubernetes/release/release-notes/)

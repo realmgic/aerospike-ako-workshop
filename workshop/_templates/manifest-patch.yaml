@@ -1,0 +1,12 @@
+# Template: AerospikeCluster patch for Path A (kubectl apply)
+# Copy to manifests/ and edit the marked fields only.
+apiVersion: asdb.aerospike.com/v1
+kind: AerospikeCluster
+metadata:
+  name: aerocluster
+  namespace: aerospike
+spec:
+  # TRAINEE EDIT: cluster size
+  size: 3
+  image: aerospike/aerospike-server-enterprise:8.1.0.0
+  # Add lab-specific fields below (rackConfig, operations, k8sNodeBlockList, etc.)

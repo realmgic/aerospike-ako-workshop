@@ -1,0 +1,8 @@
+secrets/features.conf
+*.env
+!scripts/env/*.env.example
+!scripts/labs/upgrade-ako/versions.env.example
+validation/expected/*.txt
+validation/expected/*.json
+.kube/
+.vendor/

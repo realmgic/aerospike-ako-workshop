@@ -1,0 +1,12 @@
+# Aerospike license — instructor-supplied, never commit
+**/secrets/features.conf
+
+# Local env overrides and runtime artifacts
+**/.kube/
+**/*.env
+!**/*.env.example
+**/credentials.json
+**/*kubeconfig*
+**/*.pem
+**/*.key
+workshop/.vendor/

@@ -1,0 +1,128 @@
+# Instructor demo: 3-node cluster with local NVMe block storage.
+# Uses local-ssd PVCs (250 GiB claims on ~1 TB partitions) for node-failure cleanup demo.
+# Lab 0.5 instructor demo — not used in standard Track A/B labs.
+apiVersion: asdb.aerospike.com/v1
+kind: AerospikeCluster
+metadata:
+  name: local-ssd-demo
+  namespace: aerospike
+spec:
+  size: 3
+  image: aerospike/aerospike-server-enterprise:8.1.0.0
+  enableDynamicConfigUpdate: true
+
+  podSpec:
+    multiPodPerHost: false
+    aerospikeContainer:
+      resources:
+        requests:
+          cpu: "15"
+          memory: 115Gi
+        limits:
+          cpu: "15"
+          memory: 115Gi
+    sidecars:
+      - name: aerospike-prometheus-exporter
+        image: aerospike/aerospike-prometheus-exporter:1.32.0
+        ports:
+          - containerPort: 9145
+            name: exporter
+        env:
+          - name: AS_AUTH_USER
+            value: exporter
+          - name: AS_AUTH_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: password
+                name: auth-exporter-secret
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+  storage:
+    filesystemVolumePolicy:
+      cascadeDelete: true
+      initMethod: deleteFiles
+    blockVolumePolicy:
+      cascadeDelete: true
+      initMethod: blkdiscardWithHeaderCleanup
+      wipeMethod: blkdiscard
+    volumes:
+      - name: workdir
+        source:
+          persistentVolume:
+            storageClass: ssd
+            volumeMode: Filesystem
+            size: 3Gi
+        aerospike:
+          path: /opt/aerospike
+      - name: aerospike-config-secret
+        source:
+          secret:
+            secretName: aerospike-secret
+        aerospike:
+          path: /etc/aerospike/secret
+      - name: local-data1
+        aerospike:
+          path: /dev/data/local1
+        source:
+          persistentVolume:
+            storageClass: local-ssd
+            volumeMode: Block
+            accessModes: ["ReadWriteOnce"]
+            size: 250Gi
+      - name: local-data2
+        aerospike:
+          path: /dev/data/local2
+        source:
+          persistentVolume:
+            storageClass: local-ssd
+            volumeMode: Block
+            accessModes: ["ReadWriteOnce"]
+            size: 250Gi
+      - name: local-data3
+        aerospike:
+          path: /dev/data/local3
+        source:
+          persistentVolume:
+            storageClass: local-ssd
+            volumeMode: Block
+            accessModes: ["ReadWriteOnce"]
+            size: 250Gi
+
+  aerospikeAccessControl:
+    users:
+      - name: admin
+        secretName: auth-secret
+        roles:
+          - sys-admin
+          - user-admin
+      - name: exporter
+        secretName: auth-exporter-secret
+        roles: []
+
+
+  aerospikeConfig:
+    service:
+      feature-key-file: /etc/aerospike/secret/features.conf
+    security: {}
+    network:
+      service:
+        port: 3000
+      fabric:
+        port: 3001
+      heartbeat:
+        port: 3002
+    namespaces:
+      - name: test
+        replication-factor: 2
+        indexes-memory-budget: 98956046499  # 80% of 115.2 GiB (90% of 128 GiB) = 92.16 GiB
+        storage-engine:
+          type: device
+          devices:
+            - /dev/data/local1
+            - /dev/data/local2
+            - /dev/data/local3

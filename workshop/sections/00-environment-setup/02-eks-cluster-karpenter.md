@@ -1,0 +1,98 @@
+# Lab 0.2 — EKS Cluster Bootstrap (Karpenter)
+
+| Field | Value |
+|-------|-------|
+| Lab ID | `0.2` |
+| Section | Environment Setup |
+| EKS cluster | `my-cluster` |
+| Node provisioning | **Karpenter** |
+| Duration | ~40 min |
+| Validation status | `draft` |
+
+## Takeaway
+
+A Karpenter-managed EKS cluster with a **system** managed nodegroup for the controller. **Workload NodePool** `${KARPENTER_NODEPOOL_NAME}` (2xl) is created in Lab 1.1. Lab 1.3 Phase 2 adds **`${KARPENTER_NODEPOOL_VERTICAL_NAME}`** (4xl) alongside the 2xl pool.
+
+## Prerequisites
+
+- Lab 0.1 complete
+- EC2 key pair in target region
+- Quota for **4–8×** `i8g.2xlarge` plus 2× `t3.large` system nodes
+- Quota for **4–8×** `i8g.4xlarge` during Lab 1.3 Phase 2 (may run **8 nodes** total with idle 2xl pool)
+- Helm 3.12+ (controller install)
+
+## Starting state
+
+`NODE_PROVISIONING=karpenter` in [workshop.env.example](../../scripts/env/workshop.env.example).
+
+## Steps
+
+1. Source environment:
+
+   ```bash
+   source scripts/env/workshop.env
+   export NODE_PROVISIONING=karpenter
+   ```
+
+2. Create cluster and install Karpenter controller (no workload NodePool yet):
+
+   ```bash
+   ./scripts/setup/02-bootstrap-eks.sh
+   ```
+
+   **Expected:**
+   - eksctl creates cluster + `${KARPENTER_SYSTEM_NODEGROUP}` (2× `${KARPENTER_SYSTEM_NODE_TYPE}`, tainted)
+   - Karpenter controller Running in `karpenter` namespace
+   - **No** workload nodes until Lab 1.1
+
+3. Confirm controller:
+
+   ```bash
+   kubectl -n karpenter get deploy karpenter
+   kubectl get nodes
+   ```
+
+   **Expected:** System nodes only; Karpenter Ready.
+
+4. Confirm namespace:
+
+   ```bash
+   kubectl get namespace aerospike
+   ```
+
+## Verify (pass/fail)
+
+```bash
+kubectl -n karpenter get deploy karpenter
+kubectl get nodes
+```
+
+**Pass:** Karpenter Ready; no workload nodes yet (Lab 1.1 creates NodePool).
+
+Reference config: [clusters/main-cluster-karpenter.yaml](../../clusters/main-cluster-karpenter.yaml)
+
+## Observe
+
+- System nodes carry taint `role=system:NoSchedule`
+- Workload NodePool applied in Lab 1.1 via `prepare-lab.sh 1.1`
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| Controller Pending | Ensure system MNG exists and tolerations match |
+| No NodeClaims in Lab 1.1 | Check controller logs; verify subnet/SG discovery tags |
+
+## Instructor notes
+
+- Set `KARPENTER_CONSOLIDATION=Off` during class to limit consolidation churn
+- Lab 2.6 upgrade-lab cluster stays on **eksctl MNG** — not this path
+
+## Not covered here
+
+eksctl managed nodegroup path → [02-eks-cluster.md](02-eks-cluster.md)
+
+## References
+
+- [Karpenter on AWS](https://karpenter.sh/docs/getting-started/getting-started-with-karpenter/)
+- [AKO scaling — Karpenter + local volumes](https://aerospike.com/docs/kubernetes/manage/configure/scaling)

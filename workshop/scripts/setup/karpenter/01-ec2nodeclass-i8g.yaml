@@ -1,0 +1,29 @@
+# EC2NodeClass for i8g Aerospike workload nodes.
+# Substitute CLUSTER_NAME and KARPENTER_NODE_ROLE_ARN before apply.
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: ${KARPENTER_NODECLASS_NAME}
+spec:
+  role: "${KARPENTER_NODE_ROLE_NAME}"
+  amiSelectorTerms:
+    - alias: al2023@latest
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: "${CLUSTER_NAME}"
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: "${CLUSTER_NAME}"
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 100Gi
+        volumeType: gp3
+        deleteOnTermination: true
+  metadataOptions:
+    httpEndpoint: enabled
+    httpProtocolIPv6: disabled
+    httpPutResponseHopLimit: 2
+    httpTokens: required
+  tags:
+    workshop.aerospike.com/nodeclass: ${KARPENTER_NODECLASS_NAME}

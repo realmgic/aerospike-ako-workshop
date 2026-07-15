@@ -1,0 +1,31 @@
+# eksctl ClusterConfig reference for main lab cluster (NOT applied directly).
+# Section 0 creates the control plane via 02-bootstrap-eks.sh (CLI flags).
+# Workload nodegroup is created in Lab 1.1 via lab-nodes.sh using workshop.env:
+#
+#   NODEGROUP_NAME      (default ng-aerospike)
+#   NODE_TYPE           (default i8g.2xlarge)
+#   NODE_COUNT          (default 4)
+#   AWS_ZONES           (default us-east-1c, us-east-1d)
+#   CLUSTER_NAME        (default my-cluster)
+#   SSH_PUBLIC_KEY
+#
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: my-cluster
+  region: us-east-1
+  version: "1.32"
+availabilityZones:
+  - us-east-1c
+  - us-east-1d
+# Workload managedNodeGroup — see NODEGROUP_NAME in scripts/env/workshop.env
+# managedNodeGroups:
+#   - name: ${NODEGROUP_NAME}
+#     instanceType: ${NODE_TYPE}
+#     desiredCapacity: ${NODE_COUNT}
+#     minSize: 1
+#     maxSize: 8
+#     availabilityZones: [us-east-1c, us-east-1d]
+#     ssh:
+#       allow: true
+#       publicKeyName: ${SSH_PUBLIC_KEY}

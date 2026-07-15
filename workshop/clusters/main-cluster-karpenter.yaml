@@ -1,0 +1,37 @@
+# eksctl ClusterConfig for Karpenter path — cluster + system MNG only.
+# Applied via envsubst in 02-bootstrap-eks.sh (values from workshop.env):
+#   CLUSTER_NAME, AWS_REGION, K8S_VERSION, AWS_ZONES
+#   KARPENTER_SYSTEM_NODEGROUP, KARPENTER_SYSTEM_NODE_TYPE, KARPENTER_SYSTEM_NODE_COUNT
+#   SSH_PUBLIC_KEY
+# Workload NodePool (${KARPENTER_NODEPOOL_NAME}) is created in Lab 1.1.
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: ${CLUSTER_NAME}
+  region: ${AWS_REGION}
+  version: "${K8S_VERSION}"
+availabilityZones:
+  - ${NODE_ZONE_A}
+  - ${NODE_ZONE_B}
+iam:
+  withOIDC: true
+managedNodeGroups:
+  - name: ${KARPENTER_SYSTEM_NODEGROUP}
+    instanceType: ${KARPENTER_SYSTEM_NODE_TYPE}
+    desiredCapacity: ${KARPENTER_SYSTEM_NODE_COUNT}
+    minSize: 1
+    maxSize: 2
+    availabilityZones:
+      - ${NODE_ZONE_A}
+    labels:
+      role: system
+    taints:
+      - key: role
+        value: system
+        effect: NoSchedule
+    ssh:
+      allow: true
+      publicKeyName: ${SSH_PUBLIC_KEY}
+cloudWatch:
+  clusterLogging:
+    enableTypes: []
