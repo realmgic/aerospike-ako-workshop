@@ -5,7 +5,7 @@ Private instructor-led workshop materials for the **Aerospike Kubernetes Operato
 ## Quick start
 
 ```bash
-git clone git@github.com:aerospike/aerospike-ako-workshop.git
+git clone git@github.com:realmgic/aerospike-ako-workshop.git
 cd aerospike-ako-workshop/workshop
 cp scripts/env/workshop.env.example scripts/env/workshop.env
 cp /path/to/your/features.conf secrets/features.conf   # license — not in repo
