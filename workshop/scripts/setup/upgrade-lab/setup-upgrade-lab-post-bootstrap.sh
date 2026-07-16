@@ -4,9 +4,13 @@ set -euo pipefail
 UPGRADE_DIR="$(dirname "$0")"
 source "${UPGRADE_DIR}/../../lib/common.sh"
 load_env
+export WORKSHOP_KUBECONFIG="$(kubeconfig_path_for_cluster "${UPGRADE_LAB_CLUSTER_NAME}")"
+apply_workshop_kubeconfig
 
 restore_main_kubecontext() {
   if cluster_exists "${CLUSTER_NAME}"; then
+    export WORKSHOP_KUBECONFIG="$(kubeconfig_path_for_cluster "${CLUSTER_NAME}")"
+    apply_workshop_kubeconfig
     ensure_kubecontext "${CLUSTER_NAME}" >/dev/null 2>&1 || true
     echo "Restored kubectl context to main cluster: ${CLUSTER_NAME}"
   fi

@@ -34,7 +34,7 @@ Secrets are deployed and the platform is validated — **no AerospikeCluster yet
    ./scripts/setup/08-validate-environment.sh
    ```
 
-   **Expected:** Exit code 0; message "Environment ready for lab sections."
+   **Expected:** Exit code 0; message "Environment ready for lab sections." Workload nodepool has `${NODE_COUNT}` Ready nodes.
 
 ## Verify (pass/fail)
 
@@ -53,6 +53,14 @@ Secrets are deployed and the platform is validated — **no AerospikeCluster yet
    **Pass:** No resources (or empty list).
 
 3. Operator healthy (from 0.3).
+
+4. Workload nodes Ready (from step 0.2-nodes):
+
+   ```bash
+   kubectl get nodes -L workshop.aerospike.com/node-pool,node.kubernetes.io/instance-type
+   ```
+
+   **Pass:** `${NODE_COUNT}`× `${NODE_TYPE}` nodes Ready.
 
 ## Observe
 

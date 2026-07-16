@@ -9,6 +9,62 @@ require_cmd curl
 
 CSV_NAME="aerospike-kubernetes-operator.v${AKO_VERSION_START}"
 
+olm_diagnose() {
+  echo "--- Nodes ---" >&2
+  kubectl get nodes -o wide 2>/dev/null || true
+  echo "--- olm namespace ---" >&2
+  kubectl -n olm get deploy,pods,events --sort-by='.lastTimestamp' 2>/dev/null | tail -30 || true
+}
+
+wait_for_ready_nodes() {
+  local timeout="${1:-600}"
+  local elapsed=0 ready
+
+  while [[ "${elapsed}" -lt "${timeout}" ]]; do
+    ready="$(kubectl get nodes --no-headers 2>/dev/null | awk '$2=="Ready"{c++} END{print c+0}')"
+    if [[ "${ready}" -gt 0 ]]; then
+      echo "OK  ${ready} node(s) Ready — proceeding with OLM install"
+      return 0
+    fi
+    echo "Waiting for Ready nodes before OLM install (${elapsed}s/${timeout}s)..."
+    sleep 15
+    elapsed=$((elapsed + 15))
+  done
+
+  echo "ERROR: no Ready nodes after ${timeout}s — olm-operator cannot schedule" >&2
+  olm_diagnose
+  exit 1
+}
+
+ensure_olm() {
+  if kubectl get deployment olm-operator -n olm >/dev/null 2>&1; then
+    local ready
+    ready="$(kubectl -n olm get deployment olm-operator -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo 0)"
+    if [[ "${ready:-0}" -ge 1 ]]; then
+      echo "OLM already installed and Ready in olm namespace — skipping OLM install."
+      return 0
+    fi
+    echo "olm-operator deployment exists but is not Ready — waiting up to 10m..."
+    if kubectl -n olm rollout status deployment/olm-operator --timeout=600s; then
+      return 0
+    fi
+    echo "ERROR: olm-operator rollout failed." >&2
+    olm_diagnose
+    echo "Recovery: kubectl delete namespace olm --wait=true && re-run this script" >&2
+    exit 1
+  fi
+
+  wait_for_ready_nodes 600
+  echo "Installing OLM ${OLM_VERSION}..."
+  # install.sh builds release URLs as ${base_url}/${release}/crds.yaml — release must include the v prefix (e.g. v0.43.0)
+  if ! curl -sL "https://github.com/operator-framework/operator-lifecycle-manager/releases/download/${OLM_VERSION}/install.sh" | bash -s "${OLM_VERSION}"; then
+    echo "ERROR: OLM install failed." >&2
+    olm_diagnose
+    echo "Recovery: kubectl delete namespace olm --wait=true && re-run this script" >&2
+    exit 1
+  fi
+}
+
 OP_REPO="$(operator_repo_path)"
 if [[ ! -d "${OP_REPO}" ]]; then
   echo "Cloning aerospike-kubernetes-operator to ${OP_REPO}..."
@@ -16,13 +72,7 @@ if [[ ! -d "${OP_REPO}" ]]; then
   git clone "https://github.com/aerospike/aerospike-kubernetes-operator.git" "${OP_REPO}" || true
 fi
 
-if ! kubectl get deployment olm-operator -n olm >/dev/null 2>&1; then
-  echo "Installing OLM ${OLM_VERSION}..."
-  # install.sh builds release URLs as ${base_url}/${release}/crds.yaml — release must include the v prefix (e.g. v0.43.0)
-  curl -sL "https://github.com/operator-framework/operator-lifecycle-manager/releases/download/${OLM_VERSION}/install.sh" | bash -s "${OLM_VERSION}"
-else
-  echo "OLM already installed in olm namespace — skipping OLM install."
-fi
+ensure_olm
 
 kubectl create namespace "${OPERATOR_NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
 

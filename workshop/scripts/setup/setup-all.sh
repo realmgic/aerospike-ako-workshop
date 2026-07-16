@@ -16,10 +16,11 @@ SETUP_DIR="$(dirname "$0")"
 SKIP_UPGRADE_LAB=false
 SEQUENTIAL=false
 
-STEP_NAMES=(0.1 0.2 0.3 0.4 0.5-ebs 0.5-local 0.6-secrets 0.6-validate 0.7-upgrade-lab)
+STEP_NAMES=(0.1 0.2 0.2-nodes 0.3 0.4 0.5-ebs 0.5-local 0.6-secrets 0.6-validate 0.7-upgrade-lab)
 STEP_SCRIPTS=(
   01-validate-client.sh
   02-bootstrap-eks.sh
+  02-ensure-workload-nodepool.sh
   03-install-ako.sh
   04-install-akoctl.sh
   05-setup-ebs-storage.sh
@@ -28,7 +29,7 @@ STEP_SCRIPTS=(
   08-validate-environment.sh
   upgrade-lab/setup-upgrade-lab.sh
 )
-STEP_LABS=("0.1" "0.2" "0.3" "0.4" "0.5 (Part A)" "0.5 (Part B)" "0.6 (Part A)" "0.6 (Part B)" "0.7 (upgrade-lab)")
+STEP_LABS=("0.1" "0.2" "0.2 (nodes)" "0.3" "0.4" "0.5 (Part A)" "0.5 (Part B)" "0.6 (Part A)" "0.6 (Part B)" "0.7 (upgrade-lab)")
 
 usage() {
   cat <<EOF
@@ -71,15 +72,15 @@ resolve_step_indices() {
   local i
   case "${name}" in
     0.5)
-      echo "4 5"
+      echo "5 6"
       return 0
       ;;
     0.6)
-      echo "6 7"
+      echo "7 8"
       return 0
       ;;
     0.7|0.7-upgrade-lab)
-      echo "8"
+      echo "9"
       return 0
       ;;
   esac
@@ -252,7 +253,8 @@ fi
 if use_parallel_bootstrap; then
   run_step 0
   run_parallel_bootstrap
-  for ((i = 2; i <= 7; i++)); do
+  run_step 2
+  for ((i = 3; i <= 8; i++)); do
     run_step "${i}"
   done
   run_upgrade_lab_post_bootstrap

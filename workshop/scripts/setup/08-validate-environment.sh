@@ -10,8 +10,7 @@ fail=0
 
 echo "=== Environment validation (NODE_PROVISIONING=${NODE_PROVISIONING}) ==="
 
-# Workload nodes deferred to Lab 1.1
-workload_nodes="$(kubectl get nodes -l 'workshop.aerospike.com/workload=aerospike' --no-headers 2>/dev/null | grep -c Ready || true)"
+# Workload nodes (Lab 1.1 pool) — created in step 0.2-nodes
 if [[ "${NODE_PROVISIONING}" == "karpenter" ]]; then
   if kubectl -n "${KARPENTER_NAMESPACE}" get deploy karpenter >/dev/null 2>&1; then
     ready="$(kubectl -n "${KARPENTER_NAMESPACE}" get deploy karpenter -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo 0)"
@@ -25,17 +24,20 @@ if [[ "${NODE_PROVISIONING}" == "karpenter" ]]; then
     echo "FAIL Karpenter deployment missing"
     fail=1
   fi
-  if [[ "${workload_nodes}" -eq 0 ]]; then
-    echo "OK  No workload nodes yet (expected — Lab 1.1 creates NodePool ${KARPENTER_NODEPOOL_NAME})"
+  workload_nodes="$(kubectl get nodes -l 'workshop.aerospike.com/workload=aerospike' --no-headers 2>/dev/null | grep -c Ready || true)"
+  if [[ "${workload_nodes}" -ge "${NODE_COUNT}" ]]; then
+    echo "OK  ${workload_nodes} Karpenter workload nodes Ready (NodePool ${KARPENTER_NODEPOOL_NAME})"
   else
-    echo "WARN ${workload_nodes} Karpenter workload nodes present (Lab 1.1 not run yet, or cluster reused)"
+    echo "FAIL ${workload_nodes}/${NODE_COUNT} Karpenter workload nodes Ready (NodePool ${KARPENTER_NODEPOOL_NAME})"
+    fail=1
   fi
 else
-  ready_nodes="$(kubectl get nodes --no-headers 2>/dev/null | grep -c Ready || true)"
-  if [[ "${ready_nodes}" -eq 0 ]]; then
-    echo "OK  No workload nodes yet (expected — Lab 1.1 creates nodegroup ${NODEGROUP_NAME})"
+  ready_nodes="$(kubectl get nodes -l "alpha.eksctl.io/nodegroup-name=${NODEGROUP_NAME}" --no-headers 2>/dev/null | grep -c Ready || true)"
+  if [[ "${ready_nodes}" -ge "${NODE_COUNT}" ]]; then
+    echo "OK  ${ready_nodes} workload nodes Ready (nodegroup ${NODEGROUP_NAME})"
   else
-    echo "WARN ${ready_nodes} nodes Ready (Lab 1.1 not run yet, or cluster reused)"
+    echo "FAIL ${ready_nodes}/${NODE_COUNT} workload nodes Ready (nodegroup ${NODEGROUP_NAME})"
+    fail=1
   fi
 fi
 
@@ -120,7 +122,7 @@ else
 fi
 
 if [[ "${fail}" -eq 0 ]]; then
-  echo "Environment ready for lab sections. Run ./scripts/labs/prepare-lab.sh 1.1 to create workload nodes."
+  echo "Environment ready for lab sections. Run ./scripts/labs/prepare-lab.sh 1.1 to start Section 1 (full reset + re-ensure nodes)."
 else
   echo "Environment validation failed."
   exit 1

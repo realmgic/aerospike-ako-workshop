@@ -16,7 +16,7 @@ AKO is installed via OLM at version **4.2.0**, watching the `aerospike` namespac
 
 ## Prerequisites
 
-- Lab 0.2 complete
+- Lab 0.2 and step **0.2-nodes** complete (schedulable workload nodes available)
 - `DEPLOY_PATH=olm` in workshop.env
 
 ## Steps

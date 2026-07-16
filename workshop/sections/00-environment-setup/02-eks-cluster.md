@@ -11,7 +11,7 @@
 
 ## Takeaway
 
-EKS control plane in `us-east-1` spanning two availability zones. **Workload nodes are created in Lab 1.1** via `prepare-lab.sh`.
+EKS control plane in `us-east-1` spanning two availability zones. **Workload nodepool** `${NODEGROUP_NAME}` (4× `i8g.2xlarge`) is created in step **0.2-nodes** before AKO install. Lab 1.1 re-ensures the same pool after full reset.
 
 ## Prerequisites
 
@@ -39,7 +39,15 @@ No EKS cluster, or existing cluster you intend to reuse.
 
    **Expected:** eksctl completes; `kubectl get nodes` shows **no** workload nodes yet.
 
-3. Confirm namespace:
+3. Create workload nodepool (step 0.2-nodes):
+
+   ```bash
+   ./scripts/setup/02-ensure-workload-nodepool.sh
+   ```
+
+   **Expected:** `${NODE_COUNT}`× `${NODE_TYPE}` nodes Ready across `${AWS_ZONES}`.
+
+4. Confirm namespace:
 
    ```bash
    kubectl get namespace aerospike
@@ -53,13 +61,13 @@ No EKS cluster, or existing cluster you intend to reuse.
 kubectl get nodes -o wide
 ```
 
-**Pass:** EKS cluster reachable; 0 workload nodes (Lab 1.1 creates `${NODEGROUP_NAME}`).
+**Pass:** EKS cluster reachable; `${NODE_COUNT}` workload nodes Ready (`${NODEGROUP_NAME}`).
 
 Reference config: [clusters/main-cluster.yaml](../../clusters/main-cluster.yaml)
 
 ## Observe
 
-- Workload nodegroup `${NODEGROUP_NAME}` is created in [Lab 1.1](../01-scaling-and-capacity/01-horizontal-scaling.md) via `prepare-lab.sh 1.1`
+- Workload nodegroup `${NODEGROUP_NAME}` is created in step **0.2-nodes**; Lab 1.1 re-ensures after full reset via `prepare-lab.sh 1.1`
 - Vertical scale to `i8g.4xlarge` happens in Lab 1.3
 
 ## Troubleshooting
@@ -71,7 +79,7 @@ Reference config: [clusters/main-cluster.yaml](../../clusters/main-cluster.yaml)
 
 ## Teardown / handoff
 
-Cluster remains running. Proceed to AKO install (0.3). Workload nodes: Lab 1.1.
+Cluster remains running. Proceed to AKO install (0.3). Workload nodes: step 0.2-nodes (or `./scripts/setup/setup-all.sh --step 0.2-nodes`).
 
 **Karpenter path:** see [02-eks-cluster-karpenter.md](02-eks-cluster-karpenter.md) when `NODE_PROVISIONING=karpenter`.
 

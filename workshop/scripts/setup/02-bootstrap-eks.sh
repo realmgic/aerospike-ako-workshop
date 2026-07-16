@@ -25,9 +25,9 @@ case "${NODE_PROVISIONING}" in
       --zones "${AWS_ZONES}" \
       --version="${K8S_VERSION}" \
       --without-nodegroup \
-      "${kc_args[@]}"
+      ${kc_args[@]+"${kc_args[@]}"}
 
-    echo "Done. Workload nodes are created in Lab 1.1: ./scripts/labs/prepare-lab.sh 1.1"
+    echo "Done. Workload nodepool: ./scripts/setup/02-ensure-workload-nodepool.sh (step 0.2-nodes)"
     ;;
   karpenter)
     echo "Creating EKS cluster ${CLUSTER_NAME} in ${AWS_REGION} (K8s ${K8S_VERSION}) — Karpenter path..."
@@ -41,14 +41,14 @@ case "${NODE_PROVISIONING}" in
     export KARPENTER_SYSTEM_NODE_TYPE KARPENTER_SYSTEM_NODE_COUNT SSH_PUBLIC_KEY
     IFS=',' read -r NODE_ZONE_A NODE_ZONE_B _ <<< "${AWS_ZONES},,"
     export NODE_ZONE_A NODE_ZONE_B
-    envsubst < "${CLUSTER_CONFIG}" | eksctl create cluster -f - "${kc_args[@]}"
+    envsubst < "${CLUSTER_CONFIG}" | eksctl create cluster -f - ${kc_args[@]+"${kc_args[@]}"}
 
-    echo "Installing Karpenter controller (workload NodePool deferred to Lab 1.1)..."
+    echo "Installing Karpenter controller..."
     "${KARPENTER_DIR}/00-install-controller.sh"
 
     echo "System nodes:"
     kubectl get nodes -o wide
-    echo "Done. Workload NodePool is created in Lab 1.1: ./scripts/labs/prepare-lab.sh 1.1"
+    echo "Done. Workload NodePool: ./scripts/setup/02-ensure-workload-nodepool.sh (step 0.2-nodes)"
     ;;
   *)
     echo "ERROR: NODE_PROVISIONING must be 'eksctl' or 'karpenter', got: ${NODE_PROVISIONING}" >&2

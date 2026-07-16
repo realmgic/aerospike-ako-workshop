@@ -172,12 +172,11 @@ ensure_kubecontext() {
     exit 1
   fi
 
-  local kubeconfig_args=()
   if [[ -n "${KUBECONFIG:-}" ]]; then
-    kubeconfig_args=(--kubeconfig "${KUBECONFIG}")
+    aws eks update-kubeconfig --name "${cluster_name}" --region "${AWS_REGION}" --kubeconfig "${KUBECONFIG}" >/dev/null
+  else
+    aws eks update-kubeconfig --name "${cluster_name}" --region "${AWS_REGION}" >/dev/null
   fi
-
-  aws eks update-kubeconfig --name "${cluster_name}" --region "${AWS_REGION}" "${kubeconfig_args[@]}" >/dev/null
   echo "kubectl context: $(current_kube_context) (cluster: $(current_kube_cluster))"
 }
 

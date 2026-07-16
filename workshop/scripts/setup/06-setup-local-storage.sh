@@ -47,7 +47,7 @@ desired="$(kubectl -n kube-system get ds nvme-bootstrap -o jsonpath='{.status.de
 if [[ "${desired}" -gt 0 ]]; then
   echo "nvme-bootstrap scheduled on ${desired} node(s) — full readiness wait runs in Lab 1.1 (lab-nodes.sh ensure)."
 else
-  echo "nvme-bootstrap DaemonSet applied (0 nodes scheduled until Lab 1.1 creates workload nodes)."
+  echo "nvme-bootstrap DaemonSet applied (0 nodes scheduled — run step 0.2-nodes first if workload nodes are missing)."
 fi
 
 kubectl -n kube-system get ds nvme-bootstrap 2>/dev/null || true

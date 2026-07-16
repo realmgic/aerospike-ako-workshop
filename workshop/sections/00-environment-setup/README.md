@@ -10,6 +10,7 @@ You can stand up a complete EKS lab platform — cluster, AKO, storage layers, a
 |-------|-------|----------|
 | 0.1 | [Prerequisites](01-prerequisites.md) | ~15m |
 | 0.2 | EKS cluster — [eksctl MNG](02-eks-cluster.md) or [Karpenter](02-eks-cluster-karpenter.md) | ~15–25m (parallel with 0.7 bootstrap) |
+| 0.2-nodes | Workload nodepool (Lab 1.1 pool) | ~10–15m |
 | 0.3 | Install AKO — [OLM](03-install-ako-olm.md) or [Helm](03-install-ako-helm.md) | ~20m |
 | 0.4 | [akoctl](04-install-akoctl.md) | ~10m |
 | 0.5 | [Storage layer](05-storage-layer.md) | ~25m |
@@ -20,7 +21,7 @@ You can stand up a complete EKS lab platform — cluster, AKO, storage layers, a
 
 Full `./scripts/setup/setup-all.sh` creates **main** and **upgrade-lab** EKS clusters **in parallel** after step 0.1, using isolated kubeconfig files under `workshop/.kube/` (merged into your default kubeconfig when both finish). This saves roughly **15–25 minutes** vs sequential bootstrap.
 
-- Disable with `./scripts/setup/setup-all.sh --sequential` (legacy order: 0.2, then 0.3–0.6, then full 0.7)
+- Disable with `./scripts/setup/setup-all.sh --sequential` (legacy order: 0.2, 0.2-nodes, then 0.3–0.6, then full 0.7)
 - Individual `--step` runs are unchanged (no parallel)
 
 | Choose Path A (OLM) when… | Choose Path B (Helm) when… |
@@ -44,7 +45,6 @@ Set `NODE_PROVISIONING=eksctl` or `karpenter` in [workshop.env.example](../../sc
 ## What Section 0 does NOT do
 
 - Does **not** deploy an Aerospike cluster on the main cluster — labs deploy their own baseline
-- Does **not** create workload i8g nodes — [Lab 1.1](../01-scaling-and-capacity/01-horizontal-scaling.md) runs `prepare-lab.sh 1.1`
 - Does **not** cover scaling, upgrades, or maintenance — Sections 1 and 2
 
 Step **0.7** creates the separate upgrade-lab EKS cluster for Lab 2.6 only. Skip it with `./scripts/setup/setup-all.sh --skip-upgrade-lab` to save cost, then run `./scripts/labs/prepare-lab.sh 2.6` before that lab.
@@ -60,6 +60,7 @@ source scripts/env/workshop.env
 
 ./scripts/setup/setup-all.sh --step 0.1
 ./scripts/setup/setup-all.sh --step 0.2
+./scripts/setup/setup-all.sh --step 0.2-nodes
 ./scripts/setup/setup-all.sh --step 0.3
 ./scripts/setup/setup-all.sh --step 0.4
 ./scripts/setup/setup-all.sh --step 0.5    # ebs + local
@@ -72,6 +73,7 @@ Or invoke scripts directly:
 ```bash
 ./scripts/setup/01-validate-client.sh
 ./scripts/setup/02-bootstrap-eks.sh
+./scripts/setup/02-ensure-workload-nodepool.sh
 ./scripts/setup/03-install-ako.sh
 ./scripts/setup/04-install-akoctl.sh
 ./scripts/setup/05-setup-ebs-storage.sh

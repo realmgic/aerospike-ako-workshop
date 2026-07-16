@@ -11,7 +11,7 @@
 
 ## Takeaway
 
-A Karpenter-managed EKS cluster with a **system** managed nodegroup for the controller. **Workload NodePool** `${KARPENTER_NODEPOOL_NAME}` (2xl) is created in Lab 1.1. Lab 1.3 Phase 2 adds **`${KARPENTER_NODEPOOL_VERTICAL_NAME}`** (4xl) alongside the 2xl pool.
+A Karpenter-managed EKS cluster with a **system** managed nodegroup for the controller. **Workload NodePool** `${KARPENTER_NODEPOOL_NAME}` (4× `i8g.2xlarge`) is created in step **0.2-nodes** before AKO install. Lab 1.3 Phase 2 adds **`${KARPENTER_NODEPOOL_VERTICAL_NAME}`** (4xl) alongside the 2xl pool.
 
 ## Prerequisites
 
@@ -34,7 +34,7 @@ A Karpenter-managed EKS cluster with a **system** managed nodegroup for the cont
    export NODE_PROVISIONING=karpenter
    ```
 
-2. Create cluster and install Karpenter controller (no workload NodePool yet):
+2. Create cluster and install Karpenter controller:
 
    ```bash
    ./scripts/setup/02-bootstrap-eks.sh
@@ -43,18 +43,26 @@ A Karpenter-managed EKS cluster with a **system** managed nodegroup for the cont
    **Expected:**
    - eksctl creates cluster + `${KARPENTER_SYSTEM_NODEGROUP}` (2× `${KARPENTER_SYSTEM_NODE_TYPE}`, tainted)
    - Karpenter controller Running in `karpenter` namespace
-   - **No** workload nodes until Lab 1.1
+   - **No** workload nodes yet (system nodes only)
 
-3. Confirm controller:
+3. Create workload NodePool (step 0.2-nodes):
+
+   ```bash
+   ./scripts/setup/02-ensure-workload-nodepool.sh
+   ```
+
+   **Expected:** `${NODE_COUNT}`× `${NODE_TYPE}` workload nodes Ready across `${AWS_ZONES}`.
+
+4. Confirm controller:
 
    ```bash
    kubectl -n karpenter get deploy karpenter
    kubectl get nodes
    ```
 
-   **Expected:** System nodes only; Karpenter Ready.
+   **Expected:** Karpenter Ready; `${NODE_COUNT}` workload nodes plus system nodes.
 
-4. Confirm namespace:
+5. Confirm namespace:
 
    ```bash
    kubectl get namespace aerospike
@@ -67,14 +75,14 @@ kubectl -n karpenter get deploy karpenter
 kubectl get nodes
 ```
 
-**Pass:** Karpenter Ready; no workload nodes yet (Lab 1.1 creates NodePool).
+**Pass:** Karpenter Ready; `${NODE_COUNT}` workload nodes Ready (NodePool `${KARPENTER_NODEPOOL_NAME}`).
 
 Reference config: [clusters/main-cluster-karpenter.yaml](../../clusters/main-cluster-karpenter.yaml)
 
 ## Observe
 
-- System nodes carry taint `role=system:NoSchedule`
-- Workload NodePool applied in Lab 1.1 via `prepare-lab.sh 1.1`
+- System nodes carry taint `role=system:NoSchedule` — OLM and AKO schedule on untainted workload nodes
+- Workload NodePool applied in step **0.2-nodes**; Lab 1.1 re-ensures after full reset via `prepare-lab.sh 1.1`
 
 ## Troubleshooting
 

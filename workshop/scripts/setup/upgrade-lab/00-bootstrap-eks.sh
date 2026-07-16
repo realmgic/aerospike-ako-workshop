@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
-source "$(dirname "$0")/../../lib/common.sh"
+UPGRADE_DIR="$(dirname "$0")"
+source "${UPGRADE_DIR}/../../lib/common.sh"
 load_env
 apply_workshop_kubeconfig
 require_cmd eksctl
 
 : "${UPGRADE_LAB_NODEGROUP_NAME:=ng-upgrade-lab}"
 
-kc_args=()
+# eksctl create cluster accepts --kubeconfig; create nodegroup does not — use KUBECONFIG env (set above).
+eksctl_cluster_kc_args=()
 if [[ -n "${KUBECONFIG:-}" ]]; then
-  kc_args=(--kubeconfig "${KUBECONFIG}")
+  eksctl_cluster_kc_args=(--kubeconfig "${KUBECONFIG}")
 fi
 
 echo "Creating upgrade-lab EKS cluster ${UPGRADE_LAB_CLUSTER_NAME}..."
@@ -19,23 +21,11 @@ eksctl create cluster \
   --zones "${AWS_ZONES}" \
   --version="${UPGRADE_LAB_K8S_VERSION_START}" \
   --without-nodegroup \
-  "${kc_args[@]}"
+  ${eksctl_cluster_kc_args[@]+"${eksctl_cluster_kc_args[@]}"}
 
-eksctl create nodegroup \
-  --cluster "${UPGRADE_LAB_CLUSTER_NAME}" \
-  --region "${AWS_REGION}" \
-  --node-zones "${UPGRADE_LAB_NODE_ZONE:-${NODE_ZONE}}" \
-  --name "${UPGRADE_LAB_NODEGROUP_NAME}" \
-  --node-type "${UPGRADE_LAB_NODE_TYPE}" \
-  --nodes "${UPGRADE_LAB_NODE_COUNT}" \
-  --nodes-min "${UPGRADE_LAB_NODE_COUNT}" \
-  --nodes-max "${UPGRADE_LAB_NODE_COUNT}" \
-  --ssh-access \
-  --ssh-public-key "${SSH_PUBLIC_KEY}" \
-  "${kc_args[@]}"
+"${UPGRADE_DIR}/ensure-nodegroup.sh"
 
 kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
-kubectl get nodes -o wide
 
 ensure_kubecontext "${UPGRADE_LAB_CLUSTER_NAME}"
 assert_kubecontext "${UPGRADE_LAB_CLUSTER_NAME}"

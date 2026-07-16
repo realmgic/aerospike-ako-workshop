@@ -8,5 +8,5 @@ KARPENTER_DIR="$(dirname "$0")"
 
 echo "=== Karpenter bootstrap (${CLUSTER_NAME}) ==="
 "${KARPENTER_DIR}/00-install-controller.sh"
-echo "Workload NodePool: ./scripts/labs/lab-nodes.sh 1.1 ensure (or prepare-lab.sh 1.1)"
+echo "Workload NodePool: ./scripts/setup/02-ensure-workload-nodepool.sh (step 0.2-nodes)"
 echo "=== Karpenter bootstrap complete ==="
