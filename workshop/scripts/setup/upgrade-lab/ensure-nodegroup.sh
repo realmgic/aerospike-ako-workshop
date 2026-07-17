@@ -40,6 +40,14 @@ wait_upgrade_lab_nodes() {
   exit 1
 }
 
+label_upgrade_lab_nodegroup_pool() {
+  echo "Labeling nodegroup ${UPGRADE_LAB_NODEGROUP_NAME} nodes: workshop.aerospike.com/node-pool=baseline"
+  kubectl get nodes -l "alpha.eksctl.io/nodegroup-name=${UPGRADE_LAB_NODEGROUP_NAME}" -o name 2>/dev/null \
+    | while read -r node; do
+        kubectl label "${node}" "workshop.aerospike.com/node-pool=baseline" --overwrite
+      done
+}
+
 if upgrade_lab_nodegroup_exists; then
   echo "Nodegroup ${UPGRADE_LAB_NODEGROUP_NAME} already exists on ${UPGRADE_LAB_CLUSTER_NAME}"
 else
@@ -53,8 +61,10 @@ else
     --nodes "${UPGRADE_LAB_NODE_COUNT}" \
     --nodes-min "${UPGRADE_LAB_NODE_COUNT}" \
     --nodes-max "${UPGRADE_LAB_NODE_COUNT}" \
+    --node-labels "workshop.aerospike.com/node-pool=baseline" \
     --ssh-access \
     --ssh-public-key "${SSH_PUBLIC_KEY}"
 fi
 
 wait_upgrade_lab_nodes "${UPGRADE_LAB_NODE_COUNT}"
+label_upgrade_lab_nodegroup_pool

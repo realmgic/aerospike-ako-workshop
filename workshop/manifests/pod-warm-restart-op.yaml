@@ -13,6 +13,8 @@ spec:
       id: warm-restart-1
 
   podSpec:
+    nodeSelector:
+      workshop.aerospike.com/node-pool: baseline
     multiPodPerHost: false
     aerospikeContainer:
       resources:

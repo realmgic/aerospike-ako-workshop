@@ -19,6 +19,8 @@ spec:
         zone: ${NODE_ZONE_B}
 
   podSpec:
+    nodeSelector:
+      workshop.aerospike.com/node-pool: baseline
     multiPodPerHost: false
     aerospikeContainer:
       resources:

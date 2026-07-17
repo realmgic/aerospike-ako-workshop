@@ -10,6 +10,8 @@ spec:
   enableDynamicConfigUpdate: true
 
   podSpec:
+    nodeSelector:
+      workshop.aerospike.com/node-pool: baseline
     multiPodPerHost: false
     aerospikeContainer:
       resources:

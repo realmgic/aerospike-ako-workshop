@@ -11,6 +11,8 @@ image:
   tag: "8.1.2.0"
 
 podSpec:
+  nodeSelector:
+    workshop.aerospike.com/node-pool: baseline
   multiPodPerHost: false
   aerospikeContainer:
     resources:

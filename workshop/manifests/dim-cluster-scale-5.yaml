@@ -9,6 +9,8 @@ spec:
   image: aerospike/aerospike-server-enterprise:8.1.0.0
   enableDynamicConfigUpdate: true
   podSpec:
+    nodeSelector:
+      workshop.aerospike.com/node-pool: baseline
     multiPodPerHost: false
     aerospikeContainer:
       resources:
