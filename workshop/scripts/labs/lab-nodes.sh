@@ -506,14 +506,18 @@ maybe_wait_nvme_bootstrap() {
   if ! kubectl -n kube-system get ds nvme-bootstrap >/dev/null 2>&1; then
     return 0
   fi
-  local nodes_after ready desired
+  local nodes_after ready desired waited=false
   nodes_after="$(count_2xl_nodes_ready)"
   ready="$(nvme_bootstrap_ready)"
   desired="$(nvme_bootstrap_desired)"
   if [[ "${nodes_after}" -gt "${nodes_before}" ]] || [[ "${ready:-0}" -lt "${desired:-0}" ]] || [[ "${ready:-0}" -lt "${expected}" ]]; then
     wait_nvme_bootstrap "${expected}"
+    waited=true
   else
     echo "OK  nvme-bootstrap already Ready (${ready}/${desired})"
+  fi
+  if [[ "${waited}" == true ]]; then
+    restart_local_volume_provisioner
   fi
 }
 

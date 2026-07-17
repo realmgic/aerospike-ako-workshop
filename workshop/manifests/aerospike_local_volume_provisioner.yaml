@@ -14,6 +14,7 @@ data:
        blockCleanerCommand:
          - "/scripts/blkdiscard.sh"
        volumeMode: Block
+       namePattern: "nvme*"
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -47,6 +48,8 @@ spec:
             - mountPath: /etc/provisioner/config
               name: provisioner-config
               readOnly: true
+            - mountPath: /dev
+              name: provisioner-dev
             - mountPath:  /mnt/disks
               name: local-ssd
               mountPropagation: "HostToContainer"
@@ -54,6 +57,9 @@ spec:
         - name: provisioner-config
           configMap:
             name: local-provisioner-config
+        - name: provisioner-dev
+          hostPath:
+            path: /dev
         - name: local-ssd
           hostPath:
             path: /mnt/disks

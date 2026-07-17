@@ -57,6 +57,8 @@ spec:
           volumeMounts:
             - name: host-mnt-disks
               mountPath: /host/mnt/disks
+            - name: host-bootstrap-state
+              mountPath: /host/var/lib/workshop/nvme-bootstrap
             - name: host-dev
               mountPath: /dev
             - name: nvme-config
@@ -73,6 +75,10 @@ spec:
         - name: host-mnt-disks
           hostPath:
             path: /mnt/disks
+            type: DirectoryOrCreate
+        - name: host-bootstrap-state
+          hostPath:
+            path: /var/lib/workshop/nvme-bootstrap
             type: DirectoryOrCreate
         - name: host-dev
           hostPath:

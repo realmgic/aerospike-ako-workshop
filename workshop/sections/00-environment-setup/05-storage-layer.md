@@ -175,8 +175,10 @@ Optional demo after Part B (uses [`manifests/local-ssd-demo.yaml`](../../manifes
 | No partition symlinks | Confirm instance type in `disk-layouts.yaml`; check IMDS from node |
 | Cleanup controller not deleting PVCs | Verify `--storageclass-names=local-ssd` and controller pod logs |
 | Wrong partition count | Set `NVME_DISK_LAYOUT` or update `config/disk-layouts.yaml` |
-| Wrong PV sizes (stale partition table) | Delete local-ssd PVs and PVCs. On each affected node, remove bootstrap markers: `rm -rf /mnt/disks/.nvme-bootstrap`. Replace the node (fresh instance store) or manually wipe GPT only when no PVs are bound. Re-run `06-setup-local-storage.sh`. Verify with `kubectl get pv -l storageclass=local-ssd` — expect 3× ~512Gi per i8g.2xlarge node or 6× ~512Gi per i8g.4xlarge node. |
-| nvme-bootstrap re-runs on every lab | Expected only when new i8g nodes join the pool. Reused nodes skip bootstrap via markers in `/mnt/disks/.nvme-bootstrap/`. |
+| Wrong PV sizes (stale partition table) | Delete local-ssd PVs and PVCs. On each affected node, remove bootstrap markers: `rm -rf /var/lib/workshop/nvme-bootstrap` (legacy: `/mnt/disks/.nvme-bootstrap`). Replace the node (fresh instance store) or manually wipe GPT only when no PVs are bound. Re-run `06-setup-local-storage.sh`. Verify with `kubectl get pv -l storageclass=local-ssd` — expect 3× ~512Gi per i8g.2xlarge node or 6× ~512Gi per i8g.4xlarge node. |
+| nvme-bootstrap re-runs on every lab | Expected only when new i8g nodes join the pool. Reused nodes skip bootstrap via markers in `/var/lib/workshop/nvme-bootstrap/`. |
+| Provisioner logs: `.nvme-bootstrap` filesystem mode | Harmless on old nodes until nvme-bootstrap re-runs; re-apply storage setup (`06-setup-local-storage.sh`) or restart nvme-bootstrap pods to migrate markers off `/mnt/disks`. |
+| Provisioner logs: `nvme0n1p1: no such file or directory` | Symlinks exist but provisioner cannot resolve `/dev` targets — re-apply `manifests/aerospike_local_volume_provisioner.yaml` (mounts host `/dev`) and restart the DaemonSet. Confirm nvme-bootstrap finished: `kubectl -n kube-system logs ds/nvme-bootstrap -c init-nvme --tail=30`. |
 
 ## Teardown / handoff
 

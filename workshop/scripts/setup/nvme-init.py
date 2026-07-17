@@ -23,6 +23,8 @@ except ImportError:
 HOST = Path("/host")
 CONFIG = Path("/config/disk-layouts.yaml")
 DISKS_DIR = HOST / "mnt" / "disks"
+LEGACY_BOOTSTRAP_MARKER_DIR = DISKS_DIR / ".nvme-bootstrap"
+BOOTSTRAP_MARKER_DIR = HOST / "var" / "lib" / "workshop" / "nvme-bootstrap"
 DEV_DIR = Path("/dev")
 
 INSTANCE_STORE_PATTERNS = (
@@ -228,7 +230,15 @@ def log_partition_table(device: str) -> None:
 
 
 def bootstrap_marker_path(device: str) -> Path:
-    return DISKS_DIR / ".nvme-bootstrap" / device
+    return BOOTSTRAP_MARKER_DIR / device
+
+
+def remove_legacy_bootstrap_markers() -> None:
+    """Drop markers from /mnt/disks so the block provisioner does not scan them."""
+    if not LEGACY_BOOTSTRAP_MARKER_DIR.is_dir():
+        return
+    print(f"removing legacy bootstrap markers from {LEGACY_BOOTSTRAP_MARKER_DIR}")
+    shutil.rmtree(LEGACY_BOOTSTRAP_MARKER_DIR)
 
 
 def write_bootstrap_marker(device: str) -> None:
@@ -488,6 +498,8 @@ def bootstrap_main() -> int:
     if not DEV_DIR.is_dir():
         print("no /dev — skipping")
         return 0
+
+    remove_legacy_bootstrap_markers()
 
     _, layout = load_layout()
     stores = discover_instance_store_devices()
