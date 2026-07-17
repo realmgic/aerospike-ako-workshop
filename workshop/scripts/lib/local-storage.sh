@@ -87,24 +87,19 @@ expected_local_ssd_pvs_per_node() {
 
 count_local_ssd_pvs_for_instance_type() {
   local instance_type="$1"
-  local nodes pv_hosts node count_on_node total=0
-
-  mapfile -t nodes < <(
-    kubectl get nodes -l "node.kubernetes.io/instance-type=${instance_type}" --no-headers 2>/dev/null \
-      | awk '$2=="Ready" {print $1}'
-  )
-  if [[ "${#nodes[@]}" -eq 0 ]]; then
-    echo 0
-    return 0
-  fi
+  local pv_hosts node count_on_node total=0
 
   pv_hosts="$(kubectl get pv -l storageclass=local-ssd \
     -o jsonpath='{range .items[*]}{.spec.nodeAffinity.required.nodeSelectorTerms[0].matchExpressions[0].values[0]}{"\n"}{end}' 2>/dev/null || true)"
 
-  for node in "${nodes[@]}"; do
+  while IFS= read -r node; do
+    [[ -z "${node}" ]] && continue
     count_on_node="$(printf '%s\n' "${pv_hosts}" | grep -cxF "${node}" || true)"
     total=$((total + count_on_node))
-  done
+  done < <(
+    kubectl get nodes -l "node.kubernetes.io/instance-type=${instance_type}" --no-headers 2>/dev/null \
+      | awk '$2=="Ready" {print $1}'
+  )
   echo "${total}"
 }
 

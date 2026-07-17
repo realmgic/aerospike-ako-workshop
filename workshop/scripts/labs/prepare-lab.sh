@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prepare a lab: reset (Section 1) or upgrade-lab staging (Lab 2.6).
+# Prepare a lab: reset (Section 1), dim cluster staging (Labs 2.1/2.3), or upgrade-lab (Lab 2.6).
 #
 # Usage:
 #   ./scripts/labs/prepare-lab.sh <lab-id> [--full|--light|--skip-reset]
@@ -89,9 +89,105 @@ prepare_lab_2_6() {
   echo "=== Lab 2.6 prepared ==="
 }
 
+deploy_dim_cluster() {
+  if [[ "${DEPLOY_PATH}" == "helm" ]]; then
+    "${SCRIPT_DIR}/deploy-dim-cluster-helm.sh"
+  else
+    "${SCRIPT_DIR}/deploy-dim-cluster.sh"
+  fi
+}
+
+validate_dim_cluster() {
+  local phase running expected=3
+  phase="$(kubectl -n "${NAMESPACE}" get aerospikecluster aerocluster -o jsonpath='{.status.phase}' 2>/dev/null || echo missing)"
+  running="$(kubectl -n "${NAMESPACE}" get pods -l aerospike.com/cr=aerocluster --field-selector=status.phase=Running --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+
+  if [[ "${phase}" == "Completed" ]] && [[ "${running:-0}" -ge "${expected}" ]]; then
+    echo "OK  dim cluster Ready (${running}/${expected} pods, phase ${phase})"
+    return 0
+  fi
+
+  echo "FAIL dim cluster not ready (phase=${phase}, ${running}/${expected} pods Running)" >&2
+  kubectl -n "${NAMESPACE}" get aerospikecluster,pods 2>/dev/null || true
+  return 1
+}
+
+validate_dim_baseline_image() {
+  local image
+  : "${AEROSPIKE_IMAGE:=aerospike/aerospike-server-enterprise:8.1.0.0}"
+  image="$(kubectl -n "${NAMESPACE}" get aerospikecluster aerocluster -o jsonpath='{.spec.image}' 2>/dev/null || echo missing)"
+  if [[ "${image}" == "${AEROSPIKE_IMAGE}" ]] || [[ "${image}" == *"8.1.0"* ]]; then
+    echo "OK  dim baseline image (${image})"
+    return 0
+  fi
+  echo "FAIL expected 8.1.0.x baseline image (got ${image}) — re-run without --skip-reset" >&2
+  return 1
+}
+
+prepare_dim_cluster_lab() {
+  local lab_id="$1"
+  local reason="$2"
+  local check_baseline_image="${3:-false}"
+  local reset_mode="${RESET_OVERRIDE:-light}"
+
+  echo "=== Prepare lab ${lab_id} (reset=${reset_mode}, DEPLOY_PATH=${DEPLOY_PATH}) ==="
+  echo "${reason}"
+
+  ensure_main_kubecontext
+
+  case "${reset_mode}" in
+    full)
+      echo "Running full reset (database + workload nodes)..."
+      "${WORKSHOP_SCRIPTS}/reset-cluster.sh" --yes
+      ;;
+    light)
+      echo "Running light reset (delete AerospikeCluster aerocluster)..."
+      "${WORKSHOP_SCRIPTS}/labs/teardown-cluster.sh"
+      ;;
+    skip)
+      echo "Skipping teardown (validating existing dim cluster)"
+      validate_dim_cluster
+      if [[ "${check_baseline_image}" == true ]]; then
+        validate_dim_baseline_image
+      fi
+      echo "=== Lab ${lab_id} prepared ==="
+      return 0
+      ;;
+  esac
+
+  deploy_dim_cluster
+  validate_dim_cluster
+  if [[ "${check_baseline_image}" == true ]]; then
+    validate_dim_baseline_image
+  fi
+  echo "=== Lab ${lab_id} prepared ==="
+}
+
+prepare_lab_2_1() {
+  prepare_dim_cluster_lab "2.1" \
+    "Tearing down prior aerocluster (Section 1 rack/dim CR uses the same name) and deploying dim baseline." \
+    false
+}
+
+prepare_lab_2_3() {
+  prepare_dim_cluster_lab "2.3" \
+    "Resetting to dim baseline on 8.1.0.x (e.g. after Lab 1.5 RF=3 or a prior 2.3 attempt)." \
+    true
+}
+
 if [[ "${LAB_ID}" == "2.6" ]]; then
   require_cmd aws
   prepare_lab_2_6
+  exit 0
+fi
+
+if [[ "${LAB_ID}" == "2.1" ]]; then
+  prepare_lab_2_1
+  exit 0
+fi
+
+if [[ "${LAB_ID}" == "2.3" ]]; then
+  prepare_lab_2_3
   exit 0
 fi
 
@@ -101,7 +197,7 @@ default_reset_for_lab() {
   case "$1" in
     1.1|1.2|1.3|1.4|1.5) echo "light" ;;
     *)
-      echo "ERROR: unknown lab id: $1 (expected 1.1–1.5 or 2.6)" >&2
+      echo "ERROR: unknown lab id: $1 (expected 1.1–1.5, 2.1, 2.3, or 2.6)" >&2
       exit 1
       ;;
   esac

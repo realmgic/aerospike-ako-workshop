@@ -25,17 +25,15 @@ Aerospike DB upgrade = change `spec.image`; AKO performs a **rolling restart** o
 
 ## Phase 0 — Prepare lab
 
-If you ran **[Lab 1.5](../01-scaling-and-capacity/05-replication-factor.md)**, the cluster may be at RF=3. If Lab 2.3 was attempted before, the image may already be on **8.1.2.x**. Reset to a clean dim baseline (**8.1.0.x**, RF=2) before upgrading:
+If you ran **[Lab 1.5](../01-scaling-and-capacity/05-replication-factor.md)**, the cluster may be at RF=3. If Lab 2.3 was attempted before, the image may already be on **8.1.2.x**. Reset to a clean dim baseline (**8.1.0.x**, RF=2):
 
 ```bash
-./scripts/labs/teardown-cluster.sh
-./scripts/labs/deploy-dim-cluster.sh       # Path A
-# applies manifests/dim-cluster.yaml
-# or: kubectl apply -f manifests/dim-cluster.yaml
-
-./scripts/labs/deploy-dim-cluster-helm.sh  # Path B
-# applies helm/dim-cluster-values.yaml
+./scripts/labs/prepare-lab.sh 2.3
 ```
+
+**Expected:** Prior `aerocluster` deleted; fresh 3-node dim cluster on **8.1.0.x**; phase `Completed`.
+
+Use `./scripts/labs/prepare-lab.sh 2.3 --skip-reset` only if the dim baseline is already on **8.1.0.x** and Running.
 
 Confirm starting state:
 
@@ -86,7 +84,7 @@ kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.status.phas
 Optional:
 
 ```bash
-kubectl exec -it aerocluster-0-0 -c aerospike-server -n aerospike -- asinfo -v build
+kubectl exec -it aerocluster-0-0 -c aerospike-server -n aerospike -- asinfo -U admin -P admin123 -v build
 ```
 
 ## Observe

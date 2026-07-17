@@ -21,13 +21,14 @@ AKO must be upgraded **one version at a time** — each release updates chart/bu
 ## Prerequisites
 
 - Section 0 installed AKO at **4.2.0**
-- 3-node dim cluster Running on **8.1.0.x** (compatible with AKO 4.2.0):
-  ```bash
-  ./scripts/labs/deploy-dim-cluster.sh
-  # applies manifests/dim-cluster.yaml
-  # or: kubectl apply -f manifests/dim-cluster.yaml
-  kubectl -n aerospike get pods
-  ```
+- 3-node dim cluster Running on **8.1.0.x** (from [Lab 2.1](01-akoctl.md) — `./scripts/labs/prepare-lab.sh 2.1` if coming from Section 1):
+
+```bash
+kubectl -n aerospike get pods
+kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.status.phase}{"\n"}'
+```
+
+**Expected:** 3/3 pods `Running`; phase `Completed`.
 
 
 
@@ -73,6 +74,35 @@ Or run full ladder:
 ./scripts/labs/upgrade-ako/upgrade-all-olm.sh
 ```
 
+### Manual equivalent (OLM, one step)
+
+Replace `<VERSION>` with each ladder target (`4.3.0`, `4.4.1`, `4.5.0`). The script sets `startingCSV` so OLM creates an InstallPlan for that exact step (do not skip versions).
+
+```bash
+source scripts/env/workshop.env   # OPERATOR_NAMESPACE, etc.
+export CSV_TARGET="aerospike-kubernetes-operator.v<VERSION>"
+
+# 1. Pin subscription to the target CSV (triggers InstallPlan)
+kubectl patch subscription aerospike-kubernetes-operator -n "${OPERATOR_NAMESPACE}" --type merge \
+  -p "{\"spec\":{\"startingCSV\":\"${CSV_TARGET}\"}}"
+
+# 2. Approve the InstallPlan OLM creates for that CSV
+kubectl get installplan -n "${OPERATOR_NAMESPACE}" | grep aerospike
+kubectl patch installplan <INSTALLPLAN_NAME> -n "${OPERATOR_NAMESPACE}" --type merge \
+  -p '{"spec":{"approved":true}}'
+
+# 3. Wait for the new CSV
+kubectl wait --for=jsonpath='{.status.phase}'=Succeeded \
+  "csv/${CSV_TARGET}" -n "${OPERATOR_NAMESPACE}" --timeout=600s
+
+# 4. Verify operator + dim cluster still healthy
+kubectl get csv -n "${OPERATOR_NAMESPACE}" | grep "${CSV_TARGET}"
+kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.status.phase}{"\n"}'
+kubectl -n aerospike get pods
+```
+
+**Expected per step:** CSV `Succeeded`; subscription `currentCSV` matches target; Aerospike CR still `Completed`.
+
 
 
 ## Steps — Path B (Helm)
@@ -86,6 +116,45 @@ For each target version:
 ```
 
 CRDs are replaced before each `helm upgrade` — **never** `kubectl delete` CRDs.
+
+Or run full ladder:
+
+```bash
+./scripts/labs/upgrade-ako/upgrade-all-helm.sh
+```
+
+### Manual equivalent (Helm, one step)
+
+Replace `<VERSION>` with each ladder target. CRDs must be **replaced** (not deleted) before the chart upgrade.
+
+```bash
+source scripts/env/workshop.env   # OPERATOR_NAMESPACE, HELM_OPERATOR_RELEASE, etc.
+export TARGET="<VERSION>"
+
+# 1. Replace CRDs from the target operator tag
+for crd in aerospikeclusters aerospikebackupservices aerospikebackups aerospikerestores; do
+  kubectl replace -f \
+    "https://raw.githubusercontent.com/aerospike/aerospike-kubernetes-operator/v${TARGET}/config/crd/bases/asdb.aerospike.com_${crd}.yaml"
+done
+
+# 2. Upgrade operator chart (workshop values pin watchNamespaces, safePodEviction, etc.)
+helm repo update
+helm upgrade "${HELM_OPERATOR_RELEASE}" aerospike/aerospike-kubernetes-operator \
+  --namespace "${OPERATOR_NAMESPACE}" \
+  --version="${TARGET}" \
+  -f helm/operator-values.yaml
+
+# 3. Wait for controller rollout
+kubectl -n "${OPERATOR_NAMESPACE}" rollout status \
+  deployment/aerospike-operator-controller-manager --timeout=300s
+
+# 4. Verify
+helm list -n "${OPERATOR_NAMESPACE}" | grep "${HELM_OPERATOR_RELEASE}"
+kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.status.phase}{"\n"}'
+kubectl -n aerospike get pods
+```
+
+**Expected per step:** Helm release shows `<VERSION>`; controller Ready; Aerospike CR still `Completed`.
 
 ## Verify (pass/fail)
 

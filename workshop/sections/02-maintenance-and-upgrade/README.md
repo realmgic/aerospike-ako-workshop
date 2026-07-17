@@ -6,7 +6,7 @@ AKO and the platform can be upgraded and maintained safely — operator upgrades
 
 ## Prerequisites
 
-Section 0 complete. Labs deploy cluster baselines as needed.
+Section 0 complete. Run `./scripts/labs/prepare-lab.sh 2.1` before Lab 2.1 (dim baseline after Section 1). Run `./scripts/labs/prepare-lab.sh 2.3` before Lab 2.3 if coming from Lab 1.5 or retrying the DB upgrade.
 
 ## Labs
 

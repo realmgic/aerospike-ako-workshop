@@ -7,7 +7,7 @@
 | 2.1 | ~25m | Install verify, global flags, auth, collectinfo |
 | 2.2 | ~30–40m | Three steps: 4.3.0 → 4.4.1 → 4.5.0; demo one step live |
 | 2.3 | ~20m | Rolling DB upgrade 8.1.0.x → 8.1.2.x (requires AKO 4.5.0) |
-| 2.4 | ~10m | On-demand PodRestart operation |
+| 2.4 | ~10m | PodRestart (cold) then WarmRestart on dim 8.1.2.x |
 | 2.5 | ~25m (+15m add-on) | Show eviction-blocked annotation; Karpenter add-on: do-not-disrupt graduation + terminationGracePeriod |
 | 2.6 | ~45m | Mostly waiting; pre-stage cluster + Aerospike |
 
@@ -42,6 +42,8 @@
 
 | Issue | Mitigation |
 |-------|------------|
+| Section 1 cluster blocks dim deploy | Run `./scripts/labs/prepare-lab.sh 2.1` — tears down `aerocluster` and deploys dim baseline |
+| Lab 1.5 / prior 2.3 wrong starting state | Run `./scripts/labs/prepare-lab.sh 2.3` — resets to dim **8.1.0.x** before DB upgrade |
 | CRD delete during Helm upgrade | Never delete CRDs — use replace |
 | Force drain | Never demo `--force` |
 | Wrong cluster context | `./scripts/lib/kubecontext.sh show`; main labs use `./scripts/labs/prepare-lab.sh <lab>` |

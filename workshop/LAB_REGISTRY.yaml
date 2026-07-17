@@ -193,7 +193,7 @@ labs:
     artifacts:
       kubectl: [manifests/rack-cluster-v1.yaml, manifests/rack-cluster-v2-revision.yaml]
       helm: [helm/rack-cluster-v1-values.yaml, helm/rack-cluster-v2-revision-values.yaml]
-    scripts: [scripts/labs/prepare-lab.sh, scripts/labs/lab-nodes.sh, scripts/labs/deploy-rack-cluster.sh]
+    scripts: [scripts/labs/prepare-lab.sh, scripts/labs/lab-nodes.sh, scripts/labs/deploy-rack-cluster.sh, scripts/labs/deploy-rack-cluster-v2-revision.sh, scripts/labs/deploy-rack-cluster-v2-revision-helm.sh]
     depends_on: ["0.6"]
     doc_urls:
       - https://aerospike.com/docs/kubernetes/manage/configure/scaling
@@ -212,7 +212,7 @@ labs:
     artifacts:
       kubectl: [manifests/rack-cluster-v1.yaml, manifests/rack-cluster-replacement.yaml]
       helm: [helm/rack-cluster-v1-values.yaml, helm/rack-cluster-replacement-values.yaml]
-    scripts: [scripts/labs/prepare-lab.sh, scripts/labs/lab-nodes.sh, scripts/labs/deploy-rack-cluster.sh]
+    scripts: [scripts/labs/prepare-lab.sh, scripts/labs/lab-nodes.sh, scripts/labs/deploy-rack-cluster.sh, scripts/labs/deploy-rack-cluster-replacement.sh, scripts/labs/deploy-rack-cluster-replacement-helm.sh]
     depends_on: ["0.6"]
     doc_urls:
       - https://aerospike.com/docs/kubernetes/manage/configure/scaling
@@ -250,6 +250,9 @@ labs:
     node_provisioning: [eksctl, karpenter]
     artifacts: {}
     scripts:
+      - scripts/labs/prepare-lab.sh
+      - scripts/labs/deploy-dim-cluster.sh
+      - scripts/labs/deploy-dim-cluster-helm.sh
       - scripts/setup/04-install-akoctl.sh
       - scripts/labs/akoctl-collectinfo.sh
     depends_on: ["0.6"]
@@ -291,7 +294,10 @@ labs:
     artifacts:
       kubectl: [manifests/aerospike-upgrade.yaml]
       helm: [helm/aerospike-upgrade-values.yaml]
-    scripts: [scripts/labs/deploy-dim-cluster.sh]
+    scripts:
+      - scripts/labs/prepare-lab.sh
+      - scripts/labs/deploy-dim-cluster.sh
+      - scripts/labs/deploy-dim-cluster-helm.sh
     depends_on: ["2.2"]
     doc_urls:
       - https://aerospike.com/docs/kubernetes/install/deploy/upgrade-aerospike/
@@ -308,8 +314,8 @@ labs:
     deploy_paths: [kubectl, helm]
     node_provisioning: [eksctl, karpenter]
     artifacts:
-      kubectl: [manifests/pod-restart-op.yaml]
-      helm: [helm/pod-restart-op-values.yaml]
+      kubectl: [manifests/pod-restart-op.yaml, manifests/pod-warm-restart-op.yaml]
+      helm: [helm/pod-restart-op-values.yaml, helm/pod-warm-restart-op-values.yaml]
     scripts: []
     depends_on: ["2.3"]
     doc_urls:

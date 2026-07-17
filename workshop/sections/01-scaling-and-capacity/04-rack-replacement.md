@@ -48,10 +48,11 @@ During Phase 2, both pools may coexist (8 nodes total) — same quota note as La
 
 ```bash
 ./scripts/labs/deploy-rack-cluster.sh       # Path A
-# or: envsubst '$NODE_ZONE_A $NODE_ZONE_B' < manifests/rack-cluster-v1.yaml | kubectl apply -f -
+# manual Path A: source scripts/lib/common.sh && source scripts/lib/render-yaml.sh && load_env && \
+#   render_workshop_yaml manifests/rack-cluster-v1.yaml | kubectl apply -f -
 
 ./scripts/labs/deploy-rack-cluster-helm.sh  # Path B
-# applies helm/rack-cluster-v1-values.yaml
+# applies helm/rack-cluster-v1-values.yaml (zones from AWS_ZONES via load_env)
 ```
 
 **Expected:** `aerocluster-1-v1-*`, `aerocluster-2-v1-*` on `baseline` / `i8g.2xlarge`; memory `57Gi`; CR `Completed`.
@@ -83,20 +84,25 @@ The replacement manifest removes racks 1+2 and defines racks 3+4 only, with the 
 ### Path A — kubectl
 
 ```bash
-source scripts/env/workshop.env
-envsubst '$NODE_ZONE_A $NODE_ZONE_B' < manifests/rack-cluster-replacement.yaml | kubectl apply -f -
+./scripts/labs/deploy-rack-cluster-replacement.sh
 kubectl -n aerospike get pods -w
 ```
 
 **Expected:** Period with racks 1–4 coexisting; rack 1+2 pods terminate after migration; new pods `aerocluster-3-v1-*`, `aerocluster-4-v1-*` on vertical nodes.
 
+Manual equivalent (must call `load_env` so `${NODE_ZONE_A}` / `${NODE_ZONE_B}` are exported from `AWS_ZONES` — sourcing `workshop.env` alone is not enough):
+
+```bash
+source scripts/lib/common.sh
+source scripts/lib/render-yaml.sh
+load_env
+render_workshop_yaml manifests/rack-cluster-replacement.yaml | kubectl apply -f -
+```
+
 ### Path B — Helm
 
 ```bash
-source scripts/env/workshop.env
-envsubst '$NODE_ZONE_A $NODE_ZONE_B' < helm/rack-cluster-replacement-values.yaml | \
-  helm upgrade aerocluster aerospike/aerospike-cluster \
-  -n aerospike -f - --version=4.2.0
+./scripts/labs/deploy-rack-cluster-replacement-helm.sh
 kubectl -n aerospike get pods -w
 ```
 
@@ -124,6 +130,7 @@ kubectl -n aerospike get pvc -o wide
 | Replacement pods Pending | Verify vertical pool: `lab-nodes.sh 1.4 validate --vertical` |
 | Missing node-pool labels | Re-run `ensure` / `ensure --vertical` |
 | local-ssd PVC exhaustion on 4xl | 2 PVCs per pod; check PV count per node |
+| Webhook: RackConfig Zone cannot be updated / `zone: null` | Rack zones were not rendered — use `./scripts/labs/deploy-rack-cluster-replacement.sh` or run `load_env` before `envsubst` (see Phase 3 manual command). Verify rendered YAML has `zone: us-east-1c` (not blank) |
 
 ## Not covered here
 

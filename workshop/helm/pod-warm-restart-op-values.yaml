@@ -1,10 +1,10 @@
-# Lab 2.4: PodRestart (cold) — mirrors manifests/pod-restart-op.yaml
+# Lab 2.4: WarmRestart — mirrors manifests/pod-warm-restart-op.yaml
 replicas: 3
 enableDynamicConfigUpdate: true
 
 operations:
-  - kind: PodRestart
-    id: pod-restart-1
+  - kind: WarmRestart
+    id: warm-restart-1
 
 image:
   repository: aerospike/aerospike-server-enterprise

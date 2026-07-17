@@ -1,4 +1,4 @@
-# Lab 2.4: on-demand PodRestart operation (from restart.yaml)
+# Lab 2.4: on-demand WarmRestart operation
 apiVersion: asdb.aerospike.com/v1
 kind: AerospikeCluster
 metadata:
@@ -9,8 +9,8 @@ spec:
   image: aerospike/aerospike-server-enterprise:8.1.2.0
   enableDynamicConfigUpdate: true
   operations:
-    - kind: PodRestart
-      id: pod-restart-1
+    - kind: WarmRestart
+      id: warm-restart-1
 
   podSpec:
     multiPodPerHost: false

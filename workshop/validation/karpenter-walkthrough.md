@@ -39,7 +39,7 @@ Update [LAB_REGISTRY.yaml](../LAB_REGISTRY.yaml) `karpenter_validation` when com
 
 ## Section 2 — Maintenance & Upgrade (continued)
 - [ ] **2.3** Upgrade Aerospike DB — 8.1.0.x→8.1.2.x rolling restart
-- [ ] **2.4** On-demand operations — PodRestart executes
+- [ ] **2.4** On-demand operations — PodRestart (cold) then WarmRestart on dim 8.1.2.x
 - [ ] **2.5** Karpenter maintenance — **drain only**; optional NodeClaim disruption; **no blocklist**
 - [ ] **2.5 add-on** — do-not-disrupt graduation discussion; three protection layers; `terminationGracePeriod` sizing (instructor-led)
 - [ ] **2.6** Control plane upgrade — **upgrade-lab eksctl cluster** (unchanged)

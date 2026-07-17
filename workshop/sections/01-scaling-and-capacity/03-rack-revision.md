@@ -64,10 +64,11 @@ Use `./scripts/labs/prepare-lab.sh 1.3 --full` only for a hard wipe (database + 
 
 ```bash
 ./scripts/labs/deploy-rack-cluster.sh       # Path A
-# or: envsubst '$NODE_ZONE_A $NODE_ZONE_B' < manifests/rack-cluster-v1.yaml | kubectl apply -f -
+# manual Path A: source scripts/lib/common.sh && source scripts/lib/render-yaml.sh && load_env && \
+#   render_workshop_yaml manifests/rack-cluster-v1.yaml | kubectl apply -f -
 
 ./scripts/labs/deploy-rack-cluster-helm.sh  # Path B
-# applies helm/rack-cluster-v1-values.yaml
+# applies helm/rack-cluster-v1-values.yaml (zones from AWS_ZONES via load_env)
 ```
 
 **Expected:** 4 pods on revision `v1`; CR `Completed`; pods pinned to `baseline` pool.
@@ -117,20 +118,25 @@ Change three things together in `rack-cluster-v2-revision.yaml`:
 ### Path A — kubectl
 
 ```bash
-source scripts/env/workshop.env
-envsubst '$NODE_ZONE_A $NODE_ZONE_B' < manifests/rack-cluster-v2-revision.yaml | kubectl apply -f -
+./scripts/labs/deploy-rack-cluster-v2-revision.sh
 kubectl -n aerospike get pods -w
 ```
 
 **Expected:** Pods migrate to v2 revision on vertical nodes; resources increase to `15` CPU / `115Gi`; 2 block PVCs per pod.
 
+Manual equivalent (must call `load_env` so `${NODE_ZONE_A}` / `${NODE_ZONE_B}` are exported from `AWS_ZONES` — sourcing `workshop.env` alone is not enough):
+
+```bash
+source scripts/lib/common.sh
+source scripts/lib/render-yaml.sh
+load_env
+render_workshop_yaml manifests/rack-cluster-v2-revision.yaml | kubectl apply -f -
+```
+
 ### Path B — Helm
 
 ```bash
-source scripts/env/workshop.env
-envsubst '$NODE_ZONE_A $NODE_ZONE_B' < helm/rack-cluster-v2-revision-values.yaml | \
-  helm upgrade aerocluster aerospike/aerospike-cluster \
-  -n aerospike -f - --version=4.2.0
+./scripts/labs/deploy-rack-cluster-v2-revision-helm.sh
 kubectl -n aerospike get pods -w
 ```
 
@@ -169,6 +175,7 @@ kubectl -n aerospike get pvc -o wide
 | Drain stuck on local-storage pods                         | Expected during migration; wait for AKO                                                                                                                                                                              |
 | EC2 quota exceeded during Phase 2                         | Request quota for 8× i8g (4× baseline idle + 4× vertical)                                                                                                                                                            |
 | Multi-AZ validation fails on vertical pool                | Re-run `./scripts/labs/lab-nodes.sh 1.3 ensure --vertical` — per-AZ vertical pools guarantee `${MIN_NODES_PER_ZONE}` nodes per zone                                                                                  |
+| Webhook: RackConfig Zone cannot be updated / `zone: null` | Rack zones were not rendered — use `./scripts/labs/deploy-rack-cluster-v2-revision.sh` or run `load_env` before `envsubst` (see Phase 3 manual command). Verify rendered YAML has `zone: us-east-1c` (not blank) |
 
 ## Not covered here
 

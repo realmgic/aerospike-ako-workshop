@@ -123,15 +123,14 @@ drain_excess_nodes_by_instance_type() {
   while [[ "${ready}" -gt "${target}" ]]; do
     local excess=$((ready - target))
     echo "Draining ${excess} excess ${instance_type} node(s) (${ready} > ${target})..."
-    mapfile -t nodes < <(
-      kubectl get nodes -l "node.kubernetes.io/instance-type=${instance_type}" \
-        --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | head -n "${excess}"
-    )
-    for node in "${nodes[@]}"; do
+    while IFS= read -r node; do
       [[ -z "${node}" ]] && continue
       kubectl cordon "${node}"
       kubectl drain "${node}" --ignore-daemonsets --delete-emptydir-data --force --grace-period=120
-    done
+    done < <(
+      kubectl get nodes -l "node.kubernetes.io/instance-type=${instance_type}" \
+        --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | head -n "${excess}"
+    )
     ready="$(count_nodes_instance_type "${instance_type}")"
   done
 }
