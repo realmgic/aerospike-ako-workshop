@@ -18,14 +18,12 @@ metadata:
 availabilityZones:
   - us-east-1c
   - us-east-1d
-# Workload managedNodeGroup — see NODEGROUP_NAME in scripts/env/workshop.env
+# Workload managedNodeGroups — one per AZ; see NODEGROUP_NAME and AWS_ZONES in scripts/env/workshop.env
 # managedNodeGroups:
-#   - name: ${NODEGROUP_NAME}
-#     instanceType: ${NODE_TYPE}
-#     desiredCapacity: ${NODE_COUNT}
-#     minSize: 1
-#     maxSize: 8
-#     availabilityZones: [us-east-1c, us-east-1d]
+#   - name: ${NODEGROUP_NAME}-us-east-1c
+#     availabilityZones: [us-east-1c]
+#   - name: ${NODEGROUP_NAME}-us-east-1d
+#     availabilityZones: [us-east-1d]
 #     ssh:
 #       allow: true
 #       publicKeyName: ${SSH_PUBLIC_KEY}

@@ -99,8 +99,7 @@ ensure_main_kubecontext
 
 default_reset_for_lab() {
   case "$1" in
-    1.1) echo "full" ;;
-    1.2|1.3|1.4|1.5) echo "light" ;;
+    1.1|1.2|1.3|1.4|1.5) echo "light" ;;
     *)
       echo "ERROR: unknown lab id: $1 (expected 1.1–1.5 or 2.6)" >&2
       exit 1

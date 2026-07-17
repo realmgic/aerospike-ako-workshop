@@ -33,7 +33,7 @@ Full reset adds ~5–15 min (node provisioning + nvme-bootstrap on first 2xl cre
 |-------|------------|
 | Scale-up pods Pending on eksctl | Run `lab-nodes.sh 1.1 ensure --scale-up` before scale-up manifest |
 | 1.2 starts with 5 nodes from 1.1 | `prepare-lab.sh 1.2` scales 2xl pool back to 4 automatically |
-| Rack pods Pending (node affinity) | `prepare-lab.sh 1.2` validates multi-AZ; `--full` if skewed |
+| Rack pods Pending (node affinity) | `./scripts/reset-cluster.sh --yes && ./scripts/labs/prepare-lab.sh 1.2` |
 | Scale-down stuck | migrate-fill-delay; wait or reduce data |
 | Lab 1.3 Phase 2 quota | Expect **8 nodes** (4×2xl idle + 4×4xl); verify EC2 quota |
 | Lab 1.4 standalone | Light reset at start; redeploys v1 then vertical pool — **does not require 1.3 v2** |

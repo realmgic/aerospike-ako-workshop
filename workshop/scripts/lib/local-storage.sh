@@ -68,15 +68,90 @@ disk_layouts_config() {
   echo "${WORKSHOP_ROOT}/config/disk-layouts.yaml"
 }
 
-expected_local_ssd_pvs_per_node() {
-  local layout_key="${NVME_DISK_LAYOUT:-${NODE_TYPE:-}}"
+expected_local_ssd_pvs_for_instance_type() {
+  local instance_type="$1"
   local config script
   config="$(disk_layouts_config)"
   script="${WORKSHOP_ROOT}/scripts/setup/nvme-init.py"
-  if [[ -z "${layout_key}" || ! -f "${config}" || ! -f "${script}" ]]; then
+  if [[ -z "${instance_type}" || ! -f "${config}" || ! -f "${script}" ]]; then
     echo ""
     return 0
   fi
   python3 "${script}" --expected-pvs-per-node \
-    --config "${config}" --instance-type "${layout_key}" 2>/dev/null || echo ""
+    --config "${config}" --instance-type "${instance_type}" 2>/dev/null || echo ""
+}
+
+expected_local_ssd_pvs_per_node() {
+  expected_local_ssd_pvs_for_instance_type "${NVME_DISK_LAYOUT:-${NODE_TYPE:-}}"
+}
+
+count_local_ssd_pvs_for_instance_type() {
+  local instance_type="$1"
+  local nodes pv_hosts node count_on_node total=0
+
+  mapfile -t nodes < <(
+    kubectl get nodes -l "node.kubernetes.io/instance-type=${instance_type}" --no-headers 2>/dev/null \
+      | awk '$2=="Ready" {print $1}'
+  )
+  if [[ "${#nodes[@]}" -eq 0 ]]; then
+    echo 0
+    return 0
+  fi
+
+  pv_hosts="$(kubectl get pv -l storageclass=local-ssd \
+    -o jsonpath='{range .items[*]}{.spec.nodeAffinity.required.nodeSelectorTerms[0].matchExpressions[0].values[0]}{"\n"}{end}' 2>/dev/null || true)"
+
+  for node in "${nodes[@]}"; do
+    count_on_node="$(printf '%s\n' "${pv_hosts}" | grep -cxF "${node}" || true)"
+    total=$((total + count_on_node))
+  done
+  echo "${total}"
+}
+
+ensure_local_ssd_pvs_for_pool() {
+  local instance_type="$1"
+  local node_count="$2"
+  local pool_label="$3"
+  local per_node expected actual
+
+  if [[ "${node_count:-0}" -eq 0 ]]; then
+    return 0
+  fi
+
+  per_node="$(expected_local_ssd_pvs_for_instance_type "${instance_type}")"
+  if [[ -z "${per_node}" ]]; then
+    echo "SKIP ${pool_label}: unknown expected PV count for ${instance_type}"
+    return 0
+  fi
+
+  expected=$((node_count * per_node))
+  actual="$(count_local_ssd_pvs_for_instance_type "${instance_type}")"
+
+  if [[ "${actual}" -ge "${expected}" ]]; then
+    echo "OK  ${pool_label}: ${actual} local-ssd PVs (expected ~${expected})"
+    return 0
+  fi
+
+  echo "WARN ${pool_label}: ${actual}/${expected} local-ssd PVs — waiting for nvme-bootstrap and restarting provisioner..."
+  wait_nvme_bootstrap_ready "$(nvme_bootstrap_desired)" 300
+  restart_local_volume_provisioner
+
+  actual="$(count_local_ssd_pvs_for_instance_type "${instance_type}")"
+  if [[ "${actual}" -ge "${expected}" ]]; then
+    echo "OK  ${pool_label}: ${actual} local-ssd PVs after provisioner restart (expected ~${expected})"
+    return 0
+  fi
+
+  echo "FAIL ${pool_label}: local-ssd PVs not available (${actual}/${expected} for ${node_count}× ${instance_type})" >&2
+  echo "  Check: kubectl get pv -l storageclass=local-ssd" >&2
+  echo "  Check: kubectl -n kube-system logs ds/nvme-bootstrap -c init-nvme --tail=30" >&2
+  return 1
+}
+
+validate_lab_1_3_baseline_local_storage() {
+  ensure_local_ssd_pvs_for_pool "${NODE_TYPE}" "$(count_2xl_nodes_ready)" "baseline (${NODE_TYPE})"
+}
+
+validate_lab_1_3_vertical_local_storage() {
+  ensure_local_ssd_pvs_for_pool "${NODE_TYPE_VERTICAL}" "$(count_4xl_nodes_ready)" "vertical (${NODE_TYPE_VERTICAL})"
 }

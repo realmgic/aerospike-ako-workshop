@@ -11,6 +11,7 @@ set -euo pipefail
 source "$(dirname "$0")/../lib/common.sh"
 source "$(dirname "$0")/../lib/zone-check.sh"
 source "$(dirname "$0")/../lib/local-storage.sh"
+source "$(dirname "$0")/../lib/nodepool-zones.sh"
 load_env
 ensure_main_kubecontext
 
@@ -39,18 +40,18 @@ KARPENTER_DIR="${WORKSHOP_ROOT}/scripts/setup/karpenter"
 NODE_WAIT_TIMEOUT=900
 NVME_WAIT_TIMEOUT=1800
 
+count_baseline_nodes_ready() {
+  kubectl get nodes -l "workshop.aerospike.com/node-pool=baseline,node.kubernetes.io/instance-type=${NODE_TYPE}" \
+    --no-headers 2>/dev/null | grep -c ' Ready ' || true
+}
+
 count_2xl_nodes_ready() {
-  if [[ "${NODE_PROVISIONING}" == "karpenter" ]]; then
-    kubectl get nodes -l "workshop.aerospike.com/workload=aerospike,node.kubernetes.io/instance-type=${NODE_TYPE}" \
-      --no-headers 2>/dev/null | grep -c ' Ready ' || true
-  else
-    kubectl get nodes -l "alpha.eksctl.io/nodegroup-name=${NODEGROUP_NAME}" --no-headers 2>/dev/null \
-      | grep -c ' Ready ' || true
-  fi
+  count_baseline_nodes_ready
 }
 
 count_4xl_nodes_ready() {
-  count_nodes_instance_type "${NODE_TYPE_VERTICAL}"
+  kubectl get nodes -l "workshop.aerospike.com/node-pool=vertical,node.kubernetes.io/instance-type=${NODE_TYPE_VERTICAL}" \
+    --no-headers 2>/dev/null | grep -c ' Ready ' || true
 }
 
 count_workload_nodes_ready() {
@@ -115,6 +116,25 @@ wait_2xl_nodes() {
   done
 }
 
+wait_4xl_nodes() {
+  local expected="$1"
+  local deadline=$((SECONDS + NODE_WAIT_TIMEOUT))
+  while true; do
+    local ready
+    ready="$(count_4xl_nodes_ready)"
+    echo "  4xl nodes Ready: ${ready}/${expected}"
+    if [[ "${ready}" -ge "${expected}" ]]; then
+      return 0
+    fi
+    if [[ "${SECONDS}" -gt "${deadline}" ]]; then
+      echo "ERROR: timed out waiting for ${expected}× ${NODE_TYPE_VERTICAL} nodes" >&2
+      kubectl get nodes -o wide
+      exit 1
+    fi
+    sleep 15
+  done
+}
+
 drain_excess_nodes_by_instance_type() {
   local instance_type="$1"
   local target="$2"
@@ -134,58 +154,6 @@ drain_excess_nodes_by_instance_type() {
     done
     ready="$(count_nodes_instance_type "${instance_type}")"
   done
-}
-
-scale_karpenter_pool_to_count() {
-  local instance_type="$1"
-  local target="$2"
-
-  local ready
-  ready="$(count_nodes_instance_type "${instance_type}")"
-  if [[ "${ready}" -le "${target}" ]]; then
-    return 0
-  fi
-
-  echo "Scaling Karpenter ${instance_type} pool down: ${ready} → ${target}..."
-  kubectl apply -f - <<EOF
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: karpenter-bootstrap-placeholder
-  namespace: kube-system
-spec:
-  replicas: ${target}
-  selector:
-    matchLabels:
-      app: karpenter-bootstrap-placeholder
-  template:
-    metadata:
-      labels:
-        app: karpenter-bootstrap-placeholder
-    spec:
-      nodeSelector:
-        node.kubernetes.io/instance-type: ${instance_type}
-      tolerations:
-        - operator: Exists
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app: karpenter-bootstrap-placeholder
-              topologyKey: kubernetes.io/hostname
-      containers:
-        - name: pause
-          image: registry.k8s.io/pause:3.10
-          resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-EOF
-
-  wait_2xl_nodes "${target}"
-  drain_excess_nodes_by_instance_type "${instance_type}" "${target}"
-  kubectl delete deployment karpenter-bootstrap-placeholder -n kube-system --ignore-not-found
 }
 
 wait_eksctl_nodegroup_ready() {
@@ -209,6 +177,339 @@ wait_eksctl_nodegroup_ready() {
   done
 }
 
+label_eksctl_nodegroup_pool() {
+  local ng_name="$1"
+  local pool_label="$2"
+  echo "Labeling nodegroup ${ng_name} nodes: workshop.aerospike.com/node-pool=${pool_label}"
+  kubectl get nodes -l "alpha.eksctl.io/nodegroup-name=${ng_name}" -o name 2>/dev/null \
+    | while read -r node; do
+        kubectl label "${node}" "workshop.aerospike.com/node-pool=${pool_label}" --overwrite
+      done
+}
+
+ensure_eksctl_nodegroup_in_zone() {
+  local name="$1"
+  local node_type="$2"
+  local zone="$3"
+  local count="$4"
+  local pool_label="${5:-}"
+
+  if eksctl_nodegroup_exists "${name}"; then
+    echo "Nodegroup ${name} exists — scaling to ${count}..."
+    eksctl scale nodegroup \
+      --cluster="${CLUSTER_NAME}" \
+      --region="${AWS_REGION}" \
+      --name="${name}" \
+      --nodes="${count}"
+  else
+    local create_args=(
+      --cluster "${CLUSTER_NAME}"
+      --region "${AWS_REGION}"
+      --node-zones "${zone}"
+      --name "${name}"
+      --node-type "${node_type}"
+      --nodes "${count}"
+      --nodes-min 1
+      --nodes-max 8
+      --ssh-access
+      --ssh-public-key "${SSH_PUBLIC_KEY}"
+    )
+    if [[ -n "${pool_label}" ]]; then
+      create_args+=(--node-labels "workshop.aerospike.com/node-pool=${pool_label}")
+    fi
+    echo "Creating nodegroup ${name} (${node_type} × ${count} in ${zone})..."
+    eksctl create nodegroup "${create_args[@]}"
+  fi
+  wait_eksctl_nodegroup_ready "${name}" "${count}"
+  if [[ -n "${pool_label}" ]]; then
+    label_eksctl_nodegroup_pool "${name}" "${pool_label}"
+  fi
+}
+
+ensure_eksctl_pools_per_zone() {
+  local base_name="$1"
+  local node_type="$2"
+  local total_count="$3"
+  local pool_label="${4:-}"
+
+  read_aws_zones_array
+  local num_zones="${#AWS_ZONES_ARRAY[@]}"
+  local zone idx=0 ng_name count pids=() pid
+
+  for zone in "${AWS_ZONES_ARRAY[@]}"; do
+    [[ -z "${zone}" ]] && continue
+    ng_name="$(pool_name_for_zone "${base_name}" "${zone}")"
+    count="$(nodes_for_zone "${total_count}" "${idx}" "${num_zones}")"
+    if eksctl_nodegroup_exists "${ng_name}"; then
+      ensure_eksctl_nodegroup_in_zone "${ng_name}" "${node_type}" "${zone}" "${count}" "${pool_label}"
+    else
+      ( ensure_eksctl_nodegroup_in_zone "${ng_name}" "${node_type}" "${zone}" "${count}" "${pool_label}" ) &
+      pids+=($!)
+    fi
+    idx=$((idx + 1))
+  done
+  for pid in "${pids[@]}"; do
+    wait "${pid}"
+  done
+}
+
+karpenter_consolidation_exports() {
+  local consolidate_after="30m"
+  if [[ "${KARPENTER_CONSOLIDATION}" == "Off" ]]; then
+    export KARPENTER_CONSOLIDATION="WhenEmpty"
+    consolidate_after="720h"
+  fi
+  echo "${consolidate_after}"
+}
+
+apply_karpenter_ec2nodeclass() {
+  require_cmd envsubst
+  export CLUSTER_NAME AWS_REGION KARPENTER_NODECLASS_NAME
+  export KARPENTER_NODE_ROLE_NAME="KarpenterNodeRole-${CLUSTER_NAME}"
+  echo "Applying Karpenter EC2NodeClass ${KARPENTER_NODECLASS_NAME}..."
+  envsubst < "${KARPENTER_DIR}/01-ec2nodeclass-i8g.yaml" | kubectl apply -f -
+}
+
+apply_karpenter_nodepool_in_zone() {
+  local zone="$1"
+  local vertical="${2:-false}"
+  local consolidate_after="$3"
+
+  require_cmd envsubst
+  export CLUSTER_NAME AWS_REGION KARPENTER_CONSOLIDATION KARPENTER_NODECLASS_NAME
+  export KARPENTER_NODE_ROLE_NAME="KarpenterNodeRole-${CLUSTER_NAME}"
+  export NODE_ZONE="${zone}"
+
+  local base_name template
+  if [[ "${vertical}" == true ]]; then
+    base_name="${KARPENTER_NODEPOOL_VERTICAL_NAME}"
+    export NODE_TYPE_VERTICAL
+    template="${KARPENTER_DIR}/02-nodepool-aerospike-vertical-zone.yaml"
+  else
+    base_name="${KARPENTER_NODEPOOL_NAME}"
+    export NODE_TYPE
+    template="${KARPENTER_DIR}/02-nodepool-aerospike-zone.yaml"
+  fi
+  export KARPENTER_NODEPOOL_ZONE_NAME
+  KARPENTER_NODEPOOL_ZONE_NAME="$(pool_name_for_zone "${base_name}" "${zone}")"
+
+  echo "Applying NodePool ${KARPENTER_NODEPOOL_ZONE_NAME} (zone ${zone})..."
+  envsubst '${KARPENTER_NODEPOOL_ZONE_NAME} ${NODE_ZONE} ${NODE_TYPE} ${NODE_TYPE_VERTICAL} ${KARPENTER_NODECLASS_NAME} ${KARPENTER_CONSOLIDATION}' \
+    < "${template}" | kubectl apply -f -
+  kubectl patch nodepool "${KARPENTER_NODEPOOL_ZONE_NAME}" --type=merge \
+    -p "{\"spec\":{\"disruption\":{\"consolidateAfter\":\"${consolidate_after}\"}}}" 2>/dev/null || true
+}
+
+apply_karpenter_pools_per_zone() {
+  local vertical="${1:-false}"
+  local consolidate_after
+  consolidate_after="$(karpenter_consolidation_exports)"
+
+  read_aws_zones_array
+  local zone pids=() pid
+  for zone in "${AWS_ZONES_ARRAY[@]}"; do
+    [[ -z "${zone}" ]] && continue
+    ( apply_karpenter_nodepool_in_zone "${zone}" "${vertical}" "${consolidate_after}" ) &
+    pids+=($!)
+  done
+  for pid in "${pids[@]}"; do
+    wait "${pid}"
+  done
+}
+
+karpenter_bootstrap_deployment_name() {
+  local prefix="$1"
+  local zone="$2"
+  echo "${prefix}-$(zone_resource_suffix "${zone}")"
+}
+
+delete_karpenter_bootstrap_deployments() {
+  local prefix="$1"
+  read_aws_zones_array
+  local zone name
+  for zone in "${AWS_ZONES_ARRAY[@]}"; do
+    [[ -z "${zone}" ]] && continue
+    name="$(karpenter_bootstrap_deployment_name "${prefix}" "${zone}")"
+    kubectl delete deployment "${name}" -n kube-system --ignore-not-found
+  done
+}
+
+bootstrap_karpenter_pool_per_zone() {
+  local instance_type="$1"
+  local total_count="$2"
+  local deployment_prefix="$3"
+  local wait_fn="$4"
+
+  read_aws_zones_array
+  local num_zones="${#AWS_ZONES_ARRAY[@]}"
+  local zone idx=0 replicas dep_name app_label
+
+  app_label="${deployment_prefix}"
+  for zone in "${AWS_ZONES_ARRAY[@]}"; do
+    [[ -z "${zone}" ]] && continue
+    replicas="$(nodes_for_zone "${total_count}" "${idx}" "${num_zones}")"
+    dep_name="$(karpenter_bootstrap_deployment_name "${deployment_prefix}" "${zone}")"
+    echo "Bootstrap ${dep_name}: ${replicas} pod(s) in ${zone} (${instance_type})..."
+    kubectl apply -f - <<EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${dep_name}
+  namespace: kube-system
+spec:
+  replicas: ${replicas}
+  selector:
+    matchLabels:
+      app: ${app_label}
+      workshop.aerospike.com/zone: $(zone_resource_suffix "${zone}")
+  template:
+    metadata:
+      labels:
+        app: ${app_label}
+        workshop.aerospike.com/zone: $(zone_resource_suffix "${zone}")
+    spec:
+      nodeSelector:
+        node.kubernetes.io/instance-type: ${instance_type}
+      tolerations:
+        - operator: Exists
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: topology.kubernetes.io/zone
+                    operator: In
+                    values:
+                      - ${zone}
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: ${app_label}
+                  workshop.aerospike.com/zone: $(zone_resource_suffix "${zone}")
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+EOF
+    idx=$((idx + 1))
+  done
+
+  "${wait_fn}" "${total_count}"
+  delete_karpenter_bootstrap_deployments "${deployment_prefix}"
+}
+
+scale_karpenter_pool_to_count() {
+  local instance_type="$1"
+  local target="$2"
+  local deployment_prefix="$3"
+  local wait_fn="$4"
+  local count_fn="$5"
+
+  local ready
+  ready="$("${count_fn}")"
+  if [[ "${ready}" -le "${target}" ]]; then
+    return 0
+  fi
+
+  echo "Scaling Karpenter ${instance_type} pool down: ${ready} → ${target}..."
+  read_aws_zones_array
+  local num_zones="${#AWS_ZONES_ARRAY[@]}"
+  local zone idx=0 replicas dep_name app_label="${deployment_prefix}"
+
+  for zone in "${AWS_ZONES_ARRAY[@]}"; do
+    [[ -z "${zone}" ]] && continue
+    replicas="$(nodes_for_zone "${target}" "${idx}" "${num_zones}")"
+    dep_name="$(karpenter_bootstrap_deployment_name "${deployment_prefix}" "${zone}")"
+    kubectl apply -f - <<EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${dep_name}
+  namespace: kube-system
+spec:
+  replicas: ${replicas}
+  selector:
+    matchLabels:
+      app: ${app_label}
+      workshop.aerospike.com/zone: $(zone_resource_suffix "${zone}")
+  template:
+    metadata:
+      labels:
+        app: ${app_label}
+        workshop.aerospike.com/zone: $(zone_resource_suffix "${zone}")
+    spec:
+      nodeSelector:
+        node.kubernetes.io/instance-type: ${instance_type}
+      tolerations:
+        - operator: Exists
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: topology.kubernetes.io/zone
+                    operator: In
+                    values:
+                      - ${zone}
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: ${app_label}
+                  workshop.aerospike.com/zone: $(zone_resource_suffix "${zone}")
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+EOF
+    idx=$((idx + 1))
+  done
+
+  "${wait_fn}" "${target}"
+  drain_excess_nodes_by_instance_type "${instance_type}" "${target}"
+  delete_karpenter_bootstrap_deployments "${deployment_prefix}"
+}
+
+apply_karpenter_baseline_pool() {
+  local total_count="${1:-${NODE_COUNT}}"
+  apply_karpenter_ec2nodeclass
+  apply_karpenter_pools_per_zone false
+  bootstrap_karpenter_pool_per_zone "${NODE_TYPE}" "${total_count}" \
+    "karpenter-bootstrap" wait_2xl_nodes
+}
+
+ensure_karpenter_baseline_pool() {
+  local count="${1:-${NODE_COUNT}}"
+  apply_karpenter_ec2nodeclass
+  apply_karpenter_pools_per_zone false
+  local ready
+  ready="$(count_2xl_nodes_ready)"
+  if [[ "${ready}" -gt "${count}" ]]; then
+    scale_karpenter_pool_to_count "${NODE_TYPE}" "${count}" "karpenter-bootstrap" wait_2xl_nodes count_2xl_nodes_ready
+  elif [[ "${ready}" -lt "${count}" ]]; then
+    bootstrap_karpenter_pool_per_zone "${NODE_TYPE}" "${count}" \
+      "karpenter-bootstrap" wait_2xl_nodes
+  else
+    echo "OK  Karpenter baseline NodePools active with ${ready} Ready nodes"
+  fi
+}
+
+apply_karpenter_vertical_pool() {
+  local total_count="${1:-${NODE_COUNT}}"
+  apply_karpenter_pools_per_zone true
+  bootstrap_karpenter_pool_per_zone "${NODE_TYPE_VERTICAL}" "${total_count}" \
+    "karpenter-vertical-bootstrap" wait_4xl_nodes
+}
+
 wait_nvme_bootstrap() {
   wait_nvme_bootstrap_ready "$1" "${NVME_WAIT_TIMEOUT}"
 }
@@ -230,146 +531,16 @@ maybe_wait_nvme_bootstrap() {
   fi
 }
 
-apply_karpenter_workload_pool() {
-  local instance_type="${1:-${NODE_TYPE}}"
-  local min_nodes="${2:-${KARPENTER_NODEPOOL_MIN}}"
-
-  require_cmd envsubst
-  export CLUSTER_NAME AWS_REGION KARPENTER_CONSOLIDATION
-  export NODE_TYPE="${instance_type}"
-  export KARPENTER_NODEPOOL_NAME KARPENTER_NODECLASS_NAME
-  export KARPENTER_NODE_ROLE_NAME="KarpenterNodeRole-${CLUSTER_NAME}"
-  IFS=',' read -r NODE_ZONE_A NODE_ZONE_B _ <<< "${AWS_ZONES},,"
-  export NODE_ZONE_A NODE_ZONE_B
-
-  local consolidate_after="30m"
-  if [[ "${KARPENTER_CONSOLIDATION}" == "Off" ]]; then
-    export KARPENTER_CONSOLIDATION="WhenEmpty"
-    consolidate_after="720h"
-  fi
-
-  echo "Applying Karpenter EC2NodeClass and NodePool (instance ${instance_type})..."
-  envsubst < "${KARPENTER_DIR}/01-ec2nodeclass-i8g.yaml" | kubectl apply -f -
-  envsubst < "${KARPENTER_DIR}/02-nodepool-aerospike.yaml" | kubectl apply -f -
-  kubectl patch nodepool "${KARPENTER_NODEPOOL_NAME}" --type=merge \
-    -p "{\"spec\":{\"disruption\":{\"consolidateAfter\":\"${consolidate_after}\"}}}" 2>/dev/null || true
-
-  echo "Deploying placeholder to reach min ${min_nodes} nodes..."
-  kubectl apply -f - <<EOF
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: karpenter-bootstrap-placeholder
-  namespace: kube-system
-spec:
-  replicas: ${min_nodes}
-  selector:
-    matchLabels:
-      app: karpenter-bootstrap-placeholder
-  template:
-    metadata:
-      labels:
-        app: karpenter-bootstrap-placeholder
-    spec:
-      tolerations:
-        - operator: Exists
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app: karpenter-bootstrap-placeholder
-              topologyKey: kubernetes.io/hostname
-      containers:
-        - name: pause
-          image: registry.k8s.io/pause:3.10
-          resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-EOF
-
-  wait_2xl_nodes "${min_nodes}"
-  kubectl delete deployment karpenter-bootstrap-placeholder -n kube-system --ignore-not-found
-}
-
-ensure_eksctl_nodegroup() {
-  local name="$1"
-  local node_type="$2"
-  local count="$3"
-  local pool_label="${4:-}"
-
-  if eksctl_nodegroup_exists "${name}"; then
-    echo "Nodegroup ${name} exists — scaling to ${count}..."
-    eksctl scale nodegroup \
-      --cluster="${CLUSTER_NAME}" \
-      --region="${AWS_REGION}" \
-      --name="${name}" \
-      --nodes="${count}"
-  else
-    local create_args=(
-      --cluster "${CLUSTER_NAME}"
-      --region "${AWS_REGION}"
-      --node-zones "${AWS_ZONES}"
-      --name "${name}"
-      --node-type "${node_type}"
-      --nodes "${count}"
-      --nodes-min 1
-      --nodes-max 8
-      --ssh-access
-      --ssh-public-key "${SSH_PUBLIC_KEY}"
-    )
-    if [[ -n "${pool_label}" ]]; then
-      create_args+=(--node-labels "workshop.aerospike.com/node-pool=${pool_label}")
-    fi
-    echo "Creating nodegroup ${name} (${node_type} × ${count})..."
-    eksctl create nodegroup "${create_args[@]}"
-  fi
-  wait_eksctl_nodegroup_ready "${name}" "${count}"
-  if [[ -n "${pool_label}" ]]; then
-    label_eksctl_nodegroup_pool "${name}" "${pool_label}"
-  fi
-}
-
-label_eksctl_nodegroup_pool() {
-  local ng_name="$1"
-  local pool_label="$2"
-  echo "Labeling nodegroup ${ng_name} nodes: workshop.aerospike.com/node-pool=${pool_label}"
-  kubectl get nodes -l "alpha.eksctl.io/nodegroup-name=${ng_name}" -o name 2>/dev/null \
-    | while read -r node; do
-        kubectl label "${node}" "workshop.aerospike.com/node-pool=${pool_label}" --overwrite
-      done
-}
-
 ensure_2xl_pool() {
   local count="${NODE_COUNT}"
   local nodes_before
   nodes_before="$(count_2xl_nodes_ready)"
-  echo "=== Ensuring 2xl workload pool (${NODE_TYPE} × ${count}) ==="
+  echo "=== Ensuring 2xl workload pool (${NODE_TYPE} × ${count}, per-AZ) ==="
 
   if [[ "${NODE_PROVISIONING}" == "karpenter" ]]; then
-    if ! kubectl get nodepool "${KARPENTER_NODEPOOL_NAME}" >/dev/null 2>&1; then
-      apply_karpenter_workload_pool "${NODE_TYPE}" "${count}"
-    else
-      local current_type
-      current_type="$(kubectl get nodepool "${KARPENTER_NODEPOOL_NAME}" -o jsonpath='{.spec.template.spec.requirements[?(@.key=="node.kubernetes.io/instance-type")].values[0]}' 2>/dev/null || echo "")"
-      if [[ "${current_type}" != "${NODE_TYPE}" ]]; then
-        echo "NodePool instance type is ${current_type:-unknown}, expected ${NODE_TYPE} — re-applying..."
-        apply_karpenter_workload_pool "${NODE_TYPE}" "${count}"
-      else
-        local ready
-        ready="$(count_2xl_nodes_ready)"
-        if [[ "${ready}" -gt "${count}" ]]; then
-          scale_karpenter_pool_to_count "${NODE_TYPE}" "${count}"
-        elif [[ "${ready}" -lt "${count}" ]]; then
-          apply_karpenter_workload_pool "${NODE_TYPE}" "${count}"
-        else
-          echo "OK  Karpenter NodePool ${KARPENTER_NODEPOOL_NAME} active with ${ready} Ready nodes"
-        fi
-      fi
-    fi
+    ensure_karpenter_baseline_pool "${count}"
   else
-    ensure_eksctl_nodegroup "${NODEGROUP_NAME}" "${NODE_TYPE}" "${count}" "baseline"
+    ensure_eksctl_pools_per_zone "${NODEGROUP_NAME}" "${NODE_TYPE}" "${count}" "baseline"
   fi
 
   print_zone_distribution "${NODE_TYPE}"
@@ -379,96 +550,40 @@ ensure_2xl_pool() {
   fi
 
   maybe_wait_nvme_bootstrap "${nodes_before}" "${count}"
+  if [[ "${LAB_ID}" == "1.3" ]]; then
+    ensure_local_ssd_pvs_for_pool "${NODE_TYPE}" "$(count_2xl_nodes_ready)" "baseline (${NODE_TYPE})"
+  fi
 }
 
 scale_up_2xl() {
   local target=5
   local nodes_before
   nodes_before="$(count_2xl_nodes_ready)"
-  echo "=== Scaling 2xl pool to ${target} nodes ==="
+  echo "=== Scaling 2xl pool to ${target} nodes (per-AZ) ==="
   if [[ "${NODE_PROVISIONING}" == "karpenter" ]]; then
-    apply_karpenter_workload_pool "${NODE_TYPE}" "${target}"
+    apply_karpenter_baseline_pool "${target}"
   else
-    ensure_eksctl_nodegroup "${NODEGROUP_NAME}" "${NODE_TYPE}" "${target}" "baseline"
+    ensure_eksctl_pools_per_zone "${NODEGROUP_NAME}" "${NODE_TYPE}" "${target}" "baseline"
   fi
   maybe_wait_nvme_bootstrap "${nodes_before}" "${target}"
 }
 
 ensure_vertical_4xl() {
-  echo "=== Vertical scale: add ${NODE_TYPE_VERTICAL} pool (keep ${NODE_TYPE} pool) ==="
+  local nodes_before
+  nodes_before="$(count_4xl_nodes_ready)"
+  echo "=== Vertical scale: add ${NODE_TYPE_VERTICAL} pool per AZ (keep ${NODE_TYPE} pool) ==="
 
   if [[ "${NODE_PROVISIONING}" == "karpenter" ]]; then
     apply_karpenter_vertical_pool "${NODE_COUNT}"
   else
-    ensure_eksctl_nodegroup "${NODEGROUP_NAME_VERTICAL}" "${NODE_TYPE_VERTICAL}" "${NODE_COUNT}" "vertical"
+    ensure_eksctl_pools_per_zone "${NODEGROUP_NAME_VERTICAL}" "${NODE_TYPE_VERTICAL}" "${NODE_COUNT}" "vertical"
   fi
 
   print_zone_distribution "${NODE_TYPE_VERTICAL}"
   validate_4xl_pool
-}
-
-apply_karpenter_vertical_pool() {
-  local count="${1:-${NODE_COUNT}}"
-
-  require_cmd envsubst
-  export CLUSTER_NAME AWS_REGION KARPENTER_CONSOLIDATION
-  export NODE_TYPE_VERTICAL KARPENTER_NODEPOOL_VERTICAL_NAME KARPENTER_NODECLASS_NAME
-  export KARPENTER_NODE_ROLE_NAME="KarpenterNodeRole-${CLUSTER_NAME}"
-  IFS=',' read -r NODE_ZONE_A NODE_ZONE_B _ <<< "${AWS_ZONES},,"
-  export NODE_ZONE_A NODE_ZONE_B
-
-  local consolidate_after="30m"
-  if [[ "${KARPENTER_CONSOLIDATION}" == "Off" ]]; then
-    export KARPENTER_CONSOLIDATION="WhenEmpty"
-    consolidate_after="720h"
-  fi
-
-  echo "Applying Karpenter vertical NodePool ${KARPENTER_NODEPOOL_VERTICAL_NAME} (${NODE_TYPE_VERTICAL})..."
-  envsubst < "${KARPENTER_DIR}/02-nodepool-aerospike-vertical.yaml" | kubectl apply -f -
-  kubectl patch nodepool "${KARPENTER_NODEPOOL_VERTICAL_NAME}" --type=merge \
-    -p "{\"spec\":{\"disruption\":{\"consolidateAfter\":\"${consolidate_after}\"}}}" 2>/dev/null || true
-
-  local ready
-  ready="$(count_4xl_nodes_ready)"
-  if [[ "${ready}" -lt "${count}" ]]; then
-    echo "Deploying vertical bootstrap placeholder to reach ${count}× ${NODE_TYPE_VERTICAL}..."
-    kubectl apply -f - <<EOF
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: karpenter-vertical-bootstrap-placeholder
-  namespace: kube-system
-spec:
-  replicas: ${count}
-  selector:
-    matchLabels:
-      app: karpenter-vertical-bootstrap-placeholder
-  template:
-    metadata:
-      labels:
-        app: karpenter-vertical-bootstrap-placeholder
-    spec:
-      nodeSelector:
-        node.kubernetes.io/instance-type: ${NODE_TYPE_VERTICAL}
-      tolerations:
-        - operator: Exists
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app: karpenter-vertical-bootstrap-placeholder
-              topologyKey: kubernetes.io/hostname
-      containers:
-        - name: pause
-          image: registry.k8s.io/pause:3.10
-          resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-EOF
-    wait_nodes_instance_type "${NODE_TYPE_VERTICAL}" "${count}"
-    kubectl delete deployment karpenter-vertical-bootstrap-placeholder -n kube-system --ignore-not-found
+  maybe_wait_nvme_bootstrap "${nodes_before}" "${NODE_COUNT}"
+  if [[ "${LAB_ID}" == "1.3" ]]; then
+    ensure_local_ssd_pvs_for_pool "${NODE_TYPE_VERTICAL}" "${NODE_COUNT}" "vertical (${NODE_TYPE_VERTICAL})"
   fi
 }
 
@@ -560,8 +675,10 @@ case "${LAB_ID}:${ACTION}" in
   1.3:validate)
     if [[ "${VERTICAL}" == true ]]; then
       validate_4xl_pool
+      validate_lab_1_3_vertical_local_storage
     else
       validate_2xl_pool "${NODE_COUNT}" true
+      validate_lab_1_3_baseline_local_storage
     fi
     ;;
   1.4:ensure)

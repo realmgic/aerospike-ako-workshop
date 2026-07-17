@@ -10,9 +10,9 @@ rackConfig:
     - test
   racks:
     - id: 1
-      zone: us-east-1c
+      zone: ${NODE_ZONE_A}
     - id: 2
-      zone: us-east-1d
+      zone: ${NODE_ZONE_B}
 
 podSpec:
   multiPodPerHost: false

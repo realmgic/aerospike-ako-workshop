@@ -9,7 +9,7 @@ rackConfig:
     - test
   racks:
     - id: 1
-      zone: us-east-1c
+      zone: ${NODE_ZONE_A}
       revision: "v2"
       storage:
         filesystemVolumePolicy:
@@ -53,7 +53,7 @@ rackConfig:
             aerospike:
               path: /etc/aerospike/secret
     - id: 2
-      zone: us-east-1d
+      zone: ${NODE_ZONE_B}
       revision: "v2"
       storage:
         filesystemVolumePolicy:

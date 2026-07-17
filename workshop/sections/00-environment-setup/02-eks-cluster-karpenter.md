@@ -11,7 +11,7 @@
 
 ## Takeaway
 
-A Karpenter-managed EKS cluster with a **system** managed nodegroup for the controller. **Workload NodePool** `${KARPENTER_NODEPOOL_NAME}` (4× `i8g.2xlarge`) is created in step **0.2-nodes** before AKO install. Lab 1.3 Phase 2 adds **`${KARPENTER_NODEPOOL_VERTICAL_NAME}`** (4xl) alongside the 2xl pool.
+A Karpenter-managed EKS cluster with a **system** managed nodegroup for the controller. **Per-AZ workload NodePools** `${KARPENTER_NODEPOOL_NAME}-<zone>` (4× `i8g.2xlarge` total) are created in step **0.2-nodes** before AKO install. Lab 1.3 Phase 2 adds **`${KARPENTER_NODEPOOL_VERTICAL_NAME}-<zone>`** (4xl) alongside the 2xl pools.
 
 ## Prerequisites
 
@@ -51,7 +51,7 @@ A Karpenter-managed EKS cluster with a **system** managed nodegroup for the cont
    ./scripts/setup/02-ensure-workload-nodepool.sh
    ```
 
-   **Expected:** `${NODE_COUNT}`× `${NODE_TYPE}` workload nodes Ready across `${AWS_ZONES}`.
+   **Expected:** `${NODE_COUNT}`× `${NODE_TYPE}` workload nodes Ready across `${AWS_ZONES}` (≥ `${MIN_NODES_PER_ZONE}` per zone).
 
 4. Confirm controller:
 
@@ -75,14 +75,14 @@ kubectl -n karpenter get deploy karpenter
 kubectl get nodes
 ```
 
-**Pass:** Karpenter Ready; `${NODE_COUNT}` workload nodes Ready (NodePool `${KARPENTER_NODEPOOL_NAME}`).
+**Pass:** Karpenter Ready; `${NODE_COUNT}` workload nodes Ready (per-AZ NodePools `${KARPENTER_NODEPOOL_NAME}-*`).
 
 Reference config: [clusters/main-cluster-karpenter.yaml](../../clusters/main-cluster-karpenter.yaml)
 
 ## Observe
 
 - System nodes carry taint `role=system:NoSchedule` — OLM and AKO schedule on untainted workload nodes
-- Workload NodePool applied in step **0.2-nodes**; Lab 1.1 re-ensures after full reset via `prepare-lab.sh 1.1`
+- Per-AZ workload NodePools applied in step **0.2-nodes**; Lab 1.1 re-ensures after full reset via `prepare-lab.sh 1.1`
 
 ## Troubleshooting
 

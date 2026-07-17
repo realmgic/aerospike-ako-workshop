@@ -30,7 +30,7 @@ One sentence describing what trainees must remember.
 |------|-------|
 | Instance | e.g. `i8g.2xlarge` × 4 |
 | Reset | Full / Light / None — see Section 1 README |
-| Nodegroups | 1 × `${NODEGROUP_NAME}` (eksctl) or NodePool `${KARPENTER_NODEPOOL_NAME}` (Karpenter) |
+| Nodegroups | 2 × `${NODEGROUP_NAME}-<zone>` (eksctl) or 2 × `${KARPENTER_NODEPOOL_NAME}-<zone>` (Karpenter) |
 
 ## Phase 0 — Prepare lab (Section 1)
 

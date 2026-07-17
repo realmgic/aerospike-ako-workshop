@@ -13,7 +13,7 @@ spec:
       - test
     racks:
       - id: 1
-        zone: us-east-1c
+        zone: ${NODE_ZONE_A}
         revision: "v1"  # TRAINEE EDIT in Lab 1.3 → v2
         storage:
           filesystemVolumePolicy:
@@ -48,7 +48,7 @@ spec:
               aerospike:
                 path: /etc/aerospike/secret
       - id: 2
-        zone: us-east-1d
+        zone: ${NODE_ZONE_B}
         revision: "v1"
         storage:
           filesystemVolumePolicy:

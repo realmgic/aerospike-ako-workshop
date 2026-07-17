@@ -1,9 +1,9 @@
-# NodePool for Aerospike vertical-scale workload (i8g.4xlarge) — Lab 1.3 Phase 2.
-# Substitute KARPENTER_* and NODE_TYPE_VERTICAL env vars before apply.
+# Per-AZ NodePool for Aerospike vertical workload (i8g.4xlarge) — Lab 1.3 Phase 2.
+# Substitute KARPENTER_NODEPOOL_ZONE_NAME, NODE_ZONE, NODE_TYPE_VERTICAL, KARPENTER_* before apply.
 apiVersion: karpenter.sh/v1
 kind: NodePool
 metadata:
-  name: ${KARPENTER_NODEPOOL_VERTICAL_NAME}
+  name: ${KARPENTER_NODEPOOL_ZONE_NAME}
 spec:
   template:
     metadata:
@@ -18,7 +18,7 @@ spec:
       requirements:
         - key: kubernetes.io/arch
           operator: In
-          values: [amd64]
+          values: [arm64]
         - key: kubernetes.io/os
           operator: In
           values: [linux]
@@ -30,12 +30,12 @@ spec:
           values: ["${NODE_TYPE_VERTICAL}"]
         - key: topology.kubernetes.io/zone
           operator: In
-          values: ["${NODE_ZONE_A}", "${NODE_ZONE_B}"]
+          values: ["${NODE_ZONE}"]
       expireAfter: 720h
       terminationGracePeriod: 600s
   limits:
-    cpu: "128"
-    memory: 512Gi
+    cpu: "64"
+    memory: 256Gi
   disruption:
     consolidationPolicy: "${KARPENTER_CONSOLIDATION}"
     consolidateAfter: 30m

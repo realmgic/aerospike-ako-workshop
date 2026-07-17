@@ -11,7 +11,7 @@
 
 ## Takeaway
 
-EKS control plane in `us-east-1` spanning two availability zones. **Workload nodepool** `${NODEGROUP_NAME}` (4× `i8g.2xlarge`) is created in step **0.2-nodes** before AKO install. Lab 1.1 re-ensures the same pool after full reset.
+EKS control plane in `us-east-1` spanning two availability zones. **Per-AZ workload pools** `${NODEGROUP_NAME}-<zone>` (2× `${MIN_NODES_PER_ZONE}` nodes each, `${NODE_TYPE}`) are created in step **0.2-nodes** before AKO install. Lab 1.1 re-ensures the same pools after full reset.
 
 ## Prerequisites
 
@@ -45,7 +45,7 @@ No EKS cluster, or existing cluster you intend to reuse.
    ./scripts/setup/02-ensure-workload-nodepool.sh
    ```
 
-   **Expected:** `${NODE_COUNT}`× `${NODE_TYPE}` nodes Ready across `${AWS_ZONES}`.
+   **Expected:** `${NODE_COUNT}`× `${NODE_TYPE}` nodes Ready across `${AWS_ZONES}` (≥ `${MIN_NODES_PER_ZONE}` per zone).
 
 4. Confirm namespace:
 
@@ -61,13 +61,13 @@ No EKS cluster, or existing cluster you intend to reuse.
 kubectl get nodes -o wide
 ```
 
-**Pass:** EKS cluster reachable; `${NODE_COUNT}` workload nodes Ready (`${NODEGROUP_NAME}`).
+**Pass:** EKS cluster reachable; `${NODE_COUNT}` workload nodes Ready (per-AZ nodegroups `${NODEGROUP_NAME}-*`).
 
 Reference config: [clusters/main-cluster.yaml](../../clusters/main-cluster.yaml)
 
 ## Observe
 
-- Workload nodegroup `${NODEGROUP_NAME}` is created in step **0.2-nodes**; Lab 1.1 re-ensures after full reset via `prepare-lab.sh 1.1`
+- Per-AZ workload nodegroups `${NODEGROUP_NAME}-<zone>` are created in step **0.2-nodes**; Lab 1.1 re-ensures after full reset via `prepare-lab.sh 1.1`
 - Vertical scale to `i8g.4xlarge` happens in Lab 1.3
 
 ## Troubleshooting

@@ -31,8 +31,8 @@
 |------|-------|
 | Instance | `i8g.2xlarge` × 4 |
 | Reset | **Full** |
-| Nodegroups | 1 × `${NODEGROUP_NAME}` (eksctl) or NodePool `${KARPENTER_NODEPOOL_NAME}` (Karpenter) |
-| Scale-up | 5 nodes temporarily (in-lab) |
+| Nodegroups | 2 × `${NODEGROUP_NAME}-<zone>` (eksctl) or 2 × `${KARPENTER_NODEPOOL_NAME}-<zone>` (Karpenter) |
+| Scale-up | 5 nodes temporarily (3+2 across zones) |
 
 ## Phase 0 — Prepare lab
 

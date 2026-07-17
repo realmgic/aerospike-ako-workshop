@@ -6,5 +6,5 @@ load_env
 ensure_main_kubecontext
 require_cmd kubectl
 
-render_workshop_yaml "${WORKSHOP_ROOT}/manifests/rack-cluster-v1.yaml" | kubectl apply -f -
-echo "Rack v1 cluster applied."
+render_workshop_yaml "${WORKSHOP_ROOT}/manifests/dim-cluster-with-racks.yaml" | kubectl apply -f -
+echo "Dim cluster with racks applied."

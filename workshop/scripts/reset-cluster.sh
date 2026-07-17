@@ -8,6 +8,7 @@
 #   ./scripts/reset-cluster.sh --upgrade-lab  # target upgrade-lab cluster (always eksctl MNG)
 set -euo pipefail
 source "$(dirname "$0")/lib/common.sh"
+source "$(dirname "$0")/lib/nodepool-zones.sh"
 load_env
 
 POD_WAIT_TIMEOUT=300
@@ -95,10 +96,13 @@ print_plan() {
   fi
   echo "  - Stuck PV claimRefs in ${NAMESPACE}"
   if [[ "${PROVISIONING}" == "karpenter" ]]; then
-    echo "  - NodePool ${KARPENTER_NODEPOOL_NAME} (2xl workload nodes)"
-    echo "  - NodePool ${KARPENTER_NODEPOOL_VERTICAL_NAME} (4xl workload nodes, if present)"
-    echo "  - Deployment karpenter-bootstrap-placeholder (if present)"
-    echo "  - Deployment karpenter-vertical-bootstrap-placeholder (if present)"
+    local pool
+    while IFS= read -r pool; do
+      [[ -z "${pool}" ]] && continue
+      echo "  - NodePool ${pool}"
+    done < <(list_baseline_pool_names; list_vertical_pool_names)
+    echo "  - Per-zone karpenter-bootstrap-* Deployments (if present)"
+    echo "  - Per-zone karpenter-vertical-bootstrap-* Deployments (if present)"
     echo ""
     echo "Will preserve:"
     echo "  - System nodegroup ${KARPENTER_SYSTEM_NODEGROUP}"
@@ -201,22 +205,24 @@ delete_eksctl_nodegroups() {
 delete_karpenter_workload() {
   echo "=== Phase 2: Delete Karpenter workload NodePools ==="
 
-  kubectl delete deployment karpenter-bootstrap-placeholder -n kube-system --ignore-not-found
-  kubectl delete deployment karpenter-vertical-bootstrap-placeholder -n kube-system --ignore-not-found
+  read_aws_zones_array
+  local zone dep
+  for zone in "${AWS_ZONES_ARRAY[@]}"; do
+    [[ -z "${zone}" ]] && continue
+    dep="karpenter-bootstrap-$(zone_resource_suffix "${zone}")"
+    kubectl delete deployment "${dep}" -n kube-system --ignore-not-found
+    dep="karpenter-vertical-bootstrap-$(zone_resource_suffix "${zone}")"
+    kubectl delete deployment "${dep}" -n kube-system --ignore-not-found
+  done
 
-  if kubectl get nodepool "${KARPENTER_NODEPOOL_VERTICAL_NAME}" >/dev/null 2>&1; then
-    echo "Deleting NodePool ${KARPENTER_NODEPOOL_VERTICAL_NAME}..."
-    kubectl delete nodepool "${KARPENTER_NODEPOOL_VERTICAL_NAME}" --wait=true
-  else
-    echo "NodePool ${KARPENTER_NODEPOOL_VERTICAL_NAME} not found — skipping."
-  fi
-
-  if kubectl get nodepool "${KARPENTER_NODEPOOL_NAME}" >/dev/null 2>&1; then
-    echo "Deleting NodePool ${KARPENTER_NODEPOOL_NAME}..."
-    kubectl delete nodepool "${KARPENTER_NODEPOOL_NAME}" --wait=true
-  else
-    echo "NodePool ${KARPENTER_NODEPOOL_NAME} not found — skipping."
-  fi
+  local pool
+  while IFS= read -r pool; do
+    [[ -z "${pool}" ]] && continue
+    if kubectl get nodepool "${pool}" >/dev/null 2>&1; then
+      echo "Deleting NodePool ${pool}..."
+      kubectl delete nodepool "${pool}" --wait=true
+    fi
+  done < <(list_vertical_pool_names; list_baseline_pool_names)
 
   echo "Waiting for workload nodes to terminate (timeout ${NODEPOOL_WAIT_TIMEOUT}s)..."
   deadline=$((SECONDS + NODEPOOL_WAIT_TIMEOUT))

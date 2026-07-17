@@ -4,11 +4,17 @@ set -euo pipefail
 source "$(dirname "$0")/../lib/common.sh"
 source "$(dirname "$0")/../lib/zone-check.sh"
 source "$(dirname "$0")/../lib/local-storage.sh"
+source "$(dirname "$0")/../lib/nodepool-zones.sh"
 load_env
 ensure_main_kubecontext
 
 fail=0
 workload_nodes=0
+
+count_baseline_workload_nodes() {
+  kubectl get nodes -l "workshop.aerospike.com/node-pool=baseline" --no-headers 2>/dev/null \
+    | grep -c Ready || true
+}
 
 echo "=== Environment validation (NODE_PROVISIONING=${NODE_PROVISIONING}) ==="
 
@@ -26,21 +32,26 @@ if [[ "${NODE_PROVISIONING}" == "karpenter" ]]; then
     echo "FAIL Karpenter deployment missing"
     fail=1
   fi
-  workload_nodes="$(kubectl get nodes -l 'workshop.aerospike.com/workload=aerospike' --no-headers 2>/dev/null | grep -c Ready || true)"
-  if [[ "${workload_nodes}" -ge "${NODE_COUNT}" ]]; then
-    echo "OK  ${workload_nodes} Karpenter workload nodes Ready (NodePool ${KARPENTER_NODEPOOL_NAME})"
+fi
+
+workload_nodes="$(count_baseline_workload_nodes)"
+if [[ "${workload_nodes}" -ge "${NODE_COUNT}" ]]; then
+  if [[ "${NODE_PROVISIONING}" == "karpenter" ]]; then
+    echo "OK  ${workload_nodes} baseline workload nodes Ready (per-AZ NodePools ${KARPENTER_NODEPOOL_NAME}-*)"
   else
-    echo "FAIL ${workload_nodes}/${NODE_COUNT} Karpenter workload nodes Ready (NodePool ${KARPENTER_NODEPOOL_NAME})"
-    fail=1
+    echo "OK  ${workload_nodes} baseline workload nodes Ready (per-AZ nodegroups ${NODEGROUP_NAME}-*)"
   fi
 else
-  workload_nodes="$(kubectl get nodes -l "alpha.eksctl.io/nodegroup-name=${NODEGROUP_NAME}" --no-headers 2>/dev/null | grep -c Ready || true)"
-  if [[ "${workload_nodes}" -ge "${NODE_COUNT}" ]]; then
-    echo "OK  ${workload_nodes} workload nodes Ready (nodegroup ${NODEGROUP_NAME})"
+  if [[ "${NODE_PROVISIONING}" == "karpenter" ]]; then
+    echo "FAIL ${workload_nodes}/${NODE_COUNT} baseline workload nodes Ready (per-AZ NodePools ${KARPENTER_NODEPOOL_NAME}-*)"
   else
-    echo "FAIL ${workload_nodes}/${NODE_COUNT} workload nodes Ready (nodegroup ${NODEGROUP_NAME})"
-    fail=1
+    echo "FAIL ${workload_nodes}/${NODE_COUNT} baseline workload nodes Ready (per-AZ nodegroups ${NODEGROUP_NAME}-*)"
   fi
+  fail=1
+fi
+print_zone_distribution "${NODE_TYPE}"
+if ! assert_multi_az_nodes warn "${NODE_TYPE}"; then
+  fail=1
 fi
 
 # NVMe bootstrap DaemonSet applied (readiness after Lab 1.1 nodes)

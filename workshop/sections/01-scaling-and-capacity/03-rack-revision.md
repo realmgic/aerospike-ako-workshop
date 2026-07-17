@@ -1,18 +1,22 @@
 # Lab 1.3 — Vertical Scaling & Rack Revision
 
-| Field | Value |
-|-------|-------|
-| Lab ID | `1.3` |
-| Section | Scaling & Capacity |
-| EKS cluster | `my-cluster` |
-| Aerospike cluster | `aerocluster` |
-| AKO min version | `4.2.0` |
-| Aerospike baseline | rack v1 block storage on i8g.2xlarge (`baseline` node pool) |
-| Deploy path | both |
-| Node provisioning | both |
-| Duration | ~45 min |
-| Validation status | `draft` |
-| Official docs | [Scaling — rack revision](https://aerospike.com/docs/kubernetes/manage/configure/scaling) |
+
+| Field              | Value                                                                                     |
+| ------------------ | ----------------------------------------------------------------------------------------- |
+| Lab ID             | `1.3`                                                                                     |
+| Section            | Scaling & Capacity                                                                        |
+| EKS cluster        | `my-cluster`                                                                              |
+| Aerospike cluster  | `aerocluster`                                                                             |
+| AKO min version    | `4.2.0`                                                                                   |
+| Aerospike baseline | rack v1 block storage on i8g.2xlarge (`baseline` node pool)                               |
+| Deploy path        | both                                                                                      |
+| Node provisioning  | both                                                                                      |
+| Duration           | ~45 min                                                                                   |
+| Validation status  | `draft`                                                                                   |
+| Official docs      | [Scaling — rack revision](https://aerospike.com/docs/kubernetes/manage/configure/scaling) |
+
+
+
 
 ## Takeaway
 
@@ -23,20 +27,28 @@ Vertical scaling combines **node pool locator** (`podSpec.nodeSelector`), larger
 - Section 0 storage layer complete
 - Lab 1.2 complete (Track A → B), or `./scripts/labs/prepare-lab.sh 1.3 --full` for a cold start
 
+
+
 ## Node requirements
 
-| Item | Value |
-|------|-------|
-| Phase 1 | `i8g.2xlarge` × 4 — `${NODEGROUP_NAME}` (or `${KARPENTER_NODEPOOL_NAME}`) — label `workshop.aerospike.com/node-pool=baseline` |
-| Phase 2 | `i8g.4xlarge` × 4 — `${NODEGROUP_NAME_VERTICAL}` (or `${KARPENTER_NODEPOOL_VERTICAL_NAME}`) — label `workshop.aerospike.com/node-pool=vertical` **added alongside** 2xl |
-| Reset | **Light** at lab start (database only; reuses 2xl pool) |
+
+| Item    | Value                                                                                                                                                                   |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase 1 | `i8g.2xlarge` × 4 — `${NODEGROUP_NAME}-<zone>` (eksctl) or `${KARPENTER_NODEPOOL_NAME}-<zone>` (Karpenter) — label `workshop.aerospike.com/node-pool=baseline` |
+| Phase 2 | `i8g.4xlarge` × 4 — `${NODEGROUP_NAME_VERTICAL}-<zone>` or `${KARPENTER_NODEPOOL_VERTICAL_NAME}-<zone>` — label `workshop.aerospike.com/node-pool=vertical` **added alongside** 2xl |
+| Reset   | **Light** at lab start (database only; reuses 2xl pool)                                                                                                                 |
+
 
 During Phase 2, both pools coexist (8 nodes total until `./scripts/reset-cluster.sh` before Section 2 or end of day):
 
-| Pool | Instance | Label | When |
-|------|----------|-------|------|
-| `${NODEGROUP_NAME}` / `${KARPENTER_NODEPOOL_NAME}` | i8g.2xlarge | `baseline` | Phase 1 — **kept idle** after Phase 2 |
-| `${NODEGROUP_NAME_VERTICAL}` / `${KARPENTER_NODEPOOL_VERTICAL_NAME}` | i8g.4xlarge | `vertical` | Created Phase 2 |
+
+| Pool                                                                 | Instance    | Label      | When                                  |
+| -------------------------------------------------------------------- | ----------- | ---------- | ------------------------------------- |
+| `${NODEGROUP_NAME}-*` / `${KARPENTER_NODEPOOL_NAME}-*` (per zone)     | i8g.2xlarge | `baseline` | Phase 1 — **kept idle** after Phase 2 |
+| `${NODEGROUP_NAME_VERTICAL}-*` / `${KARPENTER_NODEPOOL_VERTICAL_NAME}-*` | i8g.4xlarge | `vertical` | Created Phase 2 (one pool per zone)   |
+
+
+
 
 ## Phase 0 — Prepare lab
 
@@ -44,7 +56,7 @@ During Phase 2, both pools coexist (8 nodes total until `./scripts/reset-cluster
 ./scripts/labs/prepare-lab.sh 1.3
 ```
 
-**Expected:** 4× `i8g.2xlarge` Ready across `${AWS_ZONES}` with `workshop.aerospike.com/node-pool=baseline`.
+**Expected:** 4× `i8g.2xlarge` Ready across `${AWS_ZONES}` with `workshop.aerospike.com/node-pool=baseline`. Prep also validates baseline local-ssd PVs (~3 per node, e.g. `OK baseline (i8g.2xlarge): 12 local-ssd PVs`); restarts the provisioner automatically if PVs are missing.
 
 Use `./scripts/labs/prepare-lab.sh 1.3 --full` only for a hard wipe (database + all workload pools).
 
@@ -76,17 +88,19 @@ kubectl get nodes -l workshop.aerospike.com/node-pool=baseline -o custom-columns
 kubectl get nodes -L workshop.aerospike.com/node-pool,node.kubernetes.io/instance-type
 ```
 
-**Expected:** 4× `i8g.4xlarge` Ready in both zones with `node-pool=vertical`; 2xl baseline pool remains (4 idle nodes). Pods stay on baseline until Phase 3.
+**Expected:** 4× `i8g.4xlarge` Ready in both zones with `node-pool=vertical`; 2xl baseline pool remains (4 idle nodes). Pods stay on baseline until Phase 3. `ensure --vertical` validates vertical local-ssd PVs immediately (~6 per 4xl node, e.g. `OK vertical (i8g.4xlarge): 24 local-ssd PVs`); restarts the provisioner if PVs are not yet discovered on new nodes.
 
 **Note:** Ensure EC2 quota covers **8 nodes** during Phase 2 (4×2xl idle + 4×4xl active).
 
 ### Karpenter path
 
-The `--vertical` flag applies NodePool `${KARPENTER_NODEPOOL_VERTICAL_NAME}` for `${NODE_TYPE_VERTICAL}` (2xl NodePool unchanged). Watch:
+The `--vertical` flag applies per-AZ NodePools `${KARPENTER_NODEPOOL_VERTICAL_NAME}-<zone>` for `${NODE_TYPE_VERTICAL}` (baseline per-AZ NodePools unchanged). Watch:
 
 ```bash
 kubectl get nodeclaims,nodes -w
 ```
+
+
 
 ## Phase 3 — Apply rack revision + vertical locator + 2× resources
 
@@ -96,10 +110,13 @@ Change three things together in `rack-cluster-v2-revision.yaml`:
 2. **Rack revision:** `v1` → `v2` (adds `ns2` local-ssd block device)
 3. **Pod resources:** `7` CPU / `57Gi` → `15` CPU / `115Gi`
 
+
+
 ### Path A — kubectl
 
 ```bash
-kubectl apply -f manifests/rack-cluster-v2-revision.yaml
+source scripts/env/workshop.env
+envsubst '$NODE_ZONE_A $NODE_ZONE_B' < manifests/rack-cluster-v2-revision.yaml | kubectl apply -f -
 kubectl -n aerospike get pods -w
 ```
 
@@ -108,10 +125,14 @@ kubectl -n aerospike get pods -w
 ### Path B — Helm
 
 ```bash
-helm upgrade aerocluster aerospike/aerospike-cluster \
-  -n aerospike -f helm/rack-cluster-v2-revision-values.yaml --version=4.2.0
+source scripts/env/workshop.env
+envsubst '$NODE_ZONE_A $NODE_ZONE_B' < helm/rack-cluster-v2-revision-values.yaml | \
+  helm upgrade aerocluster aerospike/aerospike-cluster \
+  -n aerospike -f - --version=4.2.0
 kubectl -n aerospike get pods -w
 ```
+
+
 
 ## Verify (pass/fail)
 
@@ -132,16 +153,20 @@ kubectl -n aerospike get pvc -o wide
 - Second block device (`ns2` at `/dev/data/local2`) appears in namespace config
 - Data migration progress in asadm
 
+
+
 ## Troubleshooting
 
-| Symptom | Fix |
-|---------|-----|
-| Pods Pending after vertical pool add | Expected until Phase 3 apply; verify `nodeSelector: baseline` still pins Phase 1 pods |
-| Pods Pending after revision apply | Re-run `lab-nodes.sh 1.3 validate --vertical`; check `kubectl describe pod` for node affinity / PVC binding |
-| Missing `workshop.aerospike.com/node-pool` labels | Re-run `lab-nodes.sh 1.3 ensure` (baseline) or `ensure --vertical`; for eksctl, labels are patched after scale |
-| local-ssd PVC Pending (4xl) | Each pod needs 2 partitions; verify 6×512Gi PVs per i8g.4xlarge node (`kubectl get pv -l storageclass=local-ssd`) |
-| Drain stuck on local-storage pods | Expected during migration; wait for AKO |
-| EC2 quota exceeded during Phase 2 | Request quota for 8× i8g (4×2xl + 4×4xl) |
+
+| Symptom                                                   | Fix                                                                                                                                                                                                                  |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pods Pending after vertical pool add                      | Expected until Phase 3 apply; verify `nodeSelector: baseline` still pins Phase 1 pods                                                                                                                                |
+| Pods Pending after revision apply                         | Re-run `lab-nodes.sh 1.3 validate --vertical`; check `kubectl describe pod` for node affinity / PVC binding                                                                                                          |
+| Missing `workshop.aerospike.com/node-pool` labels         | Re-run `lab-nodes.sh 1.3 ensure` (baseline) or `ensure --vertical`; for eksctl, labels are patched after scale                                                                                                       |
+| local-ssd PVC Pending (4xl)                               | Re-run `./scripts/labs/lab-nodes.sh 1.3 ensure --vertical` (waits for nvme-bootstrap, restarts provisioner, validates PVs). Verify `kubectl get pv -l storageclass=local-ssd` — expect ~6×512Gi per i8g.4xlarge node |
+| Drain stuck on local-storage pods                         | Expected during migration; wait for AKO                                                                                                                                                                              |
+| EC2 quota exceeded during Phase 2                         | Request quota for 8× i8g (4×2xl + 4×4xl)                                                                                                                                                                             |
+| Multi-AZ validation fails on vertical pool                | Re-run `./scripts/labs/lab-nodes.sh 1.3 ensure --vertical` — per-AZ vertical pools guarantee `${MIN_NODES_PER_ZONE}` nodes per zone                                                                                  |
 
 ## Not covered here
 
@@ -154,3 +179,4 @@ Lab 1.4 is **standalone** — it light-resets and redeploys v1 baseline independ
 ## References
 
 - [Scaling](https://aerospike.com/docs/kubernetes/manage/configure/scaling)
+

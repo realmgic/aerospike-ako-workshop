@@ -81,7 +81,8 @@ The replacement manifest removes racks 1+2 and defines racks 3+4 only, with the 
 ### Path A — kubectl
 
 ```bash
-kubectl apply -f manifests/rack-cluster-replacement.yaml
+source scripts/env/workshop.env
+envsubst '$NODE_ZONE_A $NODE_ZONE_B' < manifests/rack-cluster-replacement.yaml | kubectl apply -f -
 kubectl -n aerospike get pods -w
 ```
 
@@ -90,8 +91,10 @@ kubectl -n aerospike get pods -w
 ### Path B — Helm
 
 ```bash
-helm upgrade aerocluster aerospike/aerospike-cluster \
-  -n aerospike -f helm/rack-cluster-replacement-values.yaml --version=4.2.0
+source scripts/env/workshop.env
+envsubst '$NODE_ZONE_A $NODE_ZONE_B' < helm/rack-cluster-replacement-values.yaml | \
+  helm upgrade aerocluster aerospike/aerospike-cluster \
+  -n aerospike -f - --version=4.2.0
 kubectl -n aerospike get pods -w
 ```
 
