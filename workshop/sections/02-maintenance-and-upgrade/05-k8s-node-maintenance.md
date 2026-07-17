@@ -75,7 +75,7 @@ NODE=$(kubectl -n aerospike get pods -o wide --no-headers | awk 'NR==1{print $7}
 
 ## Steps — Alternate: k8sNodeBlockList (eksctl path only)
 
-> **Karpenter sessions:** skip this section. Use [05-k8s-node-maintenance-karpenter.md](05-k8s-node-maintenance-karpenter.md) instead. `k8sNodeBlockList` uses node hostname affinity incompatible with Karpenter ([AKO #305](https://github.com/aerospike/aerospike-kubernetes-operator/issues/305)).
+> **Karpenter sessions:** skip this section. Use [05-k8s-node-maintenance-karpenter.md](05-k8s-node-maintenance-karpenter.md) instead — including the optional add-on on graduating from `do-not-disrupt` and sizing `terminationGracePeriod`. `k8sNodeBlockList` uses node hostname affinity incompatible with Karpenter ([AKO #305](https://github.com/aerospike/aerospike-kubernetes-operator/issues/305)).
 
 AKO migrates pods off listed nodes via rolling restart — useful for planned local-storage maintenance when drain is not the right entry point.
 
@@ -209,7 +209,8 @@ Proceed to [Lab 2.6](06-k8s-control-plane-upgrade.md). Aerospike cluster should 
 
 ## Not covered here
 
-Control plane upgrade → [Lab 2.6](06-k8s-control-plane-upgrade.md)
+- Karpenter voluntary disruption, `do-not-disrupt`, and `terminationGracePeriod` → [Karpenter lab add-on](05-k8s-node-maintenance-karpenter.md#add-on--graduating-from-do-not-disrupt-to-karpenter-native-disruption-15-min)
+- Control plane upgrade → [Lab 2.6](06-k8s-control-plane-upgrade.md)
 
 ## References
 

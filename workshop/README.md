@@ -25,6 +25,10 @@ Pick **one path** at Section 0 and stay on it for the session:
 
 See [instructor/path-selection-guide.md](instructor/path-selection-guide.md) and [Section 0 README](sections/00-environment-setup/README.md).
 
+## Lab structure
+
+Labs use consistent terminology — see the [lab walkthrough template](_templates/lab-walkthrough.md#lab-structure) for **setup step**, **Phase 0 — Prepare lab**, **Phase 1–N**, **Steps**, **baseline/vertical pool**, and **full/light reset**.
+
 ## Node provisioning
 
 Pick **one** main-cluster node strategy at Section 0 (orthogonal to OLM/Helm):

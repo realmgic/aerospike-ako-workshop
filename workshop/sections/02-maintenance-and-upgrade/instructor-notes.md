@@ -8,7 +8,7 @@
 | 2.2 | ~30–40m | Three steps: 4.3.0 → 4.4.1 → 4.5.0; demo one step live |
 | 2.3 | ~20m | Rolling DB upgrade 8.1.0.x → 8.1.2.x (requires AKO 4.5.0) |
 | 2.4 | ~10m | On-demand PodRestart operation |
-| 2.5 | ~25m | Show eviction-blocked annotation |
+| 2.5 | ~25m (+15m add-on) | Show eviction-blocked annotation; Karpenter add-on: do-not-disrupt graduation + terminationGracePeriod |
 | 2.6 | ~45m | Mostly waiting; pre-stage cluster + Aerospike |
 
 ## AKO upgrade (2.2)
@@ -31,6 +31,12 @@
 - **eksctl path:** show drain + optional blocklist demo
 - **Karpenter path:** drain only; optional NodeClaim disruption observe — see [05-k8s-node-maintenance-karpenter.md](05-k8s-node-maintenance-karpenter.md)
 - **Never** demo blocklist on Karpenter ([AKO #305](https://github.com/aerospike/aerospike-kubernetes-operator/issues/305))
+- **Karpenter add-on (~15m):** run after drain demo when audience is planning to allow voluntary Karpenter disruption
+  - Frame customer's `do-not-disrupt` approach as valid Phase 1, not the long-term target
+  - Walk the three layers: `do-not-disrupt` → safe eviction → `terminationGracePeriod`
+  - Show live NodePool grace value: `kubectl get nodepool … -o jsonpath='{.spec.template.spec.terminationGracePeriod}'`
+  - Emphasize AKO docs: Karpenter **force-deletes** after grace period — 600s workshop default is a starting point, not production gospel
+  - Do **not** live-demo removing `do-not-disrupt` or enabling consolidation during class unless on a throwaway cluster
 
 ## Pitfalls
 

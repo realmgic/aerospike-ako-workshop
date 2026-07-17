@@ -47,6 +47,7 @@ For **Karpenter path** runs, use [karpenter-walkthrough.md](karpenter-walkthroug
 - [ ] **2.5** K8s node maintenance — safe drain (both paths)
 - [ ] **2.5 (eksctl only)** — blocklist path validated
 - [ ] **2.5 (Karpenter only)** — drain + optional disruption; **no blocklist**
+- [ ] **2.5 (Karpenter only) add-on** — do-not-disrupt graduation + `terminationGracePeriod` (instructor-led)
 - [ ] **2.6** K8s control plane upgrade — 3 pods Running through upgrade (upgrade-lab eksctl cluster)
 
 ## Path coverage

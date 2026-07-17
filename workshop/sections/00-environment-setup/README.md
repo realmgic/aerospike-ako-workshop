@@ -4,13 +4,13 @@
 
 You can stand up a complete EKS lab platform — cluster, AKO, storage layers, and secrets — that all downstream labs reuse without re-explaining infrastructure.
 
-## Phases
+## Setup steps
 
-| Phase | Guide | Duration |
-|-------|-------|----------|
+| Step | Guide | Duration |
+|------|-------|----------|
 | 0.1 | [Prerequisites](01-prerequisites.md) | ~15m |
 | 0.2 | EKS cluster — [eksctl MNG](02-eks-cluster.md) or [Karpenter](02-eks-cluster-karpenter.md) | ~15–25m (parallel with 0.7 bootstrap) |
-| 0.2-nodes | Workload nodepool (Lab 1.1 pool) | ~10–15m |
+| 0.2-nodes | Baseline per-AZ workload pools | ~10–15m |
 | 0.3 | Install AKO — [OLM](03-install-ako-olm.md) or [Helm](03-install-ako-helm.md) | ~20m |
 | 0.4 | [akoctl](04-install-akoctl.md) | ~10m |
 | 0.5 | [Storage layer](05-storage-layer.md) | ~25m |
@@ -21,7 +21,7 @@ You can stand up a complete EKS lab platform — cluster, AKO, storage layers, a
 
 Full `./scripts/setup/setup-all.sh` creates **main** and **upgrade-lab** EKS clusters **in parallel** after step 0.1, using isolated kubeconfig files under `workshop/.kube/` (merged into your default kubeconfig when both finish). This saves roughly **15–25 minutes** vs sequential bootstrap.
 
-- Disable with `./scripts/setup/setup-all.sh --sequential` (legacy order: 0.2, 0.2-nodes, then 0.3–0.6, then full 0.7)
+- Disable with `./scripts/setup/setup-all.sh --sequential` (sequential EKS bootstrap: 0.2, 0.2-nodes, then 0.3–0.6, then full 0.7)
 - Individual `--step` runs are unchanged (no parallel)
 
 | Choose Path A (OLM) when… | Choose Path B (Helm) when… |
@@ -51,7 +51,7 @@ Step **0.7** creates the separate upgrade-lab EKS cluster for Lab 2.6 only. Skip
 
 ## Step-by-step setup (teaching flow)
 
-Run each lab phase individually — script numbers match lab IDs:
+Run each setup step individually — script numbers match step IDs:
 
 ```bash
 cd workshop

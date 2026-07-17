@@ -13,13 +13,27 @@
 | Validation status | `draft` |
 | Official docs | [link](https://aerospike.com/docs/kubernetes/) |
 
+## Lab structure
+
+| Term | Meaning | Example |
+|------|---------|---------|
+| **Setup step** | Section 0 bootstrap only | Step **0.2-nodes**, `setup-all.sh --step 0.2` |
+| **Phase 0 — Prepare lab** | Run `prepare-lab.sh` before lab work | Same heading in every lab |
+| **Phase 1, 2, 3…** | Major lab stages (multi-part labs only) | Deploy baseline → add vertical pool → apply revision |
+| **Steps** | Numbered procedural actions | Path A step 1, kubectl apply, verify |
+| **baseline pool** / **vertical pool** | Node pool by label | Prefer over “2xl pool” / “4xl pool” |
+| **Full reset** | Database + all workload pools | `reset-cluster.sh --yes` or `prepare-lab.sh <lab> --full` |
+| **Light reset** | Database only (default 1.2–1.5) | `prepare-lab.sh <lab>` (no flag) |
+
+Do not use “lab phase” for Section 0 setup. When describing nodes, use per-AZ pool names (`${NODEGROUP_NAME}-<zone>` or `${KARPENTER_NODEPOOL_NAME}-<zone>`), not bare `${NODEGROUP_NAME}`.
+
 ## Takeaway
 
 One sentence describing what trainees must remember.
 
 ## Prerequisites
 
-- Section 0 phases complete (list which)
+- Section 0 setup steps complete (list which)
 - Prior labs (if any)
 - AKO / Aerospike version requirements
 - Cluster state before starting
@@ -32,7 +46,7 @@ One sentence describing what trainees must remember.
 | Reset | Full / Light / None — see Section 1 README |
 | Nodegroups | 2 × `${NODEGROUP_NAME}-<zone>` (eksctl) or 2 × `${KARPENTER_NODEPOOL_NAME}-<zone>` (Karpenter) |
 
-## Phase 0 — Prepare lab (Section 1)
+## Phase 0 — Prepare lab
 
 ```bash
 ./scripts/labs/prepare-lab.sh X.Y

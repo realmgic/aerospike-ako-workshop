@@ -59,6 +59,8 @@ Also pick **one node provisioning path** for the main cluster (`my-cluster`) and
 - Lab 2.5 **`k8sNodeBlockList`** — incompatible with Karpenter node affinity ([AKO #305](https://github.com/aerospike/aerospike-kubernetes-operator/issues/305)). Use drain + safe eviction only.
 - Lab 2.6 upgrade-lab cluster — always eksctl MNG (separate cluster)
 
+**Lab 2.5 Karpenter add-on (~15m):** optional instructor discussion on graduating from `karpenter.sh/do-not-disrupt` to voluntary disruption — see [05-k8s-node-maintenance-karpenter.md](../sections/02-maintenance-and-upgrade/05-k8s-node-maintenance-karpenter.md#add-on--graduating-from-do-not-disrupt-to-karpenter-native-disruption-15-min). Covers `terminationGracePeriod` sizing (workshop default 600s).
+
 **During live demos:** set `KARPENTER_CONSOLIDATION=Off` in `workshop.env` to reduce node churn.
 
 ## Do not mix paths mid-session
