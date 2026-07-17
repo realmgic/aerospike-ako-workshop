@@ -10,6 +10,7 @@
 set -euo pipefail
 source "$(dirname "$0")/../lib/common.sh"
 source "$(dirname "$0")/../lib/zone-check.sh"
+source "$(dirname "$0")/../lib/local-storage.sh"
 load_env
 ensure_main_kubecontext
 
@@ -209,25 +210,7 @@ wait_eksctl_nodegroup_ready() {
 }
 
 wait_nvme_bootstrap() {
-  local expected_nodes="$1"
-  echo "Waiting for nvme-bootstrap on i8g nodes (timeout ${NVME_WAIT_TIMEOUT}s)..."
-  local deadline=$((SECONDS + NVME_WAIT_TIMEOUT))
-  while true; do
-    local ready desired
-    ready="$(kubectl -n kube-system get ds nvme-bootstrap -o jsonpath='{.status.numberReady}' 2>/dev/null || echo 0)"
-    desired="$(kubectl -n kube-system get ds nvme-bootstrap -o jsonpath='{.status.desiredNumberScheduled}' 2>/dev/null || echo 0)"
-    echo "  nvme-bootstrap Ready: ${ready}/${desired}"
-    if [[ "${ready:-0}" -ge "${expected_nodes}" ]] && [[ "${ready}" == "${desired}" ]] && [[ "${desired}" -gt 0 ]]; then
-      echo "OK  nvme-bootstrap Ready on all scheduled nodes"
-      return 0
-    fi
-    if [[ "${SECONDS}" -gt "${deadline}" ]]; then
-      echo "ERROR: nvme-bootstrap did not become Ready in time" >&2
-      kubectl -n kube-system get pods -l app.kubernetes.io/name=nvme-bootstrap -o wide
-      exit 1
-    fi
-    sleep 15
-  done
+  wait_nvme_bootstrap_ready "$1" "${NVME_WAIT_TIMEOUT}"
 }
 
 maybe_wait_nvme_bootstrap() {
@@ -238,8 +221,8 @@ maybe_wait_nvme_bootstrap() {
   fi
   local nodes_after ready desired
   nodes_after="$(count_2xl_nodes_ready)"
-  ready="$(kubectl -n kube-system get ds nvme-bootstrap -o jsonpath='{.status.numberReady}' 2>/dev/null || echo 0)"
-  desired="$(kubectl -n kube-system get ds nvme-bootstrap -o jsonpath='{.status.desiredNumberScheduled}' 2>/dev/null || echo 0)"
+  ready="$(nvme_bootstrap_ready)"
+  desired="$(nvme_bootstrap_desired)"
   if [[ "${nodes_after}" -gt "${nodes_before}" ]] || [[ "${ready:-0}" -lt "${desired:-0}" ]] || [[ "${ready:-0}" -lt "${expected}" ]]; then
     wait_nvme_bootstrap "${expected}"
   else

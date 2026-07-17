@@ -34,7 +34,7 @@ Secrets are deployed and the platform is validated — **no AerospikeCluster yet
    ./scripts/setup/08-validate-environment.sh
    ```
 
-   **Expected:** Exit code 0; message "Environment ready for lab sections." Workload nodepool has `${NODE_COUNT}` Ready nodes.
+   **Expected:** Exit code 0; message "Environment ready for lab sections." Workload nodepool has `${NODE_COUNT}` Ready nodes. Validation also restarts the local-volume-provisioner (if needed) and checks that local-ssd PVs were discovered.
 
 ## Verify (pass/fail)
 
@@ -61,6 +61,14 @@ Secrets are deployed and the platform is validated — **no AerospikeCluster yet
    ```
 
    **Pass:** `${NODE_COUNT}`× `${NODE_TYPE}` nodes Ready.
+
+5. Local-ssd PVs discovered:
+
+   ```bash
+   kubectl get pv -l storageclass=local-ssd
+   ```
+
+   **Pass:** PV count matches instance-type layout × `${NODE_COUNT}` (e.g. 12 PVs for 4× i8g.2xlarge).
 
 ## Observe
 

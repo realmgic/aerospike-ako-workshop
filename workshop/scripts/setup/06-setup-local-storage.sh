@@ -2,6 +2,7 @@
 # Local NVMe provisioner + automated disk bootstrap (nvme-bootstrap DaemonSet)
 set -euo pipefail
 source "$(dirname "$0")/../lib/common.sh"
+source "$(dirname "$0")/../lib/local-storage.sh"
 load_env
 ensure_main_kubecontext
 
@@ -42,12 +43,15 @@ rm -f "${LAYOUT_RENDERED}"
 echo "Applying NVMe bootstrap DaemonSet..."
 kubectl apply -f "${SETUP_DIR}/nvme-bootstrap-daemonset.yaml"
 
-ready="$(kubectl -n kube-system get ds nvme-bootstrap -o jsonpath='{.status.numberReady}' 2>/dev/null || echo 0)"
-desired="$(kubectl -n kube-system get ds nvme-bootstrap -o jsonpath='{.status.desiredNumberScheduled}' 2>/dev/null || echo 0)"
+ready="$(nvme_bootstrap_ready)"
+desired="$(nvme_bootstrap_desired)"
 if [[ "${desired}" -gt 0 ]]; then
-  echo "nvme-bootstrap scheduled on ${desired} node(s) — full readiness wait runs in Lab 1.1 (lab-nodes.sh ensure)."
+  wait_nvme_bootstrap_ready "${desired}"
+  restart_local_volume_provisioner
+  pv_count="$(count_local_ssd_pvs)"
+  echo "local-ssd PVs discovered: ${pv_count}"
 else
-  echo "nvme-bootstrap DaemonSet applied (0 nodes scheduled — run step 0.2-nodes first if workload nodes are missing)."
+  echo "nvme-bootstrap not scheduled yet — run step 0.2-nodes first; PV restart runs in 0.6 validation."
 fi
 
 kubectl -n kube-system get ds nvme-bootstrap 2>/dev/null || true

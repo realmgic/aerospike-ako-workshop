@@ -25,6 +25,7 @@ layouts:
 
   i8g.4xlarge:
     instance_store: all
+    instance_store_devices: 1
     partitions:
       - number: 1
         start: 0%
@@ -47,6 +48,7 @@ layouts:
 
   i8g.8xlarge:
     instance_store: all
+    instance_store_devices: 2
     partitions:
       - number: 1
         start: 0%

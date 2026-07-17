@@ -89,6 +89,14 @@ Both eksctl and Karpenter use the same **`nvme-bootstrap` DaemonSet** — no man
 
    **Expected on i8g.2xlarge:** Symlinks to `<instance-store>p1`, `p2`, `p3` (3× 512 GiB partitions).
 
+5. Verify local-ssd PVs (script restarts the provisioner after nvme-bootstrap):
+
+   ```bash
+   kubectl get pv -l storageclass=local-ssd
+   ```
+
+   **Expected:** One PV per partition symlink — 3× ~512Gi per i8g.2xlarge node, 6× per i8g.4xlarge node, or 12× per i8g.8xlarge node (multiply by `${NODE_COUNT}` workload nodes).
+
 ## Disk layouts
 
 Layouts are defined in [`config/disk-layouts.yaml`](../../config/disk-layouts.yaml). The bootstrap init container reads the instance type from IMDS and applies the matching layout.
@@ -101,6 +109,8 @@ Layouts are defined in [`config/disk-layouts.yaml`](../../config/disk-layouts.ya
 | other | auto-detect | whole-device symlinks on all instance-store NVMe (fallback) |
 
 Override layout for testing with `NVME_DISK_LAYOUT=i8g.4xlarge` in `workshop.env`.
+
+When adding a layout with `instance_store: all`, set `instance_store_devices` in [`config/disk-layouts.yaml`](../../config/disk-layouts.yaml) so setup validation can compute expected local-ssd PV counts (`len(partitions) × instance_store_devices`). Example: `i8g.8xlarge` uses `instance_store_devices: 2` for 2 local SSDs × 6 partitions = 12 PVs per node.
 
 ## Instructor demo — local PVC cleanup on node failure
 
@@ -153,12 +163,14 @@ Optional demo after Part B (uses [`manifests/local-ssd-demo.yaml`](../../manifes
 - `nvme-bootstrap` DaemonSet Ready on all nodes
 - `local-volume-node-cleanup-controller` deployment Ready
 - Local volume provisioner running in `aerospike` namespace
+- `kubectl get pv -l storageclass=local-ssd` shows expected count (3× per i8g.2xlarge node, 6× per i8g.4xlarge node, 12× per i8g.8xlarge node)
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---------|-----|
 | EBS PVC Pending | Verify EBS CSI IAM role and addon |
+| No local-ssd PVs after setup | Re-run `./scripts/setup/06-setup-local-storage.sh` or `./scripts/setup/08-validate-environment.sh` (both restart the provisioner after nvme-bootstrap) |
 | nvme-bootstrap not Ready | Check privileged init logs; re-run `06-setup-local-storage.sh` |
 | No partition symlinks | Confirm instance type in `disk-layouts.yaml`; check IMDS from node |
 | Cleanup controller not deleting PVCs | Verify `--storageclass-names=local-ssd` and controller pod logs |

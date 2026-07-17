@@ -2,6 +2,7 @@
 """NVMe bootstrap init — partition and symlink local disks for the provisioner."""
 from __future__ import annotations
 
+import argparse
 import re
 import shutil
 import subprocess
@@ -425,6 +426,38 @@ def whole_device_bootstrap(devices: list[str]) -> None:
         write_bootstrap_marker(device)
 
 
+def load_layout_for_instance_type(config_path: Path, instance_type: str) -> dict:
+    with config_path.open() as handle:
+        config = yaml.safe_load(handle)
+    layouts = config.get("layouts") or {}
+    return layouts.get(instance_type) or layouts.get("default") or {}
+
+
+def expected_pvs_per_node(layout: dict) -> int | None:
+    """Expected local-ssd PV count per node for a disk layout entry."""
+    if layout.get("mode") == "whole-device":
+        selector = layout.get("instance_store", "all")
+        if selector == "all":
+            devices = layout.get("instance_store_devices")
+            if devices is None:
+                return None
+            return int(devices)
+        return 1
+
+    partitions = layout.get("partitions") or []
+    if not partitions:
+        return None
+
+    per_device = len(partitions)
+    selector = layout.get("instance_store", "first")
+    if selector == "all":
+        devices = layout.get("instance_store_devices")
+        if devices is None:
+            return None
+        return per_device * int(devices)
+    return per_device
+
+
 def load_layout() -> tuple[str, dict]:
     with CONFIG.open() as handle:
         config = yaml.safe_load(handle)
@@ -451,7 +484,7 @@ def partitioned_bootstrap(layout: dict, stores: list[str]) -> None:
         apply_partition_layout(device, layout.get("partitions") or [])
 
 
-def main() -> int:
+def bootstrap_main() -> int:
     if not DEV_DIR.is_dir():
         print("no /dev — skipping")
         return 0
@@ -474,6 +507,45 @@ def main() -> int:
     print("disk bootstrap summary:")
     run(["ls", "-la", str(DISKS_DIR)], check=False)
     return 0
+
+
+def cli_main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="NVMe bootstrap and layout helpers")
+    parser.add_argument(
+        "--expected-pvs-per-node",
+        action="store_true",
+        help="Print expected local-ssd PV count per node for --instance-type",
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=CONFIG,
+        help="Path to disk-layouts.yaml",
+    )
+    parser.add_argument(
+        "--instance-type",
+        help="Instance type layout key (e.g. i8g.2xlarge)",
+    )
+    args = parser.parse_args(argv)
+
+    if args.expected_pvs_per_node:
+        if not args.instance_type:
+            print("ERROR: --instance-type is required with --expected-pvs-per-node", file=sys.stderr)
+            return 1
+        if not args.config.is_file():
+            print(f"ERROR: config file not found: {args.config}", file=sys.stderr)
+            return 1
+        layout = load_layout_for_instance_type(args.config, args.instance_type)
+        count = expected_pvs_per_node(layout)
+        if count is not None:
+            print(count)
+        return 0
+
+    return bootstrap_main()
+
+
+def main() -> int:
+    return cli_main()
 
 
 if __name__ == "__main__":

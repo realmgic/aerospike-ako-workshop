@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# Shared helpers for local NVMe storage (nvme-bootstrap + local-volume-provisioner).
+
+: "${NVME_WAIT_TIMEOUT:=1800}"
+: "${LOCAL_VOLUME_PROVISIONER_RESTART_TIMEOUT:=120}"
+
+nvme_bootstrap_desired() {
+  kubectl -n kube-system get ds nvme-bootstrap -o jsonpath='{.status.desiredNumberScheduled}' 2>/dev/null || echo 0
+}
+
+nvme_bootstrap_ready() {
+  kubectl -n kube-system get ds nvme-bootstrap -o jsonpath='{.status.numberReady}' 2>/dev/null || echo 0
+}
+
+wait_nvme_bootstrap_ready() {
+  local expected_nodes="${1:-$(nvme_bootstrap_desired)}"
+  local timeout="${2:-${NVME_WAIT_TIMEOUT}}"
+
+  if ! kubectl -n kube-system get ds nvme-bootstrap >/dev/null 2>&1; then
+    return 0
+  fi
+
+  local ready desired
+  ready="$(nvme_bootstrap_ready)"
+  desired="$(nvme_bootstrap_desired)"
+  if [[ "${desired:-0}" -eq 0 ]]; then
+    return 0
+  fi
+
+  echo "Waiting for nvme-bootstrap on i8g nodes (timeout ${timeout}s)..."
+  local deadline=$((SECONDS + timeout))
+  while true; do
+    ready="$(nvme_bootstrap_ready)"
+    desired="$(nvme_bootstrap_desired)"
+    echo "  nvme-bootstrap Ready: ${ready}/${desired}"
+    if [[ "${ready:-0}" -ge "${expected_nodes}" ]] && [[ "${ready}" == "${desired}" ]] && [[ "${desired}" -gt 0 ]]; then
+      echo "OK  nvme-bootstrap Ready on all scheduled nodes"
+      return 0
+    fi
+    if [[ "${SECONDS}" -gt "${deadline}" ]]; then
+      echo "ERROR: nvme-bootstrap did not become Ready in time" >&2
+      kubectl -n kube-system get pods -l app.kubernetes.io/name=nvme-bootstrap -o wide
+      exit 1
+    fi
+    sleep 15
+  done
+}
+
+restart_local_volume_provisioner() {
+  local timeout="${1:-${LOCAL_VOLUME_PROVISIONER_RESTART_TIMEOUT}}"
+
+  if ! kubectl -n aerospike get ds local-volume-provisioner >/dev/null 2>&1; then
+    echo "WARN local-volume-provisioner DaemonSet missing — skipping restart"
+    return 0
+  fi
+
+  echo "Restarting local-volume-provisioner so it discovers nvme-bootstrap disks..."
+  kubectl -n aerospike rollout restart ds/local-volume-provisioner
+  kubectl -n aerospike rollout status ds/local-volume-provisioner --timeout="${timeout}s"
+  echo "OK  local-volume-provisioner restarted"
+}
+
+count_local_ssd_pvs() {
+  kubectl get pv -l storageclass=local-ssd --no-headers 2>/dev/null | wc -l | tr -d ' '
+}
+
+disk_layouts_config() {
+  echo "${WORKSHOP_ROOT}/config/disk-layouts.yaml"
+}
+
+expected_local_ssd_pvs_per_node() {
+  local layout_key="${NVME_DISK_LAYOUT:-${NODE_TYPE:-}}"
+  local config script
+  config="$(disk_layouts_config)"
+  script="${WORKSHOP_ROOT}/scripts/setup/nvme-init.py"
+  if [[ -z "${layout_key}" || ! -f "${config}" || ! -f "${script}" ]]; then
+    echo ""
+    return 0
+  fi
+  python3 "${script}" --expected-pvs-per-node \
+    --config "${config}" --instance-type "${layout_key}" 2>/dev/null || echo ""
+}
