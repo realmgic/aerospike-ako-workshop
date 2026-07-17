@@ -13,37 +13,65 @@
 
 ## Takeaway
 
-On Karpenter, use **drain + AKO safe eviction** for planned node maintenance. For **Karpenter-initiated** disruption (consolidation, drift/AMI rollouts), pair safe eviction with a correctly sized **`terminationGracePeriod`** — do not rely on `k8sNodeBlockList` ([AKO #305](https://github.com/aerospike/aerospike-kubernetes-operator/issues/305)).
+On Karpenter, use **drain + AKO safe eviction** for planned node maintenance. Pre-load data so trainees see the pod held on the node while migration runs (`InProgress`, `eviction-blocked`). For **Karpenter-initiated** disruption (consolidation, drift/AMI rollouts), pair safe eviction with a correctly sized **`terminationGracePeriod`** — do not rely on `k8sNodeBlockList` ([AKO #305](https://github.com/aerospike/aerospike-kubernetes-operator/issues/305)).
 
 ## Prerequisites
 
 - `NODE_PROVISIONING=karpenter`
+- Lab 2.4 complete — dim cluster on **8.1.2.x**
 - `safePodEviction.enable=true` on operator
 - NodePool `terminationGracePeriod` ≥600s (configured in bootstrap)
 - Cluster Running; note pod→node mapping
 
-## Steps — Drain path (primary)
+## Phase 0 — Prepare lab
 
-Same as eksctl path — AKO safe eviction applies regardless of node provisioner:
+Same as the [eksctl guide](05-k8s-node-maintenance.md#phase-0--prepare-lab):
 
-1. Find node hosting an Aerospike pod:
+```bash
+./scripts/labs/prepare-lab.sh 2.5
+# optional: ./scripts/labs/prepare-lab.sh 2.5 --load-data
 
-   ```bash
-   kubectl -n aerospike get pods -o wide
-   NODE=<node-name>
-   ```
+kubectl -n aerospike get pods -o wide
+NODE=$(kubectl -n aerospike get pods -o wide --no-headers | awk 'NR==1{print $7}')
+echo "Maintenance target node: ${NODE}"
+```
 
-2. Attempt drain:
+## Phase 1 — Seed data
 
-   ```bash
-   kubectl drain "$NODE" --ignore-daemonsets --delete-emptydir-data
-   ```
+Same as the [eksctl guide](05-k8s-node-maintenance.md#phase-1--seed-data-make-migration-visible). Skip if you used `--load-data` during prep.
 
-   **Expected:** Eviction blocked or delayed; annotation `aerospike.com/eviction-blocked` may appear.
+## Phase 2 — Drain + observe (primary)
 
-3. Wait for CR `Completed`, retry drain.
+AKO safe eviction applies regardless of node provisioner. Use two terminals — see [Phase 2 in the main guide](05-k8s-node-maintenance.md#phase-2--drain--observe-core-demo).
 
-4. **Pass:** Drain succeeds without `--force` after cluster stable.
+**Terminal A:**
+
+```bash
+kubectl drain "$NODE" --ignore-daemonsets --delete-emptydir-data
+```
+
+**Terminal B (while drain blocks):**
+
+```bash
+kubectl -n aerospike get pod -o wide --field-selector spec.nodeName="$NODE"
+kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.status.phase}{"\n"}'
+kubectl get pod -n aerospike -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.metadata.annotations.aerospike\.com/eviction-blocked}{"\n"}{end}'
+kubectl run -it --rm aerospike-tool-migrate -n aerospike --restart=Never \
+  --image=aerospike/aerospike-tools:latest -- \
+  asadm -h aerocluster -U admin -P admin123 -e "show stat like migrate"
+```
+
+**Pass during migration:** pod on `$NODE` still `Running`; CR `InProgress`; `eviction-blocked` set.
+
+## Phase 3 — Complete drain
+
+```bash
+kubectl -n aerospike wait --for=jsonpath='{.status.phase}'=Completed aerospikecluster/aerocluster --timeout=900s
+kubectl drain "$NODE" --ignore-daemonsets --delete-emptydir-data
+kubectl -n aerospike get pods -o wide
+```
+
+**Pass:** Drain succeeds without `--force` after cluster stable.
 
 ## Steps — Observe Karpenter disruption (optional demo)
 
@@ -216,7 +244,7 @@ Workshop EC2NodeClass tracks **`al2023@latest`** (`01-ec2nodeclass-i8g.yaml`). P
 
 ## Verify (pass/fail)
 
-**Pass:** Node drained; Aerospike pods `Running` on other nodes; CR `Completed`. No `k8sNodeBlockList` applied.
+**Pass:** Pod held on node during `InProgress`; node drained after CR `Completed`; Aerospike pods `Running` on other nodes. No `k8sNodeBlockList` applied.
 
 ## What NOT to demo on Karpenter
 

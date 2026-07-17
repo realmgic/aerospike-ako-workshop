@@ -2,20 +2,22 @@
 # Prepare a lab: reset (Section 1), dim cluster staging (Labs 2.1/2.3), or upgrade-lab (Lab 2.6).
 #
 # Usage:
-#   ./scripts/labs/prepare-lab.sh <lab-id> [--full|--light|--skip-reset]
+#   ./scripts/labs/prepare-lab.sh <lab-id> [--full|--light|--skip-reset] [--load-data]
 set -euo pipefail
 source "$(dirname "$0")/../lib/common.sh"
 load_env
 
-LAB_ID="${1:?Usage: prepare-lab.sh <lab-id> [--full|--light|--skip-reset]}"
+LAB_ID="${1:?Usage: prepare-lab.sh <lab-id> [--full|--light|--skip-reset] [--load-data]}"
 shift || true
 
 RESET_OVERRIDE=""
+LOAD_DATA=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --full) RESET_OVERRIDE=full ;;
     --light) RESET_OVERRIDE=light ;;
     --skip-reset) RESET_OVERRIDE=skip ;;
+    --load-data) LOAD_DATA=true ;;
     *)
       echo "ERROR: unknown option: $1" >&2
       exit 1
@@ -124,6 +126,31 @@ validate_dim_baseline_image() {
   return 1
 }
 
+validate_dim_maintenance_image() {
+  local image
+  image="$(kubectl -n "${NAMESPACE}" get aerospikecluster aerocluster -o jsonpath='{.spec.image}' 2>/dev/null || echo missing)"
+  if [[ "${image}" == *"8.1.2"* ]]; then
+    echo "OK  dim maintenance image (${image})"
+    return 0
+  fi
+  echo "FAIL expected 8.1.2.x image (got ${image}) — complete Lab 2.3 first" >&2
+  return 1
+}
+
+deploy_maintenance_dim_cluster() {
+  if [[ "${DEPLOY_PATH}" == "helm" ]]; then
+    "${SCRIPT_DIR}/deploy-dim-cluster-maintenance-helm.sh"
+  else
+    "${SCRIPT_DIR}/deploy-dim-cluster-maintenance.sh"
+  fi
+}
+
+wait_for_dim_cluster() {
+  kubectl -n "${NAMESPACE}" wait --for=jsonpath='{.status.phase}'=Completed \
+    aerospikecluster/aerocluster --timeout=600s
+  validate_dim_cluster
+}
+
 prepare_dim_cluster_lab() {
   local lab_id="$1"
   local reason="$2"
@@ -175,6 +202,46 @@ prepare_lab_2_3() {
     true
 }
 
+prepare_lab_2_5() {
+  local reset_mode="${RESET_OVERRIDE:-skip}"
+
+  echo "=== Prepare lab 2.5 (reset=${reset_mode}, DEPLOY_PATH=${DEPLOY_PATH}, load_data=${LOAD_DATA}) ==="
+  echo "Clearing Lab 2.4 operations and aligning to maintenance dim baseline (8.1.2.x)."
+
+  ensure_main_kubecontext
+
+  case "${reset_mode}" in
+    full)
+      echo "Running full reset (database + workload nodes)..."
+      "${WORKSHOP_SCRIPTS}/reset-cluster.sh" --yes
+      echo "ERROR: Lab 2.5 requires post-2.3 dim cluster on 8.1.2.x — run Labs 2.1–2.4 first or use --skip-reset" >&2
+      exit 1
+      ;;
+    light)
+      echo "Running light reset (delete AerospikeCluster aerocluster)..."
+      "${WORKSHOP_SCRIPTS}/labs/teardown-cluster.sh"
+      echo "ERROR: Lab 2.5 light reset removes cluster — use --skip-reset after Lab 2.4" >&2
+      exit 1
+      ;;
+    skip)
+      if ! kubectl -n "${NAMESPACE}" get aerospikecluster aerocluster >/dev/null 2>&1; then
+        echo "ERROR: aerocluster not found — complete Lab 2.4 first" >&2
+        exit 1
+      fi
+      validate_dim_maintenance_image
+      ;;
+  esac
+
+  deploy_maintenance_dim_cluster
+  wait_for_dim_cluster
+
+  if [[ "${LOAD_DATA}" == true ]]; then
+    "${SCRIPT_DIR}/load-dim-migration-data.sh"
+  fi
+
+  echo "=== Lab 2.5 prepared ==="
+}
+
 if [[ "${LAB_ID}" == "2.6" ]]; then
   require_cmd aws
   prepare_lab_2_6
@@ -191,13 +258,18 @@ if [[ "${LAB_ID}" == "2.3" ]]; then
   exit 0
 fi
 
+if [[ "${LAB_ID}" == "2.5" ]]; then
+  prepare_lab_2_5
+  exit 0
+fi
+
 ensure_main_kubecontext
 
 default_reset_for_lab() {
   case "$1" in
     1.1|1.2|1.3|1.4|1.5) echo "light" ;;
     *)
-      echo "ERROR: unknown lab id: $1 (expected 1.1–1.5, 2.1, 2.3, or 2.6)" >&2
+      echo "ERROR: unknown lab id: $1 (expected 1.1–1.5, 2.1, 2.3, 2.5, or 2.6)" >&2
       exit 1
       ;;
   esac

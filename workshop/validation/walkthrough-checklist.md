@@ -44,8 +44,8 @@ For **Karpenter path** runs, use [karpenter-walkthrough.md](karpenter-walkthroug
 ## Section 2 — Maintenance & Upgrade (continued)
 - [ ] **2.3** Upgrade Aerospike DB — 8.1.0.x→8.1.2.x, rolling restart
 - [ ] **2.4** On-demand operations — PodRestart (cold) then WarmRestart on dim 8.1.2.x
-- [ ] **2.5** K8s node maintenance — safe drain (both paths)
-- [ ] **2.5 (eksctl only)** — blocklist path validated
+- [ ] **2.5** K8s node maintenance — data loaded; pod held on node during `InProgress`; drain succeeds after `Completed`
+- [ ] **2.5 (eksctl only)** — blocklist path validated (same migration observation)
 - [ ] **2.5 (Karpenter only)** — drain + optional disruption; **no blocklist**
 - [ ] **2.5 (Karpenter only) add-on** — do-not-disrupt graduation + `terminationGracePeriod` (instructor-led)
 - [ ] **2.6** K8s control plane upgrade — 3 pods Running through upgrade (upgrade-lab eksctl cluster)

@@ -146,7 +146,7 @@ else
 fi
 
 # Secrets
-for s in aerospike-secret auth-secret; do
+for s in aerospike-secret auth-secret auth-app-secret; do
   if kubectl -n "${NAMESPACE}" get secret "${s}" >/dev/null 2>&1; then
     echo "OK  secret ${s}"
   else

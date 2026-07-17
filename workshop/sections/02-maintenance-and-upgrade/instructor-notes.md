@@ -8,7 +8,7 @@
 | 2.2 | ~30–40m | Three steps: 4.3.0 → 4.4.1 → 4.5.0; demo one step live |
 | 2.3 | ~20m | Rolling DB upgrade 8.1.0.x → 8.1.2.x (requires AKO 4.5.0) |
 | 2.4 | ~10m | PodRestart (cold) then WarmRestart on dim 8.1.2.x |
-| 2.5 | ~25m (+15m add-on) | Show eviction-blocked annotation; Karpenter add-on: do-not-disrupt graduation + terminationGracePeriod |
+| 2.5 | ~25m (+15m add-on) | Two-terminal drain demo: pre-load data; show pod held during `InProgress` + `eviction-blocked`; Karpenter add-on: do-not-disrupt graduation + terminationGracePeriod |
 | 2.6 | ~45m | Mostly waiting; pre-stage cluster + Aerospike |
 
 ## AKO upgrade (2.2)
@@ -28,7 +28,10 @@
 
 ## Lab 2.5 (node maintenance)
 
-- **eksctl path:** show drain + optional blocklist demo
+- **Pre-load data** — empty dim cluster migrates too fast; run `load-dim-migration-data.sh` or `prepare-lab.sh 2.5 --load-data`
+- **Two-terminal demo** — Terminal A: `kubectl drain`; Terminal B: prove pod still `Running` on node while CR is `InProgress`
+- If migration window is too short, increase `MIGRATION_LOAD_RECORDS` (e.g. `8000000`)
+- **eksctl path:** drain (primary) + optional blocklist demo
 - **Karpenter path:** drain only; optional NodeClaim disruption observe — see [05-k8s-node-maintenance-karpenter.md](05-k8s-node-maintenance-karpenter.md)
 - **Never** demo blocklist on Karpenter ([AKO #305](https://github.com/aerospike/aerospike-kubernetes-operator/issues/305))
 - **Karpenter add-on (~15m):** run after drain demo when audience is planning to allow voluntary Karpenter disruption

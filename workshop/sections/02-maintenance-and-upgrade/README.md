@@ -6,7 +6,7 @@ AKO and the platform can be upgraded and maintained safely — operator upgrades
 
 ## Prerequisites
 
-Section 0 complete. Run `./scripts/labs/prepare-lab.sh 2.1` before Lab 2.1 (dim baseline after Section 1). Run `./scripts/labs/prepare-lab.sh 2.3` before Lab 2.3 if coming from Lab 1.5 or retrying the DB upgrade.
+Section 0 complete. Run `./scripts/labs/prepare-lab.sh 2.1` before Lab 2.1 (dim baseline after Section 1). Run `./scripts/labs/prepare-lab.sh 2.3` before Lab 2.3 if coming from Lab 1.5 or retrying the DB upgrade. Run `./scripts/labs/prepare-lab.sh 2.5` before Lab 2.5 (clears Lab 2.4 operations; optional `--load-data`).
 
 ## Labs
 

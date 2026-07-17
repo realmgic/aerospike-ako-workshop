@@ -335,9 +335,17 @@ labs:
     node_provisioning: [eksctl, karpenter]
     eksctl_only_features: [k8sNodeBlockList]
     artifacts:
-      kubectl: [manifests/node-blocklist.yaml]
-      helm: [helm/node-blocklist-values.yaml]
-    scripts: []
+      kubectl:
+        - manifests/dim-cluster-maintenance.yaml
+        - manifests/node-blocklist.yaml
+      helm:
+        - helm/dim-cluster-maintenance-values.yaml
+        - helm/node-blocklist-values.yaml
+    scripts:
+      - scripts/labs/prepare-lab.sh
+      - scripts/labs/load-dim-migration-data.sh
+      - scripts/labs/deploy-dim-cluster-maintenance.sh
+      - scripts/labs/deploy-dim-cluster-maintenance-helm.sh
     depends_on: ["2.4"]
     doc_urls:
       - https://aerospike.com/docs/kubernetes/manage/node-maintenance

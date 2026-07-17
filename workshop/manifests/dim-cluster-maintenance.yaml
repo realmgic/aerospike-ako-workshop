@@ -1,13 +1,14 @@
-# Lab 1.1: horizontal scale up to 5 nodes
+# Lab 2.5: post-2.4 dim baseline (8.1.2.x, no operations)
 apiVersion: asdb.aerospike.com/v1
 kind: AerospikeCluster
 metadata:
   name: aerocluster
   namespace: aerospike
 spec:
-  size: 5  # scaled from 3
-  image: aerospike/aerospike-server-enterprise:8.1.0.0
+  size: 3
+  image: aerospike/aerospike-server-enterprise:8.1.2.0
   enableDynamicConfigUpdate: true
+
   podSpec:
     nodeSelector:
       workshop.aerospike.com/node-pool: baseline
@@ -41,6 +42,7 @@ spec:
           limits:
             cpu: 100m
             memory: 128Mi
+
   storage:
     filesystemVolumePolicy:
       cascadeDelete: true
@@ -60,6 +62,7 @@ spec:
             secretName: aerospike-secret
         aerospike:
           path: /etc/aerospike/secret
+
   aerospikeAccessControl:
     users:
       - name: admin

@@ -1,4 +1,4 @@
-# Mirrors manifests/dim-cluster.yaml
+# Lab 2.5: k8sNodeBlockList — mirrors manifests/node-blocklist.yaml
 replicas: 3
 enableDynamicConfigUpdate: true
 
@@ -7,18 +7,20 @@ k8sNodeBlockList:
 
 image:
   repository: aerospike/aerospike-server-enterprise
-  tag: "8.1.0.0"
+  tag: "8.1.2.0"
 
 podSpec:
+  nodeSelector:
+    workshop.aerospike.com/node-pool: baseline
   multiPodPerHost: false
   aerospikeContainer:
     resources:
       requests:
-        cpu: "15"
-        memory: 115Gi
+        cpu: "7"
+        memory: 57Gi
       limits:
-        cpu: "15"
-        memory: 115Gi
+        cpu: "7"
+        memory: 57Gi
   sidecars:
     - name: aerospike-prometheus-exporter
       image: aerospike/aerospike-prometheus-exporter:1.32.0
@@ -40,7 +42,6 @@ podSpec:
         limits:
           cpu: 100m
           memory: 128Mi
-
 
 storage:
   filesystemVolumePolicy:
@@ -69,10 +70,14 @@ aerospikeAccessControl:
       roles:
         - sys-admin
         - user-admin
+    - name: app
+      secretName: auth-app-secret
+      roles:
+        - read
+        - write
     - name: exporter
       secretName: auth-exporter-secret
       roles: []
-
 
 aerospikeConfig:
   service:
@@ -88,7 +93,7 @@ aerospikeConfig:
   namespaces:
     - name: test
       replication-factor: 2
-      indexes-memory-budget: 30923764531  # 25% of 115.2 GiB (90% of 128 GiB) = 28.8 GiB
+      indexes-memory-budget: 15461882265  # 25% of 57.6 GiB (90% of 64 GiB) = 14.4 GiB
       storage-engine:
         type: memory
-        data-size: 61847529062  # 50% of 115.2 GiB (90% of 128 GiB) = 57.6 GiB
+        data-size: 30923764531  # 50% of 57.6 GiB (90% of 64 GiB) = 28.8 GiB

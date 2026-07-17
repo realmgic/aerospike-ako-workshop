@@ -124,6 +124,11 @@ spec:
         roles:
           - sys-admin
           - user-admin
+      - name: app
+        secretName: auth-app-secret
+        roles:
+          - read
+          - write
       - name: exporter
         secretName: auth-exporter-secret
         roles: []
