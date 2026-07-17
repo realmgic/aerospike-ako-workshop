@@ -8,7 +8,7 @@
 | EKS cluster | `my-cluster` |
 | Aerospike cluster | `aerocluster` |
 | AKO min version | **4.4.0** |
-| Aerospike baseline | dim 3-node on `${NODEGROUP_NAME}` (same as Lab 1.1 / 2.2), RF=2 |
+| Aerospike baseline | dim 3-node on per-AZ baseline pools (same as Lab 1.1 / 2.2), RF=2 |
 | Deploy path | both |
 | Duration | ~15 min |
 | Validation status | `draft` |
@@ -28,8 +28,8 @@ For AP namespaces, AKO **4.4.0+** applies `replication-factor` changes dynamical
 
 | Item | Value |
 |------|-------|
-| Instance | `i8g.2xlarge` × 4 on `${NODEGROUP_NAME}` (≥3 required for dim cluster) |
-| Reset | **Light** (database only — keeps 2xl nodegroup) |
+| Instance | `i8g.2xlarge` × 4 on baseline pool (`${NODEGROUP_NAME}-<zone>` or `${KARPENTER_NODEPOOL_NAME}-<zone>`; ≥3 required for dim cluster) |
+| Reset | **Light** (database only — keeps baseline pool) |
 
 ## Phase 0 — Prepare lab
 
@@ -37,7 +37,7 @@ For AP namespaces, AKO **4.4.0+** applies `replication-factor` changes dynamical
 ./scripts/labs/prepare-lab.sh 1.5
 ```
 
-**Expected:** Light reset tears down any existing Aerospike cluster; `${NODEGROUP_NAME}` (`ng-aerospike-2xl`) remains; 4× `i8g.2xlarge` Ready.
+**Expected:** Light reset tears down any existing Aerospike cluster; baseline pool remains; 4× `i8g.2xlarge` Ready with `node-pool=baseline`.
 
 If continuing directly from **Lab 2.2** with the dim cluster still Running and RF=2, skip the reset:
 
@@ -65,7 +65,7 @@ Same dim cluster as Lab 1.1 / 2.2 (RF=2 in namespace `test`):
 ./scripts/labs/deploy-dim-cluster-helm.sh  # Path B
 ```
 
-**Expected:** 3 pods Running on `${NODEGROUP_NAME}`; RF=2 in CR status.
+**Expected:** 3 pods Running on nodes with `node-pool=baseline`; RF=2 in CR status.
 
 Skip this section if you used `--skip-reset` and the dim cluster from Lab 2.2 is already Running with RF=2.
 

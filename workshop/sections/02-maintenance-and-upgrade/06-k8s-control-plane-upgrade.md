@@ -17,20 +17,22 @@ A live Aerospike cluster keeps running during EKS control plane upgrade — you 
 
 ## Prerequisites
 
-- Upgrade-lab cluster created during Section 0 step **0.7**, or pre-staged before this lab:
-
-  ```bash
-  ./scripts/labs/prepare-lab.sh 2.6
-  ```
-
-  Or switch context manually:
-
-  ```bash
-  ./scripts/lib/kubecontext.sh upgrade-lab
-  ```
-
-- **3 Aerospike pods Running** before starting demo
+- Upgrade-lab cluster created during Section 0 step **0.7**, or pre-staged before this lab (see **Phase 0 — Prepare lab** below)
 - Optional: light load via asbench left running
+
+## Phase 0 — Prepare lab
+
+```bash
+./scripts/labs/prepare-lab.sh 2.6
+```
+
+Or switch context manually:
+
+```bash
+./scripts/lib/kubecontext.sh upgrade-lab
+```
+
+**Expected:** Upgrade-lab cluster exists; 3 Aerospike pods Running before starting demo.
 
 ## Starting state
 
@@ -109,7 +111,7 @@ End of full training (delete **both** clusters in parallel):
 ./scripts/cleanup-lab.sh --yes
 ```
 
-Use `--sequential` to delete one cluster at a time (legacy order).
+Use `--sequential` to delete one cluster at a time (sequential order).
 
 ## References
 

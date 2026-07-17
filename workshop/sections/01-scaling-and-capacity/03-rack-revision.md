@@ -35,8 +35,8 @@ Vertical scaling combines **node pool locator** (`podSpec.nodeSelector`), larger
 | Item    | Value                                                                                                                                                                   |
 | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase 1 | `i8g.2xlarge` × 4 — `${NODEGROUP_NAME}-<zone>` (eksctl) or `${KARPENTER_NODEPOOL_NAME}-<zone>` (Karpenter) — label `workshop.aerospike.com/node-pool=baseline` |
-| Phase 2 | `i8g.4xlarge` × 4 — `${NODEGROUP_NAME_VERTICAL}-<zone>` or `${KARPENTER_NODEPOOL_VERTICAL_NAME}-<zone>` — label `workshop.aerospike.com/node-pool=vertical` **added alongside** 2xl |
-| Reset   | **Light** at lab start (database only; reuses 2xl pool)                                                                                                                 |
+| Phase 2 | `i8g.4xlarge` × 4 — `${NODEGROUP_NAME_VERTICAL}-<zone>` or `${KARPENTER_NODEPOOL_VERTICAL_NAME}-<zone>` — label `workshop.aerospike.com/node-pool=vertical` **added alongside baseline** |
+| Reset   | **Light** at lab start (database only; reuses baseline pool)                                                                                                                 |
 
 
 During Phase 2, both pools coexist (8 nodes total until `./scripts/reset-cluster.sh` before Section 2 or end of day):
@@ -88,9 +88,9 @@ kubectl get nodes -l workshop.aerospike.com/node-pool=baseline -o custom-columns
 kubectl get nodes -L workshop.aerospike.com/node-pool,node.kubernetes.io/instance-type
 ```
 
-**Expected:** 4× `i8g.4xlarge` Ready in both zones with `node-pool=vertical`; 2xl baseline pool remains (4 idle nodes). Pods stay on baseline until Phase 3. `ensure --vertical` validates vertical local-ssd PVs immediately (~6 per 4xl node, e.g. `OK vertical (i8g.4xlarge): 24 local-ssd PVs`); restarts the provisioner if PVs are not yet discovered on new nodes.
+**Expected:** 4× `i8g.4xlarge` Ready in both zones with `node-pool=vertical`; baseline pool remains (4 idle nodes). Pods stay on baseline until Phase 3. `ensure --vertical` validates vertical local-ssd PVs immediately (~6 per 4xl node, e.g. `OK vertical (i8g.4xlarge): 24 local-ssd PVs`); restarts the provisioner if PVs are not yet discovered on new nodes.
 
-**Note:** Ensure EC2 quota covers **8 nodes** during Phase 2 (4×2xl idle + 4×4xl active).
+**Note:** Ensure EC2 quota covers **8 nodes** during Phase 2 (4× baseline idle + 4× vertical active).
 
 ### Karpenter path
 
@@ -165,7 +165,7 @@ kubectl -n aerospike get pvc -o wide
 | Missing `workshop.aerospike.com/node-pool` labels         | Re-run `lab-nodes.sh 1.3 ensure` (baseline) or `ensure --vertical`; for eksctl, labels are patched after scale                                                                                                       |
 | local-ssd PVC Pending (4xl)                               | Re-run `./scripts/labs/lab-nodes.sh 1.3 ensure --vertical` (waits for nvme-bootstrap, restarts provisioner, validates PVs). Verify `kubectl get pv -l storageclass=local-ssd` — expect ~6×512Gi per i8g.4xlarge node |
 | Drain stuck on local-storage pods                         | Expected during migration; wait for AKO                                                                                                                                                                              |
-| EC2 quota exceeded during Phase 2                         | Request quota for 8× i8g (4×2xl + 4×4xl)                                                                                                                                                                             |
+| EC2 quota exceeded during Phase 2                         | Request quota for 8× i8g (4× baseline idle + 4× vertical)                                                                                                                                                            |
 | Multi-AZ validation fails on vertical pool                | Re-run `./scripts/labs/lab-nodes.sh 1.3 ensure --vertical` — per-AZ vertical pools guarantee `${MIN_NODES_PER_ZONE}` nodes per zone                                                                                  |
 
 ## Not covered here

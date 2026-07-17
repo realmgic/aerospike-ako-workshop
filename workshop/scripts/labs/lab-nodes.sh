@@ -77,26 +77,6 @@ eksctl_nodegroup_exists() {
   eksctl get nodegroup --cluster="${CLUSTER_NAME}" --region="${AWS_REGION}" --name="${name}" >/dev/null 2>&1
 }
 
-wait_nodes_instance_type() {
-  local instance_type="$1"
-  local expected="$2"
-  local deadline=$((SECONDS + NODE_WAIT_TIMEOUT))
-  while true; do
-    local ready
-    ready="$(count_nodes_instance_type "${instance_type}")"
-    echo "  ${instance_type} nodes Ready: ${ready}/${expected}"
-    if [[ "${ready}" -ge "${expected}" ]]; then
-      return 0
-    fi
-    if [[ "${SECONDS}" -gt "${deadline}" ]]; then
-      echo "ERROR: timed out waiting for ${expected}× ${instance_type} nodes" >&2
-      kubectl get nodes -o wide
-      exit 1
-    fi
-    sleep 15
-  done
-}
-
 wait_2xl_nodes() {
   local expected="$1"
   local deadline=$((SECONDS + NODE_WAIT_TIMEOUT))
@@ -559,7 +539,7 @@ scale_up_2xl() {
   local target=5
   local nodes_before
   nodes_before="$(count_2xl_nodes_ready)"
-  echo "=== Scaling 2xl pool to ${target} nodes (per-AZ) ==="
+  echo "=== Scaling baseline pool to ${target} nodes (per-AZ) ==="
   if [[ "${NODE_PROVISIONING}" == "karpenter" ]]; then
     apply_karpenter_baseline_pool "${target}"
   else
@@ -590,7 +570,7 @@ ensure_vertical_4xl() {
 validate_2xl_pool() {
   local expected="${1:-${NODE_COUNT}}"
   local exact="${2:-false}"
-  echo "=== Validating 2xl pool (expect ${expected}× ${NODE_TYPE} Ready, multi-AZ) ==="
+  echo "=== Validating baseline pool (expect ${expected}× ${NODE_TYPE} Ready, multi-AZ) ==="
   local ready
   ready="$(count_2xl_nodes_ready)"
   if [[ "${ready}" -lt "${expected}" ]]; then

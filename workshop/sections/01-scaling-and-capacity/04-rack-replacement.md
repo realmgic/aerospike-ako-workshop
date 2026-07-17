@@ -30,21 +30,21 @@ Replacing rack IDs (remove racks 1+2, add racks 3+4) scales vertically to the sa
 | Item | Value |
 |------|-------|
 | Phase 1 | `i8g.2xlarge` × 4 — `workshop.aerospike.com/node-pool=baseline` |
-| Phase 2 | `i8g.4xlarge` × 4 — `workshop.aerospike.com/node-pool=vertical` **added alongside** 2xl |
-| Phase 3 | Pods on vertical / 4xl only |
-| Reset | **Light** at lab start (database only; provisions baseline 2xl pool) |
+| Phase 2 | `i8g.4xlarge` × 4 — `workshop.aerospike.com/node-pool=vertical` **added alongside baseline** |
+| Phase 3 | Pods on vertical pool only |
+| Reset | **Light** at lab start (database only; provisions baseline pool) |
 
 During Phase 2, both pools may coexist (8 nodes total) — same quota note as Lab 1.3.
 
-## Phase 0 — Light reset + baseline 2xl nodes
+## Phase 0 — Prepare lab
 
 ```bash
 ./scripts/labs/prepare-lab.sh 1.4
 ```
 
-**Expected:** Database torn down; 4× `i8g.2xlarge` Ready with `node-pool=baseline`.
+**Expected:** Light reset tears down database; 4× `i8g.2xlarge` Ready with `node-pool=baseline`.
 
-## Phase 1 — Deploy v1 baseline (racks 1+2 on 2xl)
+## Phase 1 — Deploy v1 baseline (racks 1+2 on baseline pool)
 
 ```bash
 ./scripts/labs/deploy-rack-cluster.sh       # Path A

@@ -46,7 +46,7 @@ Pick **one** main-cluster node strategy at Section 0 (orthogonal to OLM/Helm):
 | Aerospike Database (post Lab 2.3) | **8.1.2** (`8.1.2.0` image tag) | `AEROSPIKE_UPGRADE_IMAGE` |
 | AKO (install) | 4.2.0 | `AKO_VERSION_START` |
 | AKO (post Lab 2.2) | 4.5.0 | `AKO_VERSION_TARGET` |
-| Kubernetes (main) | 1.32 | `K8S_VERSION` |
+| Kubernetes (main) | 1.33 (env-driven) | `K8S_VERSION` in [workshop.env.example](scripts/env/workshop.env.example) |
 
 ### AKO / Aerospike compatibility
 
@@ -133,7 +133,7 @@ Skip the upgrade-lab cluster (defer to Lab 2.6):
 ./scripts/setup/setup-all.sh --skip-upgrade-lab
 ```
 
-Legacy sequential bootstrap (main EKS, then later upgrade-lab EKS):
+Sequential bootstrap (main EKS, then later upgrade-lab EKS):
 
 ```bash
 ./scripts/setup/setup-all.sh --sequential

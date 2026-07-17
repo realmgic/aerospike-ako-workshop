@@ -1,5 +1,5 @@
 # NVMe bootstrap for all database nodes — replaces manual node-shell loop.
-# Partitions instance-store NVMe per training/config/disk-layouts.yaml and symlinks
+# Partitions instance-store NVMe per workshop/config/disk-layouts.yaml and symlinks
 # block devices into /mnt/disks for local-volume-provisioner.
 apiVersion: apps/v1
 kind: DaemonSet

@@ -18,7 +18,7 @@ count_baseline_workload_nodes() {
 
 echo "=== Environment validation (NODE_PROVISIONING=${NODE_PROVISIONING}) ==="
 
-# Workload nodes (Lab 1.1 pool) — created in step 0.2-nodes
+# Workload nodes (baseline per-AZ pools) — created in step 0.2-nodes
 if [[ "${NODE_PROVISIONING}" == "karpenter" ]]; then
   if kubectl -n "${KARPENTER_NAMESPACE}" get deploy karpenter >/dev/null 2>&1; then
     ready="$(kubectl -n "${KARPENTER_NAMESPACE}" get deploy karpenter -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo 0)"

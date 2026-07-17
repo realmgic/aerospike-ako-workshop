@@ -13,9 +13,9 @@ Run a full end-to-end walkthrough of every lab on a real EKS environment before 
 ## Prerequisites for validation
 
 - Main cluster `my-cluster`:
-  - **eksctl path:** workload nodes from Lab 1.1; vertical scale to i8g.4xlarge in Lab 1.3, K8s 1.32
-  - **Karpenter path:** system MNG; NodePool from Lab 1.1; additive `${KARPENTER_NODEPOOL_VERTICAL_NAME}` in Lab 1.3 Phase 2 — see [karpenter-walkthrough.md](karpenter-walkthrough.md)
-- Upgrade-lab cluster `my-cluster-k8s-upgrade` (3× i8g.2xlarge, K8s 1.31→1.32) for Lab 2.6 only — **always eksctl MNG**
+  - **eksctl path:** baseline per-AZ pools from step 0.2-nodes; vertical pool in Lab 1.3 Phase 2; K8s version from `K8S_VERSION` (default 1.33)
+  - **Karpenter path:** system MNG; per-AZ baseline NodePools from step 0.2-nodes; vertical pool `${KARPENTER_NODEPOOL_VERTICAL_NAME}-<zone>` in Lab 1.3 Phase 2 — see [karpenter-walkthrough.md](karpenter-walkthrough.md)
+- Upgrade-lab cluster `my-cluster-k8s-upgrade` (3× i8g.2xlarge; K8s versions from `UPGRADE_LAB_K8S_VERSION_*`) for Lab 2.6 only — **always eksctl MNG**
 - Valid `features.conf` at path referenced in `scripts/setup/07-deploy-secrets.sh`
 - Both deploy paths (OLM/Helm) validated separately (or document N/A)
 - Both node provisioning paths (eksctl/Karpenter) validated separately for main cluster
@@ -46,7 +46,7 @@ validation_status: validated
 validated_on: "2026-07-14"
 validated_with:
   ako: "4.5.0"
-  k8s: "1.32"
+  k8s: "1.33"   # match K8S_VERSION in workshop.env
   node_provisioning: karpenter   # when applicable
 ```
 

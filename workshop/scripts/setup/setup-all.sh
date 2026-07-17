@@ -56,7 +56,7 @@ Options:
   --step NAME         Run one step (or composite 0.5 / 0.6)
   --from NAME         Run from step through 0.7-upgrade-lab (inclusive)
   --skip-upgrade-lab  Skip step 0.7 (Lab 2.6 upgrade-lab cluster)
-  --sequential        Disable parallel EKS bootstrap (legacy 0.2 then 0.7 order)
+  --sequential        Disable parallel EKS bootstrap (sequential 0.2 then 0.7 order)
 
 Examples:
   $(basename "$0")

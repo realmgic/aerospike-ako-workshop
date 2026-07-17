@@ -24,8 +24,6 @@ load_env() {
   : "${NODE_PROVISIONING:=eksctl}"
   : "${KARPENTER_VERSION:=1.1.1}"
   : "${KARPENTER_NAMESPACE:=karpenter}"
-  : "${KARPENTER_NODEPOOL_MIN:=4}"
-  : "${KARPENTER_NODEPOOL_MAX:=8}"
   : "${KARPENTER_CONSOLIDATION:=WhenEmpty}"
   : "${KARPENTER_SYSTEM_NODEGROUP:=ng-system}"
   : "${KARPENTER_SYSTEM_NODE_TYPE:=t3.large}"

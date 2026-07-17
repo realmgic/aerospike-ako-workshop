@@ -14,19 +14,26 @@ AKO scales Aerospike clusters horizontally, vertically, across racks, and adjust
 
 ## Reset-and-redeploy flow
 
-Default: **full reset** between labs (`reset-cluster.sh` removes database + workload nodes). Exceptions:
+Default: **light reset** between Section 1 labs (1.2–1.5). Lab **1.1** runs a **full reset** (same as default `prepare-lab.sh 1.1`). Use **full reset** only for cold start or recovery.
 
 | Lab | Reset | Command |
 |-----|-------|---------|
 | 1.1 | Full | `./scripts/labs/prepare-lab.sh 1.1` |
-| 1.2 | Light | `./scripts/labs/prepare-lab.sh 1.2` (keeps nodes; scales 2xl pool 5 → 4) |
-| 1.3 | Light | `./scripts/labs/prepare-lab.sh 1.3` (reuses 2xl pool; `--full` for hard wipe) |
-| 1.4 | **Light** | `./scripts/labs/prepare-lab.sh 1.4` (light reset; baseline 2xl, then vertical pool in lab) |
-| 1.5 | Light | `./scripts/labs/prepare-lab.sh 1.5` (after Lab 2.2; keeps `${NODEGROUP_NAME}` 2xl pool) |
+| 1.2 | Light | `./scripts/labs/prepare-lab.sh 1.2` (keeps nodes; scales baseline pool 5 → 4) |
+| 1.3 | Light | `./scripts/labs/prepare-lab.sh 1.3` (reuses baseline pool; `--full` for hard wipe) |
+| 1.4 | **Light** | `./scripts/labs/prepare-lab.sh 1.4` (light reset; baseline pool, then vertical pool in lab) |
+| 1.5 | Light | `./scripts/labs/prepare-lab.sh 1.5` (after Lab 2.2; keeps baseline pool) |
 
 Continuing Track A → B in one session (1.2 → 1.3): light reset only — no nodepool delete/recreate.
 
-Switching tracks after a break or from a broken state: run `prepare-lab.sh <lab> --full` before the first lab of the new track.
+**Recovery** (cold start or broken state):
+
+```bash
+./scripts/reset-cluster.sh --yes
+./scripts/labs/prepare-lab.sh <lab-id>
+```
+
+`prepare-lab.sh <lab> --full` is shorthand for full reset + ensure.
 
 ## Labs
 
@@ -46,6 +53,7 @@ When `NODE_PROVISIONING=karpenter`, watch node provisioning during scale-up labs
 
 ```bash
 kubectl get nodeclaims,nodes -w
+kubectl get nodes -l workshop.aerospike.com/node-pool=baseline -w
 ```
 
 Labs 1.1, 1.3 (vertical scale), and 1.4 are the best demos for Karpenter provisioning new i8g nodes.

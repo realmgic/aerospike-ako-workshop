@@ -23,7 +23,7 @@ Aerospike DB upgrade = change `spec.image`; AKO performs a **rolling restart** o
 
 **Compatibility:** AKO 4.2.0–4.4.1 supports Aerospike up to **8.1.0.x** only. AKO **4.5.0** adds support for **8.1.2.x** — run this lab only after the 4.5.0 upgrade step in Lab 2.2.
 
-## Phase 0 — Reset dim baseline
+## Phase 0 — Prepare lab
 
 If you ran **[Lab 1.5](../01-scaling-and-capacity/05-replication-factor.md)**, the cluster may be at RF=3. If Lab 2.3 was attempted before, the image may already be on **8.1.2.x**. Reset to a clean dim baseline (**8.1.0.x**, RF=2) before upgrading:
 

@@ -23,7 +23,7 @@ AKO's safe pod eviction webhook blocks drain until the Aerospike cluster is stab
 - `safePodEviction.enable=true` on operator (Helm values or OLM config)
 - Cluster Running; note pod→node mapping
 
-## Phase 0 — Baseline
+## Phase 0 — Prepare lab
 
 Capture pod placement before either maintenance technique:
 

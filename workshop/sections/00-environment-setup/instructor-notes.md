@@ -19,7 +19,7 @@
 | Do not mix `NODE_PROVISIONING` mid-session | Node labels, NVMe init, and Lab 2.5 content differ |
 | Set `KARPENTER_CONSOLIDATION=Off` during demos | Avoid surprise node termination |
 | Never demo `k8sNodeBlockList` on Karpenter | AKO #305 — use drain path only |
-| Pre-stage 4+ nodes before class | `KARPENTER_NODEPOOL_MIN=4` for stability |
+| Pre-stage 4+ nodes before class | Ensure `NODE_COUNT=4` and per-AZ baseline pools from step 0.2-nodes |
 
 ## Pitfalls
 
@@ -45,7 +45,7 @@
 
 Step **0.7** creates the upgrade-lab cluster (`my-cluster-k8s-upgrade`) by default for Lab 2.6. It adds ~3× `i8g.2xlarge` cost during Sections 1–2.
 
-- **Parallel bootstrap:** default `setup-all.sh` creates main + upgrade-lab EKS in parallel after 0.1 (~15–25 min saved). Use `--sequential` for legacy order.
+- **Parallel bootstrap:** default `setup-all.sh` creates main + upgrade-lab EKS in parallel after 0.1 (~15–25 min saved). Use `--sequential` for sequential EKS bootstrap.
 - Skip with `./scripts/setup/setup-all.sh --skip-upgrade-lab` and run `./scripts/labs/prepare-lab.sh 2.6` before that lab
 - **Parallel teardown:** default `cleanup-lab.sh` deletes both clusters concurrently (~10–20 min saved). Use `--sequential` for serial delete.
 - Scripts restore kubectl to `my-cluster` after step 0.7; use `./scripts/lib/kubecontext.sh show` to verify

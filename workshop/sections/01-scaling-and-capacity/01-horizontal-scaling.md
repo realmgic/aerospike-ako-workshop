@@ -56,7 +56,7 @@
 
 Horizontal scaling changes cluster capacity by adjusting the number of Aerospike pods. AKO updates the StatefulSet and manages rack distribution when racks are configured.
 
-The dim cluster uses `multiPodPerHost: false`, so each Aerospike pod requires its own Kubernetes node. Scaling Aerospike 3→5 needs 5 nodes. The training environment does not install Cluster Autoscaler — on the eksctl path you scale the node group before applying the scale-up manifest (Karpenter provisions nodes automatically; see **Observe** below).
+The dim cluster uses `multiPodPerHost: false`, so each Aerospike pod requires its own Kubernetes node. Scaling Aerospike 3→5 needs 5 nodes. The workshop environment does not install Cluster Autoscaler — on the eksctl path you scale the node group before applying the scale-up manifest (Karpenter provisions nodes automatically; see **Observe** below).
 
 ## Steps
 
@@ -122,7 +122,7 @@ kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.status.phas
 kubectl get nodeclaims,nodes -w
 ```
 
-**Expected:** Pending pods trigger new NodeClaims; nodes join with label `workshop.aerospike.com/workload=aerospike`.
+**Expected:** Pending pods trigger new NodeClaims; nodes join with label `workshop.aerospike.com/node-pool=baseline` (also `workshop.aerospike.com/workload=aerospike` on Karpenter NodePools).
 
 ## Troubleshooting
 

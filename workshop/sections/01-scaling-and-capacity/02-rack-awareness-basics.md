@@ -33,7 +33,7 @@ Racks map to failure domains (zones); adding `rackConfig` redistributes pods and
 | Item       | Value                                                                      |
 | ---------- | -------------------------------------------------------------------------- |
 | Instance   | `i8g.2xlarge` × 4                                                          |
-| Reset      | **Light** (database only; keeps nodes from 1.1; **scales 2xl pool 5 → 4**) |
+| Reset      | **Light** (database only; keeps nodes from 1.1; **scales baseline pool 5 → 4**) |
 | Nodegroups | 2 × `${NODEGROUP_NAME}-<zone>` (eksctl) or 2 × `${KARPENTER_NODEPOOL_NAME}-<zone>` (Karpenter) |
 | AZs        | ≥ `${MIN_NODES_PER_ZONE}` Ready per zone in `${AWS_ZONES}` (enforced by per-AZ pools at prepare) |
 
@@ -123,7 +123,7 @@ Rack revision/replacement → Labs [1.3](03-rack-revision.md), [1.4](04-rack-rep
 
 ## Teardown / handoff
 
-Track B: `./scripts/labs/prepare-lab.sh 1.3` (light reset — reuses 2xl pool from 1.1/1.2).
+Track B: `./scripts/labs/prepare-lab.sh 1.3` (light reset — reuses baseline pool from 1.1/1.2).
 
 Or `./scripts/reset-cluster.sh --yes` if done for the day.
 

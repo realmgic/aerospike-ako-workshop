@@ -3,7 +3,7 @@
 #   CLUSTER_NAME, AWS_REGION, K8S_VERSION, AWS_ZONES
 #   KARPENTER_SYSTEM_NODEGROUP, KARPENTER_SYSTEM_NODE_TYPE, KARPENTER_SYSTEM_NODE_COUNT
 #   SSH_PUBLIC_KEY
-# Workload NodePool (${KARPENTER_NODEPOOL_NAME}) is created in step 0.2-nodes (02-ensure-workload-nodepool.sh).
+# Workload NodePools (${KARPENTER_NODEPOOL_NAME}-<zone>) are created in step 0.2-nodes (02-ensure-workload-nodepool.sh).
 apiVersion: eksctl.io/v1alpha5
 kind: ClusterConfig
 metadata:
