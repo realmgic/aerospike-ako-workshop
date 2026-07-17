@@ -214,7 +214,8 @@ ensure_eksctl_pools_per_zone() {
 
   read_aws_zones_array
   local num_zones="${#AWS_ZONES_ARRAY[@]}"
-  local zone idx=0 ng_name count pids=() pid
+  local zone idx=0 ng_name count pid
+  local -a pids=()
 
   for zone in "${AWS_ZONES_ARRAY[@]}"; do
     [[ -z "${zone}" ]] && continue
@@ -228,9 +229,11 @@ ensure_eksctl_pools_per_zone() {
     fi
     idx=$((idx + 1))
   done
-  for pid in "${pids[@]}"; do
-    wait "${pid}"
-  done
+  if ((${#pids[@]} > 0)); then
+    for pid in "${pids[@]}"; do
+      wait "${pid}"
+    done
+  fi
 }
 
 karpenter_consolidation_exports() {
@@ -286,15 +289,18 @@ apply_karpenter_pools_per_zone() {
   consolidate_after="$(karpenter_consolidation_exports)"
 
   read_aws_zones_array
-  local zone pids=() pid
+  local zone pid
+  local -a pids=()
   for zone in "${AWS_ZONES_ARRAY[@]}"; do
     [[ -z "${zone}" ]] && continue
     ( apply_karpenter_nodepool_in_zone "${zone}" "${vertical}" "${consolidate_after}" ) &
     pids+=($!)
   done
-  for pid in "${pids[@]}"; do
-    wait "${pid}"
-  done
+  if ((${#pids[@]} > 0)); then
+    for pid in "${pids[@]}"; do
+      wait "${pid}"
+    done
+  fi
 }
 
 karpenter_bootstrap_deployment_name() {
