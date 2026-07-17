@@ -60,7 +60,12 @@ Describe what must already be running (pods, AKO version, kubeconfig context).
 
 ```bash
 # From workshop/ directory
-./scripts/labs/deploy-dim-cluster.sh
+./scripts/labs/deploy-dim-cluster.sh          # Path A
+# applies manifests/dim-cluster.yaml
+# or: kubectl apply -f manifests/dim-cluster.yaml
+
+./scripts/labs/deploy-dim-cluster-helm.sh     # Path B
+# applies helm/dim-cluster-values.yaml
 ```
 
 **Expected:** 3 pods Running; `AerospikeCluster` phase `Completed`.

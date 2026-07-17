@@ -30,8 +30,11 @@ If you ran **[Lab 1.5](../01-scaling-and-capacity/05-replication-factor.md)**, t
 ```bash
 ./scripts/labs/teardown-cluster.sh
 ./scripts/labs/deploy-dim-cluster.sh       # Path A
-# or
+# applies manifests/dim-cluster.yaml
+# or: kubectl apply -f manifests/dim-cluster.yaml
+
 ./scripts/labs/deploy-dim-cluster-helm.sh  # Path B
+# applies helm/dim-cluster-values.yaml
 ```
 
 Confirm starting state:

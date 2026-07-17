@@ -48,8 +48,10 @@ During Phase 2, both pools may coexist (8 nodes total) — same quota note as La
 
 ```bash
 ./scripts/labs/deploy-rack-cluster.sh       # Path A
-# or
+# or: envsubst '$NODE_ZONE_A $NODE_ZONE_B' < manifests/rack-cluster-v1.yaml | kubectl apply -f -
+
 ./scripts/labs/deploy-rack-cluster-helm.sh  # Path B
+# applies helm/rack-cluster-v1-values.yaml
 ```
 
 **Expected:** `aerocluster-1-v1-*`, `aerocluster-2-v1-*` on `baseline` / `i8g.2xlarge`; memory `57Gi`; CR `Completed`.

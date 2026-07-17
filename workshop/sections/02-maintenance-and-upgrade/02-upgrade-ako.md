@@ -24,6 +24,8 @@ AKO must be upgraded **one version at a time** — each release updates chart/bu
 - 3-node dim cluster Running on **8.1.0.x** (compatible with AKO 4.2.0):
   ```bash
   ./scripts/labs/deploy-dim-cluster.sh
+  # applies manifests/dim-cluster.yaml
+  # or: kubectl apply -f manifests/dim-cluster.yaml
   kubectl -n aerospike get pods
   ```
 

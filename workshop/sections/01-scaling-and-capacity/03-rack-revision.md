@@ -64,8 +64,10 @@ Use `./scripts/labs/prepare-lab.sh 1.3 --full` only for a hard wipe (database + 
 
 ```bash
 ./scripts/labs/deploy-rack-cluster.sh       # Path A
-# or
+# or: envsubst '$NODE_ZONE_A $NODE_ZONE_B' < manifests/rack-cluster-v1.yaml | kubectl apply -f -
+
 ./scripts/labs/deploy-rack-cluster-helm.sh  # Path B
+# applies helm/rack-cluster-v1-values.yaml
 ```
 
 **Expected:** 4 pods on revision `v1`; CR `Completed`; pods pinned to `baseline` pool.

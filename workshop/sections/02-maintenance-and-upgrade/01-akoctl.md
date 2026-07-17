@@ -21,6 +21,8 @@
 
   ```bash
   ./scripts/labs/deploy-dim-cluster.sh
+  # applies manifests/dim-cluster.yaml
+  # or: kubectl apply -f manifests/dim-cluster.yaml
   kubectl -n aerospike get pods
   ```
 

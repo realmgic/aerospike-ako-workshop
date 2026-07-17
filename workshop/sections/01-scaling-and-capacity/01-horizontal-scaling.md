@@ -46,8 +46,11 @@
 
 ```bash
 ./scripts/labs/deploy-dim-cluster.sh          # Path A
-# or
+# applies manifests/dim-cluster.yaml
+# or: kubectl apply -f manifests/dim-cluster.yaml
+
 ./scripts/labs/deploy-dim-cluster-helm.sh     # Path B
+# applies helm/dim-cluster-values.yaml
 ```
 
 **Expected:** 3 pods Running; CR phase `Completed`.
@@ -98,8 +101,25 @@ Skip on Karpenter if you prefer to watch auto-provision on Pending pods (see **O
 
 ### Path B — Helm
 
-1. Edit `helm/dim-cluster-values.yaml` — set `replicas: 5` and upgrade.
-2. Scale down — set `replicas: 3` and upgrade.
+1. Scale up Aerospike to 5 nodes:
+
+   ```bash
+   helm upgrade aerocluster aerospike/aerospike-cluster \
+     -n aerospike -f helm/dim-cluster-scale-5-values.yaml --version=4.2.0
+   kubectl -n aerospike get pods -w
+   ```
+
+   **Expected:** 5 pods reach `Running`; release status `deployed`.
+
+2. Scale down to 3 — re-apply the baseline values:
+
+   ```bash
+   helm upgrade aerocluster aerospike/aerospike-cluster \
+     -n aerospike -f helm/dim-cluster-values.yaml --version=4.2.0
+   kubectl -n aerospike get pods -w
+   ```
+
+   **Expected:** Pods terminate until 3 remain; release status `deployed`.
 
 ## Verify (pass/fail)
 

@@ -77,6 +77,7 @@ Render zones from `workshop.env`, then upgrade:
 
 ```bash
 source scripts/env/workshop.env
+# values: helm/dim-cluster-with-racks-values.yaml
 envsubst '$NODE_ZONE_A $NODE_ZONE_B' < helm/dim-cluster-with-racks-values.yaml | \
   helm upgrade aerocluster aerospike/aerospike-cluster -n aerospike -f -
 ```

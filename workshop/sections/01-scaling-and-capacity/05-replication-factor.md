@@ -61,8 +61,11 @@ Same dim cluster as Lab 1.1 / 2.2 (RF=2 in namespace `test`):
 
 ```bash
 ./scripts/labs/deploy-dim-cluster.sh       # Path A
-# or
+# applies manifests/dim-cluster.yaml
+# or: kubectl apply -f manifests/dim-cluster.yaml
+
 ./scripts/labs/deploy-dim-cluster-helm.sh  # Path B
+# applies helm/dim-cluster-values.yaml
 ```
 
 **Expected:** 3 pods Running on nodes with `node-pool=baseline`; RF=2 in CR status.
