@@ -89,7 +89,7 @@ Both eksctl and Karpenter use the same **`nvme-bootstrap` DaemonSet** — no man
 
    **Expected on i8g.2xlarge:** Symlinks to `<instance-store>p1`, `p2`, `p3` (3× 512 GiB partitions).
 
-5. Verify local-ssd PVs (script restarts the provisioner after nvme-bootstrap):
+5. Verify local-ssd PVs (script restarts the provisioner only if PV count is short):
 
    ```bash
    kubectl get pv -l storageclass=local-ssd
@@ -170,7 +170,7 @@ Optional demo after Part B (uses [`manifests/local-ssd-demo.yaml`](../../manifes
 | Symptom | Fix |
 |---------|-----|
 | EBS PVC Pending | Verify EBS CSI IAM role and addon |
-| No local-ssd PVs after setup | Re-run `./scripts/setup/06-setup-local-storage.sh` or `./scripts/setup/08-validate-environment.sh` (both restart the provisioner after nvme-bootstrap) |
+| No local-ssd PVs after setup | Re-run `./scripts/setup/06-setup-local-storage.sh` or `./scripts/setup/08-validate-environment.sh` (both restart the provisioner only if PV count is short) |
 | nvme-bootstrap not Ready | Check privileged init logs; re-run `06-setup-local-storage.sh` |
 | No partition symlinks | Confirm instance type in `disk-layouts.yaml`; check IMDS from node |
 | Cleanup controller not deleting PVCs | Verify `--storageclass-names=local-ssd` and controller pod logs |

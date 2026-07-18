@@ -56,7 +56,7 @@ During Phase 2, both pools coexist (8 nodes total until `./scripts/reset-cluster
 ./scripts/labs/prepare-lab.sh 1.3
 ```
 
-**Expected:** 4× `i8g.2xlarge` Ready across `${AWS_ZONES}` with `workshop.aerospike.com/node-pool=baseline`. Prep also validates baseline local-ssd PVs (~3 per node, e.g. `OK baseline (i8g.2xlarge): 12 local-ssd PVs`); restarts the provisioner automatically if PVs are missing.
+**Expected:** 4× `i8g.2xlarge` Ready across `${AWS_ZONES}` with `workshop.aerospike.com/node-pool=baseline`. Prep also validates baseline local-ssd PVs (~3 per node, e.g. `OK baseline (i8g.2xlarge): 12 local-ssd PVs`); restarts the provisioner only if PV count is short.
 
 Use `./scripts/labs/prepare-lab.sh 1.3 --full` only for a hard wipe (database + all workload pools).
 
@@ -91,7 +91,7 @@ kubectl get nodes -l workshop.aerospike.com/node-pool=baseline -o custom-columns
 kubectl get nodes -L workshop.aerospike.com/node-pool,node.kubernetes.io/instance-type
 ```
 
-**Expected:** 4× `i8g.4xlarge` Ready in both zones with `node-pool=vertical`; baseline pool remains (4 idle nodes). Pods stay on baseline until Phase 3. `ensure --vertical` validates vertical local-ssd PVs immediately (~6 per 4xl node, e.g. `OK vertical (i8g.4xlarge): 24 local-ssd PVs`); restarts the provisioner if PVs are not yet discovered on new nodes.
+**Expected:** 4× `i8g.4xlarge` Ready in both zones with `node-pool=vertical`; baseline pool remains (4 idle nodes). Pods stay on baseline until Phase 3. `ensure --vertical` validates vertical local-ssd PVs (~6 per 4xl node, e.g. `OK vertical (i8g.4xlarge): 24 local-ssd PVs`); restarts the provisioner only if PV count is short.
 
 **Note:** Ensure EC2 quota covers **8 nodes** during Phase 2 (4× baseline idle + 4× vertical active).
 
@@ -171,7 +171,7 @@ kubectl -n aerospike get pvc -o wide
 | Pods Pending after vertical pool add                      | Expected until Phase 3 apply; verify `nodeSelector: baseline` still pins Phase 1 pods                                                                                                                                |
 | Pods Pending after revision apply                         | Re-run `lab-nodes.sh 1.3 validate --vertical`; check `kubectl describe pod` for node affinity / PVC binding                                                                                                          |
 | Missing `workshop.aerospike.com/node-pool` labels         | Re-run `lab-nodes.sh 1.3 ensure` (baseline) or `ensure --vertical`; for eksctl, labels are patched after scale                                                                                                       |
-| local-ssd PVC Pending (4xl)                               | Re-run `./scripts/labs/lab-nodes.sh 1.3 ensure --vertical` (waits for nvme-bootstrap, restarts provisioner, validates PVs). Verify `kubectl get pv -l storageclass=local-ssd` — expect ~6×512Gi per i8g.4xlarge node |
+| local-ssd PVC Pending (4xl)                               | Re-run `./scripts/labs/lab-nodes.sh 1.3 ensure --vertical` (waits for nvme-bootstrap, restarts provisioner only if PV count is short, validates PVs). Verify `kubectl get pv -l storageclass=local-ssd` — expect ~6×512Gi per i8g.4xlarge node |
 | Drain stuck on local-storage pods                         | Expected during migration; wait for AKO                                                                                                                                                                              |
 | EC2 quota exceeded during Phase 2                         | Request quota for 8× i8g (4× baseline idle + 4× vertical)                                                                                                                                                            |
 | Multi-AZ validation fails on vertical pool                | Re-run `./scripts/labs/lab-nodes.sh 1.3 ensure --vertical` — per-AZ vertical pools guarantee `${MIN_NODES_PER_ZONE}` nodes per zone                                                                                  |

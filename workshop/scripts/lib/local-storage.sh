@@ -3,6 +3,7 @@
 
 : "${NVME_WAIT_TIMEOUT:=1800}"
 : "${LOCAL_VOLUME_PROVISIONER_RESTART_TIMEOUT:=120}"
+: "${LOCAL_VOLUME_PROVISIONER_SETTLE_SECS:=10}"
 
 nvme_bootstrap_desired() {
   kubectl -n kube-system get ds nvme-bootstrap -o jsonpath='{.status.desiredNumberScheduled}' 2>/dev/null || echo 0
@@ -127,9 +128,18 @@ ensure_local_ssd_pvs_for_pool() {
     return 0
   fi
 
-  echo "WARN ${pool_label}: ${actual}/${expected} local-ssd PVs — waiting for nvme-bootstrap and restarting provisioner..."
+  echo "WARN ${pool_label}: ${actual}/${expected} local-ssd PVs — waiting for nvme-bootstrap..."
   wait_nvme_bootstrap_ready "$(nvme_bootstrap_desired)" 300
+
+  actual="$(count_local_ssd_pvs_for_instance_type "${instance_type}")"
+  if [[ "${actual}" -ge "${expected}" ]]; then
+    echo "OK  ${pool_label}: ${actual} local-ssd PVs (expected ~${expected})"
+    return 0
+  fi
+
+  echo "WARN ${pool_label}: ${actual}/${expected} local-ssd PVs — restarting provisioner..."
   restart_local_volume_provisioner
+  sleep "${LOCAL_VOLUME_PROVISIONER_SETTLE_SECS}"
 
   actual="$(count_local_ssd_pvs_for_instance_type "${instance_type}")"
   if [[ "${actual}" -ge "${expected}" ]]; then
@@ -141,6 +151,21 @@ ensure_local_ssd_pvs_for_pool() {
   echo "  Check: kubectl get pv -l storageclass=local-ssd" >&2
   echo "  Check: kubectl -n kube-system logs ds/nvme-bootstrap -c init-nvme --tail=30" >&2
   return 1
+}
+
+count_baseline_workload_nodes() {
+  kubectl get nodes -l "workshop.aerospike.com/node-pool=baseline" --no-headers 2>/dev/null \
+    | grep -c Ready || true
+}
+
+ensure_baseline_local_ssd_pvs_for_setup() {
+  local node_count
+  node_count="$(count_baseline_workload_nodes)"
+  if [[ "${node_count}" -gt 0 ]]; then
+    ensure_local_ssd_pvs_for_pool "${NODE_TYPE}" "${node_count}" "baseline"
+  else
+    echo "SKIP local-ssd PV check (no baseline workload nodes yet)"
+  fi
 }
 
 validate_lab_1_3_baseline_local_storage() {

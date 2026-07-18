@@ -47,11 +47,9 @@ ready="$(nvme_bootstrap_ready)"
 desired="$(nvme_bootstrap_desired)"
 if [[ "${desired}" -gt 0 ]]; then
   wait_nvme_bootstrap_ready "${desired}"
-  restart_local_volume_provisioner
-  pv_count="$(count_local_ssd_pvs)"
-  echo "local-ssd PVs discovered: ${pv_count}"
+  ensure_baseline_local_ssd_pvs_for_setup
 else
-  echo "nvme-bootstrap not scheduled yet — run step 0.2-nodes first; PV restart runs in 0.6 validation."
+  echo "nvme-bootstrap not scheduled yet — run step 0.2-nodes first; PV check runs in 0.6 validation."
 fi
 
 kubectl -n kube-system get ds nvme-bootstrap 2>/dev/null || true

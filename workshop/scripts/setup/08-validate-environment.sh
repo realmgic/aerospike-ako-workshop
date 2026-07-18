@@ -76,32 +76,15 @@ else
   fail=1
 fi
 
-# Local-ssd PV discovery — restart provisioner after nvme-bootstrap (idempotent safety net)
+# Local-ssd PV discovery — restart provisioner only when count is short
 nvme_desired="$(nvme_bootstrap_desired)"
 if [[ "${nvme_desired}" -gt 0 ]]; then
   wait_nvme_bootstrap_ready "${nvme_desired}" 300
-  restart_local_volume_provisioner
 fi
-
 if [[ "${workload_nodes}" -gt 0 ]]; then
-  per_node="$(expected_local_ssd_pvs_per_node)"
-  actual="$(count_local_ssd_pvs)"
-  if [[ -n "${per_node}" ]]; then
-    expected=$((workload_nodes * per_node))
-    if [[ "${actual}" -ge "${expected}" ]]; then
-      echo "OK  ${actual} local-ssd PVs (expected ~${expected})"
-    else
-      echo "FAIL ${actual}/${expected} local-ssd PVs"
-      kubectl get pv -l storageclass=local-ssd 2>/dev/null || true
-      fail=1
-    fi
-  elif [[ "${actual}" -gt 0 ]]; then
-    echo "OK  ${actual} local-ssd PVs"
-  else
-    echo "FAIL no local-ssd PVs discovered"
-    kubectl get pv -l storageclass=local-ssd 2>/dev/null || true
-    fail=1
-  fi
+  ensure_local_ssd_pvs_for_pool "${NODE_TYPE}" "${workload_nodes}" "baseline" || fail=1
+elif [[ "${nvme_desired}" -gt 0 ]]; then
+  echo "SKIP local-ssd PV check (no baseline workload nodes yet)"
 fi
 
 # Operator
