@@ -23,7 +23,7 @@ Update [LAB_REGISTRY.yaml](../LAB_REGISTRY.yaml) `karpenter_validation` when com
 
 ## Section 1 — Scaling & Capacity
 
-- [ ] **1.1** Horizontal scaling — scale 3→5; observe `kubectl get nodeclaims -w`; scale back to 3
+- [ ] **1.1** Horizontal scaling — `load-data.sh` (5M records); scale 3→5; observe `kubectl get nodeclaims -w`; scale back to 3; migration wait on scale-down
 - [ ] **1.2** Rack awareness + vertical scale + revision — additive 4xl NodePool; `nodeSelector` baseline→vertical; pods on `i8g.4xlarge`; memory 115Gi; revision v2; 2× `local-ssd` PVCs per pod
 - [ ] **1.3** Rack replacement (standalone) — light reset; v1 on baseline pool; vertical pool; racks 3+4 replace 1+2; same 2× vertical profile as 1.2 v2
 
@@ -37,11 +37,11 @@ Update [LAB_REGISTRY.yaml](../LAB_REGISTRY.yaml) `karpenter_validation` when com
 - [ ] **1.4** Replication factor — RF 2→3 then 3→2 dynamic *(requires AKO 4.4.0+ from Lab 2.2)*
 
 ## Section 2 — Maintenance & Upgrade (continued)
-- [ ] **2.3** On-demand operations — WarmRestart then PodRestart (cold) on 8.1.0.x cluster
-- [ ] **2.4** Upgrade Aerospike DB — 8.1.0.x→8.1.2.x rolling restart
-- [ ] **2.5** Karpenter maintenance — data loaded; pod held during `InProgress`; drain after `Completed`; **no blocklist**
+- [ ] **2.3** On-demand operations — WarmRestart then PodRestart (cold) on 8.1.0.x cluster; optional `run-lab-workload.sh` in Terminal B
+- [ ] **2.4** Upgrade Aerospike DB — 8.1.0.x→8.1.2.x rolling restart; `run-lab-workload.sh` ~10k TPS through upgrade
+- [ ] **2.5** Karpenter maintenance — data loaded (`load-data.sh` or `prepare-lab.sh 2.5 --load-data`); pod held during `InProgress`; drain after `Completed`; **no blocklist**
 - [ ] **2.5 add-on** — do-not-disrupt graduation discussion; three protection layers; `terminationGracePeriod` sizing (instructor-led)
-- [ ] **2.6** Control plane upgrade — **upgrade-lab eksctl cluster** (unchanged)
+- [ ] **2.6** Control plane upgrade — **upgrade-lab eksctl cluster**; optional `run-lab-workload.sh --upgrade-lab` in Terminal B
 
 ## Path coverage (Karpenter + deploy path)
 

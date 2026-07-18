@@ -4,7 +4,7 @@
 
 | Lab | Duration | Notes |
 |-----|----------|-------|
-| 1.1 | ~15m | Quick win — scale up/down |
+| 1.1 | ~30–45m | Includes `load-data.sh`; observe scale-up rebalance and scale-down migration |
 | 1.2 | ~60m | Longest in Section 1 — rack awareness + vertical scale + revision; use minimal data |
 | 1.3 | ~30m | Discuss revision vs replacement |
 | 1.4 | ~15m | **After Lab 2.2** — dynamic RF demo; reuses baseline pool cluster (light reset) |
@@ -33,7 +33,7 @@ Full reset adds ~5–15 min (node provisioning + nvme-bootstrap on first i8g cre
 | Scale-up pods Pending on eksctl | Run `lab-nodes.sh 1.1 ensure --scale-up` before scale-up manifest |
 | 1.2 starts with 5 nodes from 1.1 | `prepare-lab.sh 1.2` scales baseline pool back to 4 automatically |
 | Rack pods Pending (node affinity) | `./scripts/reset-cluster.sh --yes && ./scripts/labs/prepare-lab.sh 1.2` |
-| Scale-down stuck | migrate-fill-delay; wait or reduce data |
+| Scale-down stuck | Check CR events; watch migration in `asadm`; wait for AKO to migrate records off removed nodes |
 | Lab 1.2 Phase 2 quota | Expect **8 nodes** (4× baseline idle + 4× vertical); verify EC2 quota |
 | Lab 1.3 standalone | Light reset at start; redeploys v1 then vertical pool — **does not require 1.2 v2** |
 | Missing node-pool labels | Re-run `lab-nodes.sh <lab> ensure`; eksctl path patches labels after scale |

@@ -6,10 +6,10 @@
 |-----|----------|-------|
 | 2.1 | ~15m (+10m optional) | Install verify, collectinfo tarball; optional: global flags, auth |
 | 2.2 | ~30–40m | Three steps: 4.3.0 → 4.4.1 → 4.5.0; demo one step live |
-| 2.3 | ~10m | WarmRestart then PodRestart (cold) on 8.1.0.x cluster (match deploy-cluster.sh) |
-| 2.4 | ~20m | Rolling DB upgrade 8.1.0.x → 8.1.2.x (requires AKO 4.5.0) |
+| 2.3 | ~10m | WarmRestart then PodRestart (cold) on 8.1.0.x cluster (match deploy-cluster.sh); optional Terminal B `run-lab-workload.sh` |
+| 2.4 | ~20m | Rolling DB upgrade 8.1.0.x → 8.1.2.x (requires AKO 4.5.0); start `run-lab-workload.sh` in Terminal B before image apply |
 | 2.5 | ~25m (+15m add-on) | Two-terminal drain demo: pre-load data; show pod held during `InProgress` + `eviction-blocked`; Karpenter add-on: do-not-disrupt graduation + terminationGracePeriod |
-| 2.6 | ~45m | Mostly waiting; pre-stage cluster + Aerospike |
+| 2.6 | ~45m | Mostly waiting; pre-stage cluster + Aerospike; optional `run-lab-workload.sh --upgrade-lab` in Terminal B through CP + nodegroup upgrade |
 
 ## AKO upgrade (2.2)
 
@@ -22,6 +22,7 @@
 
 - **Separate cluster only** — `./scripts/lib/kubecontext.sh upgrade-lab` or `./scripts/labs/prepare-lab.sh 2.6`
 - Start demo with Aerospike already Running + optional load
+- **Terminal B workload** — `./scripts/labs/run-lab-workload.sh --upgrade-lab start` before CP/nodegroup upgrade; stop after validate
 - Do not tear down Aerospike during upgrade
 - After Lab 2.6 (keep main cluster): `./scripts/cleanup-lab.sh --upgrade-lab-only --yes` then `./scripts/lib/kubecontext.sh main`
 - End of full training: `./scripts/cleanup-lab.sh --yes` (both clusters)

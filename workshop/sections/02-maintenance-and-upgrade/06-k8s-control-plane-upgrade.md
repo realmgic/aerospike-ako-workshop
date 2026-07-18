@@ -18,7 +18,7 @@ A live Aerospike cluster keeps running during EKS control plane upgrade — you 
 ## Prerequisites
 
 - Upgrade-lab cluster created during Section 0 step **0.7**, or pre-staged before this lab (see **Phase 0 — Prepare lab** below)
-- Optional: light load via asbench left running
+- Optional: continuous load via `./scripts/labs/run-lab-workload.sh` (second terminal window)
 
 ## Phase 0 — Prepare lab
 
@@ -44,6 +44,27 @@ aws eks describe-cluster --name my-cluster-k8s-upgrade --query cluster.version
 ```
 
 **Pass:** 3/3 Running; version `1.31`.
+
+## Optional — continuous workload (Terminal B)
+
+Switch to the upgrade-lab cluster, seed data if needed (`./scripts/labs/load-data.sh`), then in a **second terminal window**:
+
+```bash
+./scripts/lib/kubecontext.sh upgrade-lab
+./scripts/labs/run-lab-workload.sh --upgrade-lab start
+```
+
+Run the upgrade steps below in Terminal A. Watch throughput with:
+
+```bash
+./scripts/labs/run-lab-workload.sh --upgrade-lab status
+```
+
+Stop when finished:
+
+```bash
+./scripts/labs/run-lab-workload.sh --upgrade-lab stop
+```
 
 ## Steps
 
@@ -116,3 +137,4 @@ Use `--sequential` to delete one cluster at a time (sequential order).
 ## References
 
 - [eksctl cluster upgrade](https://docs.aws.amazon.com/eks/latest/eksctl/cluster-upgrade.html)
+- [scripts/labs/run-lab-workload.sh](../../scripts/labs/run-lab-workload.sh)

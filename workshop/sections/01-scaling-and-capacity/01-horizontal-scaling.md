@@ -11,7 +11,7 @@
 | Aerospike baseline | 3-node device storage on local-ssd (default; `--dim` for in-memory)     |
 | Deploy path        | both                                                                      |
 | Node provisioning  | both                                                                      |
-| Duration           | ~15 min                                                                   |
+| Duration           | ~30–45 min (includes data load)                                           |
 | Validation status  | `draft`                                                                   |
 | Official docs      | [Scaling](https://aerospike.com/docs/kubernetes/manage/configure/scaling) |
 
@@ -55,6 +55,16 @@
 
 **Expected:** 3 pods Running; CR phase `Completed`.
 
+## Load data (before scaling)
+
+Load **5M records × 1 KB** so scale-up rebalance and scale-down migration are visible (~5–15 min):
+
+```bash
+./scripts/labs/load-data.sh
+```
+
+Verify with `asadm -e "info"` (non-zero objects in namespace `test`).
+
 ## Background
 
 Horizontal scaling changes cluster capacity by adjusting the number of Aerospike pods. AKO updates the StatefulSet and manages rack distribution when racks are configured.
@@ -91,13 +101,13 @@ Skip on Karpenter if you prefer to watch auto-provision on Pending pods (see **O
    kubectl apply -f manifests/disk-cluster-scale-5.yaml
    kubectl -n aerospike get pods -w
    ```
-   **Expected:** 5 pods reach `Running`; CR `Completed`.
+   **Expected:** 5 pods reach `Running`; CR `Completed`; observe data rebalancing onto new nodes (`asadm -e "show stat like migrate"`).
 2. Scale down to 3 — re-apply the baseline manifest:
    ```bash
    kubectl apply -f manifests/disk-cluster.yaml
    kubectl -n aerospike get pods -w
    ```
-   **Expected:** Pods terminate until 3 remain; CR `Completed`.
+   **Expected:** AKO waits for migration before pods terminate; CR may show `InProgress`; then 3 pods remain and CR `Completed`.
 
 ### Path B — Helm
 
@@ -109,7 +119,7 @@ Skip on Karpenter if you prefer to watch auto-provision on Pending pods (see **O
    kubectl -n aerospike get pods -w
    ```
 
-   **Expected:** 5 pods reach `Running`; release status `deployed`.
+   **Expected:** 5 pods reach `Running`; release status `deployed`; observe data rebalancing onto new nodes.
 
 2. Scale down to 3 — re-apply the baseline values:
 
@@ -119,7 +129,7 @@ Skip on Karpenter if you prefer to watch auto-provision on Pending pods (see **O
    kubectl -n aerospike get pods -w
    ```
 
-   **Expected:** Pods terminate until 3 remain; release status `deployed`.
+   **Expected:** AKO waits for migration before pods terminate; then 3 pods remain; release status `deployed`.
 
 ## Verify (pass/fail)
 
@@ -134,7 +144,8 @@ kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.status.phas
 ## Observe
 
 - New pods created with sequential index
-- Scale-down may wait for data migration (`migrate-fill-delay`)
+- Scale-up: partitions rebalance onto new nodes (`asadm -e "show stat like migrate"`)
+- Scale-down: AKO waits for records to migrate off departing nodes before pods terminate (empty cluster scale-down is immediate)
 
 ### Karpenter path (`NODE_PROVISIONING=karpenter`)
 
@@ -149,7 +160,7 @@ kubectl get nodeclaims,nodes -w
 | Symptom | Fix |
 |---------|-----|
 | Pods `Pending`; insufficient memory/ports | Run `lab-nodes.sh 1.1 ensure --scale-up`; `kubectl describe pod <name>` |
-| Scale-down stuck | Check CR events; wait for migration |
+| Scale-down stuck | Check CR events; watch migration in `asadm`; wait for AKO to finish migrating records off removed nodes |
 
 ## Not covered here
 
@@ -164,3 +175,4 @@ Or `./scripts/reset-cluster.sh --yes` if done for the day.
 ## References
 
 - [Scaling](https://aerospike.com/docs/kubernetes/manage/configure/scaling)
+- [scripts/labs/load-data.sh](../../scripts/labs/load-data.sh)

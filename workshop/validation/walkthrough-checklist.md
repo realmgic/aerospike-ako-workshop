@@ -26,7 +26,7 @@ For **Karpenter path** runs, use [karpenter-walkthrough.md](karpenter-walkthroug
 
 ## Section 1 — Scaling & Capacity
 
-- [ ] **1.1** Horizontal scaling — size 3→5→3, phase Completed
+- [ ] **1.1** Horizontal scaling — `load-data.sh` (5M records); size 3→5→3; observe rebalance on scale-up and migration wait on scale-down; phase Completed
 - [ ] **1.1 (Karpenter)** — observe `nodeclaims` during scale-up
 - [ ] **1.2** Rack awareness + vertical scale + revision — pods include rack ID; `nodeSelector` baseline→vertical; nodes i8g.4xlarge, memory 115Gi, pods on v2 revision, 2× local-ssd PVCs per pod
 - [ ] **1.3** Rack replacement (standalone) — racks 3+4 only on vertical 4xl; memory 115Gi; no rack 1/2 pods
@@ -41,13 +41,13 @@ For **Karpenter path** runs, use [karpenter-walkthrough.md](karpenter-walkthroug
 - [ ] **1.4** Replication factor — RF 2→3 then 3→2 dynamic, no pod restart *(requires AKO 4.4.0+ from Lab 2.2)*
 
 ## Section 2 — Maintenance & Upgrade (continued)
-- [ ] **2.3** On-demand operations — WarmRestart then PodRestart (cold) on 8.1.0.x cluster
-- [ ] **2.4** Upgrade Aerospike DB — 8.1.0.x→8.1.2.x, rolling restart
-- [ ] **2.5** K8s node maintenance — data loaded; pod held on node during `InProgress`; drain succeeds after `Completed`
+- [ ] **2.3** On-demand operations — WarmRestart then PodRestart (cold) on 8.1.0.x cluster; optional `run-lab-workload.sh` in Terminal B during ops
+- [ ] **2.4** Upgrade Aerospike DB — 8.1.0.x→8.1.2.x, rolling restart; `run-lab-workload.sh` ~10k TPS through upgrade (Terminal B)
+- [ ] **2.5** K8s node maintenance — data loaded (`load-data.sh` or `prepare-lab.sh 2.5 --load-data`); pod held on node during `InProgress`; drain succeeds after `Completed`
 - [ ] **2.5 (eksctl only)** — blocklist path validated (same migration observation)
 - [ ] **2.5 (Karpenter only)** — drain + optional disruption; **no blocklist**
 - [ ] **2.5 (Karpenter only) add-on** — do-not-disrupt graduation + `terminationGracePeriod` (instructor-led)
-- [ ] **2.6** K8s control plane upgrade — 3 pods Running through upgrade (upgrade-lab eksctl cluster)
+- [ ] **2.6** K8s control plane upgrade — 3 pods Running through upgrade; optional `run-lab-workload.sh --upgrade-lab` in Terminal B (upgrade-lab eksctl cluster)
 
 ## Path coverage
 

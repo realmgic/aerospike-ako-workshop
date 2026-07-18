@@ -155,7 +155,7 @@ labs:
     artifacts:
       kubectl: [manifests/disk-cluster.yaml, manifests/dim-cluster.yaml, manifests/disk-cluster-scale-5.yaml, manifests/dim-cluster-scale-5.yaml]
       helm: [helm/disk-cluster-values.yaml, helm/dim-cluster-values.yaml, helm/disk-cluster-scale-5-values.yaml, helm/dim-cluster-scale-5-values.yaml]
-    scripts: [scripts/labs/prepare-lab.sh, scripts/labs/lab-nodes.sh, scripts/labs/deploy-cluster.sh, scripts/labs/deploy-cluster-helm.sh, scripts/labs/deploy-dim-cluster.sh, scripts/labs/deploy-dim-cluster-helm.sh]
+    scripts: [scripts/labs/prepare-lab.sh, scripts/labs/lab-nodes.sh, scripts/labs/deploy-cluster.sh, scripts/labs/deploy-cluster-helm.sh, scripts/labs/deploy-dim-cluster.sh, scripts/labs/deploy-dim-cluster-helm.sh, scripts/labs/load-data.sh]
     depends_on: ["0.6"]
     doc_urls:
       - https://aerospike.com/docs/kubernetes/manage/configure/scaling
@@ -283,6 +283,7 @@ labs:
       - scripts/labs/prepare-lab.sh
       - scripts/labs/deploy-cluster.sh
       - scripts/labs/deploy-cluster-helm.sh
+      - scripts/labs/run-lab-workload.sh
     depends_on: ["2.2"]
     doc_urls:
       - https://aerospike.com/docs/kubernetes/manage/configure/on-demand-operations
@@ -305,6 +306,7 @@ labs:
       - scripts/labs/prepare-lab.sh
       - scripts/labs/deploy-dim-cluster.sh
       - scripts/labs/deploy-dim-cluster-helm.sh
+      - scripts/labs/run-lab-workload.sh
     depends_on: ["2.3"]
     doc_urls:
       - https://aerospike.com/docs/kubernetes/install/deploy/upgrade-aerospike/
@@ -367,6 +369,7 @@ labs:
       - scripts/setup/upgrade-lab/upgrade-control-plane.sh
       - scripts/setup/upgrade-lab/upgrade-nodegroup.sh
       - scripts/setup/upgrade-lab/validate-post-upgrade.sh
+      - scripts/labs/run-lab-workload.sh
       - scripts/lib/kubecontext.sh
     depends_on: ["0.6", "0.7"]
     doc_urls:

@@ -234,7 +234,7 @@ kubectl akoctl collectinfo -n aerospike,operators --path /tmp/akoctl-lab
 | CR stuck `InProgress` | `describe aerospikecluster aerocluster`; AKO logs (`kubectl -n operators logs -f deployment/aerospike-operator-controller-manager manager`); `./scripts/verify-cluster.sh` |
 | Pods `Pending` (scheduling) | `describe pod`; node pool labels; `./scripts/labs/lab-nodes.sh <lab> validate` |
 | Pods `Pending` (PVC) | `get pvc -o wide`; `get pv -o custom-columns=NAME:.metadata.name,CLASS:.spec.storageClassName --no-headers \| awk '$2 == "local-ssd"'` |
-| Migration / scale-down slow | Expected during rack revision/replacement; watch AKO logs; wait for `migrate-fill-delay` |
+| Migration / scale-down slow | Expected during rack revision/replacement or scale-down with data; watch AKO logs and `asadm` migrate stats |
 | Operator `CrashLoopBackOff` | AKO logs; Path B: cert-manager; Path A: OLM CSV/InstallPlan |
 | Safe eviction blocks drain | AKO webhook — wait for CR `Completed`; see [Lab 2.5](sections/02-maintenance-and-upgrade/05-k8s-node-maintenance.md) |
 

@@ -36,6 +36,20 @@ If the cluster image or config does not match, redeploy the baseline first:
 ./scripts/labs/deploy-cluster-helm.sh      # Path B
 ```
 
+## Optional — continuous workload (Terminal B)
+
+Open a **second terminal window**. Seed data if needed (`./scripts/labs/load-data.sh`), then:
+
+```bash
+./scripts/labs/run-lab-workload.sh start
+```
+
+Run Part 1 and Part 2 in Terminal A while watching throughput in Terminal B (`status`). Stop when done:
+
+```bash
+./scripts/labs/run-lab-workload.sh stop
+```
+
 ## Background
 
 | Operation | `kind` | Effect |
@@ -173,3 +187,4 @@ Proceed to [Lab 2.4](04-upgrade-aerospike-db.md).
 - [manifests/pod-warm-restart-op.yaml](../../manifests/pod-warm-restart-op.yaml)
 - [manifests/pod-restart-op.yaml](../../manifests/pod-restart-op.yaml)
 - [On-demand operations](https://aerospike.com/docs/kubernetes/manage/configure/on-demand-operations)
+- [scripts/labs/run-lab-workload.sh](../../scripts/labs/run-lab-workload.sh)

@@ -114,17 +114,17 @@ Tunable via env when using Option A (increase if migration completes too quickly
 |----------|---------|---------|
 | `MIGRATION_LOAD_RECORDS` | `5000000` | Record count |
 | `MIGRATION_LOAD_OBJECT_SIZE` | `1024` | Bytes per object (`-o S1024`) |
-| `MIGRATION_LOAD_THREADS` | `4` | asbench threads |
+| `MIGRATION_LOAD_THREADS` | `64` | asbench threads (`-z`) |
 
 Verify data is present:
 
 ```bash
 kubectl run -it --rm aerospike-tool-ns -n aerospike --restart=Never \
   --image=aerospike/aerospike-tools:latest -- \
-  asinfo -h aerocluster -U app -P app123 -v "namespace/test"
+  asadm -h aerocluster -U app -P app123 -e "info"
 ```
 
-**Pass:** Non-zero `objects` and `used-bytes` in namespace `test`.
+**Pass:** Non-zero objects in namespace `test` (see `asadm` output).
 
 If you used Option B (`--load-data`), skip Option A and proceed to Phase 2 after verifying data is present.
 

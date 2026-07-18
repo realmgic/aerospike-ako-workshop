@@ -50,6 +50,20 @@ kubectl run -it --rm aerospike-tool-rf -n aerospike --restart=Never \
 
 **Pass:** Image `aerospike/aerospike-server-enterprise:8.1.0.0` (or current 8.1.0.x patch); 3/3 pods `Running`; all nodes report `replication-factor 2`.
 
+## Optional — continuous workload (Terminal B)
+
+Open a **second terminal window**. If the cluster has no records yet, load data first with `./scripts/labs/load-data.sh` in Terminal A, then start throughput:
+
+```bash
+./scripts/labs/run-lab-workload.sh start
+```
+
+Watch TPS in Terminal B (`status` tails `--debug` output). Perform the upgrade steps below in Terminal A. When finished:
+
+```bash
+./scripts/labs/run-lab-workload.sh stop
+```
+
 ## Steps
 
 ### Path A — kubectl
@@ -102,3 +116,4 @@ Proceed to [Lab 2.5](05-k8s-node-maintenance.md).
 ## References
 
 - [Upgrade Aerospike DB](https://aerospike.com/docs/kubernetes/install/deploy/upgrade-aerospike/)
+- [scripts/labs/run-lab-workload.sh](../../scripts/labs/run-lab-workload.sh)
