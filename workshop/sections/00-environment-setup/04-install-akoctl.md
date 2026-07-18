@@ -58,7 +58,7 @@ kubectl akoctl auth create -n aerospike
 
 Proceed to [Lab 0.5 — Storage layer](05-storage-layer.md).
 
-For a full akoctl walkthrough (configuration flags, `collectinfo` log collection), see [Lab 2.1](../02-maintenance-and-upgrade/01-akoctl.md) after a cluster is deployed.
+For a full akoctl walkthrough (`collectinfo` log collection; optional configuration flags and auth), see [Lab 2.1](../02-maintenance-and-upgrade/01-akoctl.md) after a cluster is deployed.
 
 ## References
 

@@ -94,7 +94,7 @@ Note: Lab **1.4** (replication factor) requires AKO **4.4.0+** — run after **2
 | 1.1 | Horizontal scaling | `my-cluster` | 4.2.0 | 0.6 |
 | 1.2 | Rack awareness, vertical scale & revision | `my-cluster` | 4.2.0 | 1.1 |
 | 1.3 | Rack replacement | `my-cluster` | 4.2.0 | — (standalone) |
-| 2.1 | akoctl (install, config, collectinfo) | `my-cluster` | — | 1.3 |
+| 2.1 | akoctl (install, collectinfo) | `my-cluster` | — | 1.3 |
 | 2.2 | Upgrade AKO | `my-cluster` | 4.2.0→4.5.0 | 2.1 |
 | **1.4** | **Replication factor** | `my-cluster` | **4.4.0** | **2.2** |
 | 2.3 | Upgrade Aerospike DB | `my-cluster` | **4.5.0** | 2.2 |

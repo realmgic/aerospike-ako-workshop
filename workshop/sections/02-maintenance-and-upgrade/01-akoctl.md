@@ -1,4 +1,4 @@
-# Lab 2.1 — akoctl: Install, Configuration, and Log Collection
+# Lab 2.1 — akoctl: Install and Log Collection
 
 
 | Field             | Value                                                          |
@@ -7,14 +7,14 @@
 | Section           | Maintenance & Upgrade                                          |
 | EKS cluster       | `my-cluster`                                                   |
 | Deploy path       | both                                                           |
-| Duration          | ~25 min                                                        |
+| Duration          | ~15 min (~25 min with optional sections)                       |
 | Validation status | `draft`                                                        |
 | Official docs     | [akoctl](https://aerospike.com/docs/kubernetes/manage/akoctl/) |
 
 
 ## Takeaway
 
-`akoctl` is the AKO Krew plugin for **RBAC setup** (`auth`) and **Kubernetes-side diagnostics** (`collectinfo`) — use global flags to target namespaces, kubeconfig, and cluster scope.
+`akoctl` is the AKO Krew plugin for **Kubernetes-side diagnostics** (`collectinfo`) — a tarball of cluster, operator, and K8s state for support cases. Optional sections cover global flags and the `auth` RBAC workflow (already done in [Lab 0.4](../00-environment-setup/04-install-akoctl.md)).
 
 ## Prerequisites
 
@@ -71,7 +71,71 @@ kubectl akoctl --help
 
 
 
-## Part 2 — Configuration (global flags)
+## Part 2 — Log collection (`collectinfo`)
+
+Collect diagnostics from **Aerospike** and **operator** namespaces:
+
+```bash
+./scripts/labs/akoctl-collectinfo.sh
+```
+
+Or run manually with an absolute output path:
+
+```bash
+mkdir -p /tmp/akoctl-lab
+kubectl akoctl collectinfo \
+  -n aerospike,operators \
+  --path /tmp/akoctl-lab
+```
+
+**Expected:** Command completes without error; tarball(s) appear under the output directory.
+
+### What is collected
+
+- Container and event logs
+- AerospikeCluster CRs, pods, StatefulSets, PVCs, services
+- Operator deployment logs in `operators`
+- Cluster-scoped: nodes, StorageClasses, CRDs, admission webhooks (when `--cluster-scope=true`)
+
+
+
+### Inspect output
+
+```bash
+ls -la /tmp/akoctl-lab
+# Extract and browse (filename varies by timestamp)
+tar -tzf /tmp/akoctl-lab/*.tar.gzip | head -30
+```
+
+**Discuss:** Use this bundle when opening Aerospike support cases — captures K8s state at a point in time.
+
+### Compare with asadm (optional)
+
+Run `asadm collectinfo` **inside a database pod** (not from a tools pod) — it captures OS, network, and filesystem detail from that node:
+
+```bash
+kubectl exec -it aerocluster-0-0 -c aerospike-server -n aerospike -- \
+  asadm -e collectinfo -U admin -P admin123
+```
+
+**Expected:** Command completes; collectinfo files appear under `/tmp` in the pod.
+
+Copy the output locally (optional):
+
+```bash
+mkdir -p /tmp/asadm-collectinfo
+kubectl cp aerospike/aerocluster-0-0:/tmp /tmp/asadm-collectinfo -c aerospike-server
+```
+
+**Point:** `asadm collectinfo` = per-node database/OS detail; `akoctl collectinfo` = cluster/operator/K8s detail.
+
+---
+
+
+
+## Optional — Configuration (global flags)
+
+Skip if time is short — the script in Part 2 uses sensible defaults.
 
 Review global flags shared by all subcommands:
 
@@ -115,7 +179,9 @@ kubectl get rolebinding,clusterrolebinding -n aerospike | grep aerospike
 
 
 
-## Part 3 — Auth workflow
+## Optional — Auth workflow
+
+Skip if time is short — `auth create` was covered in [Lab 0.4](../00-environment-setup/04-install-akoctl.md).
 
 1. List existing bindings:
   ```bash
@@ -136,64 +202,12 @@ kubectl get rolebinding,clusterrolebinding -n aerospike | grep aerospike
 
 
 
-## Part 4 — Log collection (`collectinfo`)
-
-Collect diagnostics from **Aerospike** and **operator** namespaces:
-
-```bash
-./scripts/labs/akoctl-collectinfo.sh
-```
-
-Or run manually with an absolute output path:
-
-```bash
-mkdir -p /tmp/akoctl-lab
-kubectl akoctl collectinfo \
-  -n aerospike,operators \
-  --path /tmp/akoctl-lab
-```
-
-**Expected:** Command completes without error; tarball(s) appear under the output directory.
-
-### What is collected
-
-- Container and event logs
-- AerospikeCluster CRs, pods, StatefulSets, PVCs, services
-- Operator deployment logs in `operators`
-- Cluster-scoped: nodes, StorageClasses, CRDs, admission webhooks (when `--cluster-scope=true`)
-
-
-
-### Inspect output
-
-```bash
-ls -la /tmp/akoctl-lab
-# Extract and browse (filename varies by timestamp)
-tar -tzf /tmp/akoctl-lab/*.tar.gzip | head -30
-```
-
-**Discuss:** Use this bundle when opening Aerospike support cases — captures K8s state at a point in time.
-
-### Compare with asadm (optional)
-
-```bash
-kubectl run -it --rm aerospike-tool -n aerospike --restart=Never \
-  --image=aerospike/aerospike-tools:latest -- \
-  asadm -h aerocluster -U admin -P admin123 -e "collectinfo"
-```
-
-**Point:** `asadm collectinfo` = database detail; `akoctl collectinfo` = cluster/operator/K8s detail.
-
----
-
-
-
 ## Verify (pass/fail)
 
 1. `kubectl krew list | grep akoctl` — plugin installed
-2. `kubectl akoctl auth create -n aerospike` — succeeds
-3. `collectinfo` produces tarball under output path
-4. Aerospike cluster phase `Completed`
+2. `collectinfo` produces tarball under output path
+3. Aerospike cluster phase `Completed`
+4. *(Optional)* `kubectl akoctl auth create -n aerospike` — succeeds
 
 
 

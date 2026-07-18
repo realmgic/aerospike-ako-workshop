@@ -12,7 +12,7 @@ Section 0 complete. Run `./scripts/labs/prepare-lab.sh 2.1` before Lab 2.1 (clus
 
 | Lab | Title | Cluster | Duration |
 |-----|-------|---------|----------|
-| 2.1 | [akoctl — install, config, logs](01-akoctl.md) | `my-cluster` | ~25m |
+| 2.1 | [akoctl — install, collectinfo](01-akoctl.md) | `my-cluster` | ~15m (+10m optional) |
 | 2.2 | [Upgrade AKO](02-upgrade-ako.md) | `my-cluster` | ~45–60m |
 | — | → then [Lab 1.4](../01-scaling-and-capacity/04-replication-factor.md) (replication factor) | `my-cluster` | ~15m |
 | 2.3 | [Upgrade Aerospike DB](03-upgrade-aerospike-db.md) | `my-cluster` | ~20m |

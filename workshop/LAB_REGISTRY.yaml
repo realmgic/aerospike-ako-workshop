@@ -224,7 +224,7 @@ labs:
     validated_with: { ako: null, k8s: null }
 
   - id: "2.1"
-    title: akoctl install configuration and log collection
+    title: akoctl install and log collection
     section: "02-maintenance-and-upgrade"
     guide: sections/02-maintenance-and-upgrade/01-akoctl.md
     eks_cluster: my-cluster

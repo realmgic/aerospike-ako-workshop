@@ -33,7 +33,7 @@ For **Karpenter path** runs, use [karpenter-walkthrough.md](karpenter-walkthroug
 
 ## Section 2 — Maintenance & Upgrade
 
-- [ ] **2.1** akoctl — install, config flags, auth, collectinfo tarball created
+- [ ] **2.1** akoctl — install, collectinfo tarball created (optional: config flags, auth)
 - [ ] **2.2** Upgrade AKO — ladder 4.2.0→4.5.0, Aerospike stays Running on 8.1.0.x
 
 ## Lab 1.4 (after 2.2)

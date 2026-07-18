@@ -4,7 +4,7 @@
 
 | Lab | Duration | Notes |
 |-----|----------|-------|
-| 2.1 | ~25m | Install verify, global flags, auth, collectinfo |
+| 2.1 | ~15m (+10m optional) | Install verify, collectinfo tarball; optional: global flags, auth |
 | 2.2 | ~30–40m | Three steps: 4.3.0 → 4.4.1 → 4.5.0; demo one step live |
 | 2.3 | ~20m | Rolling DB upgrade 8.1.0.x → 8.1.2.x (requires AKO 4.5.0) |
 | 2.4 | ~10m | PodRestart (cold) then WarmRestart on 8.1.2.x cluster |
