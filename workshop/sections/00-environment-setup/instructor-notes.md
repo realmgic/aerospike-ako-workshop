@@ -23,6 +23,14 @@
 | System MNG uses `CriticalAddonsOnly` taint | EKS-standard pattern — coredns/metrics-server tolerations declared in cluster yaml, not patched ad hoc |
 | Partial NodePool apply → reset before bootstrap | Run `01-reset-workload-nodepools.sh` then `02-ensure-workload-nodepool.sh` if zone mismatch or consolidationPolicy errors |
 
+## Karpenter cleanup (`cleanup-lab.sh`)
+
+| Symptom | Fix |
+|---------|-----|
+| Stuck at "Draining Karpenter workload pools..." | Normal drain can take up to ~15 min; progress is logged every 15s. Manual: `01-reset-workload-nodepools.sh` then `cleanup-lab.sh --main-only --yes` |
+| i8g nodes remain after cleanup | Orphan EC2 sweep runs pre/post delete; manual: terminate instances tagged `karpenter.sh/discovery=${CLUSTER_NAME}` |
+| Only 2× t3.large nodes remain during delete | Expected — system MNG; removed by `eksctl delete cluster` |
+
 ## Pitfalls
 
 | Issue | Mitigation |

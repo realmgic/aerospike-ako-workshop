@@ -9,10 +9,10 @@
 set -euo pipefail
 source "$(dirname "$0")/lib/common.sh"
 source "$(dirname "$0")/lib/nodepool-zones.sh"
+source "$(dirname "$0")/lib/karpenter-teardown.sh"
 load_env
 
 POD_WAIT_TIMEOUT=300
-NODEPOOL_WAIT_TIMEOUT=900
 
 usage() {
   cat <<EOF
@@ -204,43 +204,7 @@ delete_eksctl_nodegroups() {
 
 delete_karpenter_workload() {
   echo "=== Phase 2: Delete Karpenter workload NodePools ==="
-
-  read_aws_zones_array
-  local zone dep
-  for zone in "${AWS_ZONES_ARRAY[@]}"; do
-    [[ -z "${zone}" ]] && continue
-    dep="karpenter-bootstrap-$(zone_resource_suffix "${zone}")"
-    kubectl delete deployment "${dep}" -n kube-system --ignore-not-found
-    dep="karpenter-vertical-bootstrap-$(zone_resource_suffix "${zone}")"
-    kubectl delete deployment "${dep}" -n kube-system --ignore-not-found
-  done
-
-  local pool
-  while IFS= read -r pool; do
-    [[ -z "${pool}" ]] && continue
-    if kubectl get nodepool "${pool}" >/dev/null 2>&1; then
-      echo "Deleting NodePool ${pool}..."
-      kubectl delete nodepool "${pool}" --wait=true
-    fi
-  done < <(list_vertical_pool_names; list_baseline_pool_names)
-
-  echo "Waiting for workload nodes to terminate (timeout ${NODEPOOL_WAIT_TIMEOUT}s)..."
-  deadline=$((SECONDS + NODEPOOL_WAIT_TIMEOUT))
-  while true; do
-    workload_nodes="$(kubectl get nodes -l 'workshop.aerospike.com/workload=aerospike' --no-headers 2>/dev/null | wc -l | tr -d ' ')"
-    if [[ "${workload_nodes}" -eq 0 ]]; then
-      break
-    fi
-    if [[ "${SECONDS}" -gt "${deadline}" ]]; then
-      echo "ERROR: timed out waiting for Karpenter workload nodes to terminate (${workload_nodes} remaining)" >&2
-      kubectl get nodes -L workshop.aerospike.com/workload -o wide
-      exit 1
-    fi
-    echo "  ${workload_nodes} workload node(s) still present..."
-    sleep 15
-  done
-
-  echo "Karpenter workload nodes removed."
+  drain_karpenter_workload_for_teardown "${TARGET_CLUSTER}" reset
 }
 
 confirm_reset

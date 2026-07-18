@@ -251,7 +251,7 @@ kubectl akoctl collectinfo -n aerospike,operators --path /tmp/akoctl-lab
 |------|--------|
 | Remove Aerospike cluster only (keep nodegroups) | `./scripts/labs/teardown-cluster.sh` |
 | Remove database + all workload nodegroups/NodePools (keep EKS + AKO + storage) | `./scripts/reset-cluster.sh` |
-| Delete entire EKS cluster(s) | `./scripts/cleanup-lab.sh` (default: **both** clusters deleted **in parallel**) |
+| Delete entire EKS cluster(s) | `./scripts/cleanup-lab.sh` (default: **both** clusters deleted **in parallel**; Karpenter path drains bootstrap + workload pools first, ~15 min) |
 | Delete upgrade-lab only (after Lab 2.6) | `./scripts/cleanup-lab.sh --upgrade-lab-only` |
 | Delete main cluster only | `./scripts/cleanup-lab.sh --main-only` |
 | Sequential dual-cluster delete | `./scripts/cleanup-lab.sh --sequential` |
