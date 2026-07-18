@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 source "$(dirname "$0")/../lib/common.sh"
-source "$(dirname "$0")/../lib/render-yaml.sh"
+source "$(dirname "$0")/../lib/cluster-storage.sh"
 load_env
 ensure_main_kubecontext
 require_cmd helm
 
+values="$(resolve_cluster_helm_values pod-restart-op)"
 chart_version="$(resolve_cluster_helm_chart_version)"
 
 helm repo add aerospike "${HELM_REPO}" 2>/dev/null || true
 helm repo update
 
-render_workshop_yaml "${WORKSHOP_ROOT}/helm/rack-cluster-v1-values.yaml" | helm upgrade --install "${HELM_CLUSTER_RELEASE}" aerospike/aerospike-cluster \
+helm upgrade --install "${HELM_CLUSTER_RELEASE}" aerospike/aerospike-cluster \
   --namespace "${NAMESPACE}" \
   --version="${chart_version}" \
-  -f -
+  -f "${values}"
 
-echo "Helm rack v1 cluster deployed."
+echo "Applied PodRestart operation (Helm, ${EFFECTIVE_CLUSTER_STORAGE:-${CLUSTER_STORAGE}})."

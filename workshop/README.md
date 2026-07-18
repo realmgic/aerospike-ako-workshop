@@ -46,6 +46,7 @@ Pick **one** main-cluster node strategy at Section 0 (orthogonal to OLM/Helm):
 | Aerospike Database (post Lab 2.4) | **8.1.2** (`8.1.2.0` image tag) | `AEROSPIKE_UPGRADE_IMAGE` |
 | AKO (install) | 4.2.0 | `AKO_VERSION_START` |
 | AKO (post Lab 2.2) | 4.5.0 | `AKO_VERSION_TARGET` |
+| AKO cluster chart (Helm) | auto-detect installed operator | `AKO_CLUSTER_CHART_VERSION` (empty = auto) |
 | Kubernetes (main) | 1.33 (env-driven) | `K8S_VERSION` in [workshop.env.example](scripts/env/workshop.env.example) |
 
 ### AKO / Aerospike compatibility

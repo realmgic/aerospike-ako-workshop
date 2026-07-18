@@ -56,6 +56,8 @@ load_env() {
   : "${FEATURES_CONF_PATH:=secrets/features.conf}"
   : "${HELM_OPERATOR_RELEASE:=aerospike-kubernetes-operator}"
   : "${HELM_CLUSTER_RELEASE:=aerocluster}"
+  : "${AKO_VERSION_START:=4.2.0}"
+  : "${AKO_CLUSTER_CHART_VERSION:=}"
 
   IFS=',' read -r NODE_ZONE_A NODE_ZONE_B _ <<< "${AWS_ZONES},,"
   export NODE_ZONE_A NODE_ZONE_B
@@ -68,6 +70,80 @@ ako_operator_deployment_name() {
   else
     echo "aerospike-operator-controller-manager"
   fi
+}
+
+# Parse semver from aerospike-kubernetes-operator.v4.4.1 or chart name suffix.
+_ako_version_from_csv_name() {
+  local csv_name="$1"
+  if [[ "${csv_name}" =~ ^aerospike-kubernetes-operator\.v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+    echo "${BASH_REMATCH[1]}"
+  fi
+}
+
+# Parse semver from aerospike-kubernetes-operator-4.4.1 Helm chart string.
+_ako_version_from_helm_chart() {
+  local chart="$1"
+  if [[ "${chart}" =~ aerospike-kubernetes-operator-([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+    echo "${BASH_REMATCH[1]}"
+  fi
+}
+
+# Return installed AKO operator version (e.g. 4.4.1), or empty if unknown.
+installed_ako_version() {
+  local version="" chart="" csv="" installed=""
+  if [[ "${DEPLOY_PATH:-olm}" == "helm" ]]; then
+    if command -v helm >/dev/null 2>&1; then
+      if command -v jq >/dev/null 2>&1; then
+        chart="$(helm list -n "${OPERATOR_NAMESPACE}" -o json 2>/dev/null \
+          | jq -r --arg n "${HELM_OPERATOR_RELEASE}" '.[] | select(.name==$n) | .chart // empty' 2>/dev/null || true)"
+      else
+        chart="$(helm list -n "${OPERATOR_NAMESPACE}" 2>/dev/null \
+          | awk -v rel="${HELM_OPERATOR_RELEASE}" '$1 == rel { print $NF }' | head -1)"
+      fi
+      version="$(_ako_version_from_helm_chart "${chart}")"
+    fi
+  else
+    installed="$(kubectl get subscription aerospike-kubernetes-operator -n "${OPERATOR_NAMESPACE}" \
+      -o jsonpath='{.status.installedCSV}' 2>/dev/null || true)"
+    version="$(_ako_version_from_csv_name "${installed}")"
+    if [[ -z "${version}" && -n "${installed}" ]]; then
+      version="$(kubectl get csv "${installed}" -n "${OPERATOR_NAMESPACE}" \
+        -o jsonpath='{.spec.version}' 2>/dev/null || true)"
+    fi
+  fi
+  echo "${version}"
+}
+
+# aerospike-cluster chart --version: override, then installed operator, then install pin.
+resolve_cluster_helm_chart_version() {
+  if [[ -n "${AKO_CLUSTER_CHART_VERSION:-}" ]]; then
+    echo "${AKO_CLUSTER_CHART_VERSION}"
+    return 0
+  fi
+  local installed
+  installed="$(installed_ako_version)"
+  if [[ -n "${installed}" ]]; then
+    echo "${installed}"
+    return 0
+  fi
+  echo "Note: could not detect installed AKO — using AKO_VERSION_START (${AKO_VERSION_START}) for cluster chart" >&2
+  echo "${AKO_VERSION_START}"
+}
+
+# Fail if installed AKO is below minimum (semver compare via sort -V).
+validate_ako_min_version() {
+  local min_version="$1" installed=""
+  installed="$(installed_ako_version)"
+  if [[ -z "${installed}" ]]; then
+    echo "ERROR: could not detect installed AKO version (complete Lab 0.3 / 2.2 first)" >&2
+    return 1
+  fi
+  if [[ "$(printf '%s\n' "${min_version}" "${installed}" | sort -V | head -1)" == "${min_version}" ]]; then
+    echo "OK  AKO ${installed} (required >= ${min_version})"
+    return 0
+  fi
+  echo "ERROR: AKO ${installed} is below required ${min_version} — complete Lab 2.2 upgrade ladder first" >&2
+  return 1
 }
 
 features_conf_path() {

@@ -293,7 +293,7 @@ apply_cluster_manifest() {
 }
 
 helm_upgrade_cluster_values() {
-  local base="$1" version="${2:-${AKO_VERSION_START}}"
+  local base="$1" version="${2:-$(resolve_cluster_helm_chart_version)}"
   local values
   values="$(resolve_cluster_helm_values "${base}")"
   ensure_helm_repo
@@ -307,7 +307,7 @@ helm_upgrade_cluster_values() {
 # Dispatches on DEPLOY_PATH; base is the resolve_cluster_manifest /
 # resolve_cluster_helm_values base name (e.g. dim-cluster, dim-cluster-scale-5).
 apply_cluster_change() {
-  local base="$1" version="${2:-${AKO_VERSION_START}}"
+  local base="$1" version="${2:-$(resolve_cluster_helm_chart_version)}"
   if [[ "${DEPLOY_PATH}" == "helm" ]]; then
     helm_upgrade_cluster_values "${base}" "${version}"
   else

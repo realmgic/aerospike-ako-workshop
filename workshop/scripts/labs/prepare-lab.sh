@@ -283,18 +283,21 @@ prepare_lab_2_1() {
 }
 
 prepare_lab_2_3() {
+  validate_ako_min_version 4.4.0
   prepare_cluster_lab "2.3" \
     "Resetting to baseline on 8.1.0.x for on-demand operations (e.g. after Lab 1.4 or spec drift)." \
     true
 }
 
 prepare_lab_2_4() {
+  validate_ako_min_version 4.5.0
   prepare_cluster_lab "2.4" \
     "Resetting to baseline on 8.1.0.x (e.g. after Lab 1.4 RF=3, Lab 2.3 operations, or a prior 2.4 attempt)." \
     true
 }
 
 prepare_lab_2_5() {
+  validate_ako_min_version 4.5.0
   local reset_mode="${RESET_OVERRIDE:-}"
 
   echo "=== Prepare lab 2.5 (reset=${reset_mode:-deploy}, storage=${EFFECTIVE_CLUSTER_STORAGE}, DEPLOY_PATH=${DEPLOY_PATH}, load_data=${LOAD_DATA}) ==="

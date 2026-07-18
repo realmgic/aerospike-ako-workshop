@@ -8,13 +8,14 @@ require_cmd helm
 
 storage="${EFFECTIVE_CLUSTER_STORAGE:-${CLUSTER_STORAGE}}"
 values="$(resolve_cluster_helm_values dim-cluster-maintenance "${storage}")"
+chart_version="$(resolve_cluster_helm_chart_version)"
 
 helm repo add aerospike "${HELM_REPO}" 2>/dev/null || true
 helm repo update
 
 helm upgrade --install "${HELM_CLUSTER_RELEASE}" aerospike/aerospike-cluster \
   --namespace "${NAMESPACE}" --create-namespace \
-  --version="${AKO_VERSION_START}" \
+  --version="${chart_version}" \
   -f "${values}"
 
 echo "Helm maintenance cluster deployed (${storage})."

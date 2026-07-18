@@ -401,10 +401,14 @@ Same migration observation pattern, triggered via CR blocklist instead of drain 
 ### Path B — Helm
 
 1. Edit `helm/disk-node-blocklist-values.yaml` (or `helm/node-blocklist-values.yaml` with `--dim`) — set `k8sNodeBlockList` to `$NODE`.
-2. Apply and watch:
+2. Apply and watch (chart `--version` must match installed AKO — same resolver as `deploy-cluster-maintenance-helm.sh`):
   ```bash
+   source scripts/env/workshop.env
+   source scripts/lib/common.sh
+   load_env
    helm upgrade aerocluster aerospike/aerospike-cluster \
-     -n aerospike -f helm/disk-node-blocklist-values.yaml --version="${AKO_VERSION_START}"
+     -n aerospike -f helm/disk-node-blocklist-values.yaml \
+     --version="$(resolve_cluster_helm_chart_version)"
    kubectl -n aerospike get pod -o wide --field-selector spec.nodeName="$NODE" -w
   ```
 3. Wait for migration:
@@ -475,8 +479,12 @@ kubectl -n aerospike wait --for=jsonpath='{.status.phase}'=Completed aerospikecl
 **Path B — Helm:**
 
 ```bash
+source scripts/env/workshop.env
+source scripts/lib/common.sh
+load_env
 helm upgrade aerocluster aerospike/aerospike-cluster \
-  -n aerospike -f helm/disk-cluster-maintenance-values.yaml --version="${AKO_VERSION_START}" \
+  -n aerospike -f helm/disk-cluster-maintenance-values.yaml \
+  --version="$(resolve_cluster_helm_chart_version)" \
   --set k8sNodeBlockList=null
 kubectl -n aerospike wait --for=jsonpath='{.status.phase}'=Completed aerospikecluster/aerocluster --timeout=900s
 ```

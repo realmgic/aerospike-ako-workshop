@@ -116,24 +116,24 @@ Skip this section if you used `--skip-reset` and the cluster from Lab 2.2 is alr
 Baseline (if not already deployed):
 
 ```bash
-helm upgrade --install aerocluster aerospike/aerospike-cluster \
-  -n aerospike -f helm/disk-cluster-values.yaml --version=4.4.1
+./scripts/labs/deploy-cluster-helm.sh
 ```
 
-RF change (2 → 3):
+RF change (2 → 3) — chart `--version` matches installed AKO (see [Lab 2.3 Helm chart version](../02-maintenance-and-upgrade/03-on-demand-operations.md#helm-chart-version-path-b)):
 
 ```bash
+source scripts/env/workshop.env
+source scripts/lib/common.sh
+load_env
 helm upgrade aerocluster aerospike/aerospike-cluster \
-  -n aerospike -f helm/replication-factor-rf3-values.yaml --version=4.4.1
+  -n aerospike -f helm/replication-factor-rf3-values.yaml \
+  --version="$(resolve_cluster_helm_chart_version)"
 ```
 
 Scale down — reapply baseline (RF 3 → 2):
 
 ```bash
 ./scripts/labs/deploy-cluster-helm.sh
-# or:
-helm upgrade aerocluster aerospike/aerospike-cluster \
-  -n aerospike -f helm/disk-cluster-values.yaml --version=4.4.1
 ```
 
 **Expected:** RF drops to 2 immediately; no pod rolling restart.

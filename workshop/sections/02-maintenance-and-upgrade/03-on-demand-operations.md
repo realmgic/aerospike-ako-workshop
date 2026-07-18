@@ -36,6 +36,29 @@ If the cluster image or config does not match, redeploy the baseline first:
 ./scripts/labs/deploy-cluster-helm.sh      # Path B
 ```
 
+### Helm chart version (Path B)
+
+The `aerospike-cluster` chart `--version` must **match the installed AKO operator**, not the Lab 0.3 install pin.
+
+| Variable | Purpose |
+|----------|---------|
+| `AKO_VERSION_START` | Operator **install** pin (Lab 0.3 only) |
+| `AKO_VERSION_TARGET` | Curriculum **end-state** after the full Lab 2.2 ladder (4.5.0) — not a substitute for chart `--version` |
+| `AKO_CLUSTER_CHART_VERSION` | Optional override; if unset, scripts read the **installed operator** (4.4.1 or 4.5.0 after Lab 2.2) |
+
+After Lab 2.2, your operator may be **4.4.1** (short path) or **4.5.0** (full ladder). Workshop Helm scripts call `resolve_cluster_helm_chart_version()` to pick the right chart version automatically.
+
+Optional advanced (manual `helm upgrade` after sourcing env):
+
+```bash
+source scripts/env/workshop.env
+source scripts/lib/common.sh
+load_env
+helm upgrade aerocluster aerospike/aerospike-cluster \
+  -n aerospike -f helm/disk-pod-warm-restart-op-values.yaml \
+  --version="$(resolve_cluster_helm_chart_version)"
+```
+
 ## Optional — continuous workload (Terminal B)
 
 Open a **second terminal window**. Seed data if needed (`./scripts/labs/load-data.sh`), then:
@@ -83,8 +106,7 @@ kubectl -n aerospike describe aerospikecluster aerocluster | grep -A10 Operation
 ### Path B — Helm
 
 ```bash
-helm upgrade aerocluster aerospike/aerospike-cluster \
-  -n aerospike -f helm/disk-pod-warm-restart-op-values.yaml --version="${AKO_VERSION_START}"
+./scripts/labs/apply-pod-warm-restart-op-helm.sh
 kubectl -n aerospike get pods -w
 ```
 
@@ -121,8 +143,7 @@ kubectl -n aerospike describe aerospikecluster aerocluster | grep -A10 Operation
 ### Path B — Helm
 
 ```bash
-helm upgrade aerocluster aerospike/aerospike-cluster \
-  -n aerospike -f helm/disk-pod-restart-op-values.yaml --version="${AKO_VERSION_START}"
+./scripts/labs/apply-pod-restart-op-helm.sh
 kubectl -n aerospike get pods -w
 ```
 

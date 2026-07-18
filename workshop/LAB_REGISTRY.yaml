@@ -283,6 +283,8 @@ labs:
       - scripts/labs/prepare-lab.sh
       - scripts/labs/deploy-cluster.sh
       - scripts/labs/deploy-cluster-helm.sh
+      - scripts/labs/apply-pod-warm-restart-op-helm.sh
+      - scripts/labs/apply-pod-restart-op-helm.sh
       - scripts/labs/run-lab-workload.sh
     depends_on: ["2.2"]
     doc_urls:
