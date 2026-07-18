@@ -94,6 +94,7 @@ aerospikeConfig:
   namespaces:
     - name: test
       replication-factor: 2
+      migrate-sleep: 0 # For demo purposes only
       indexes-memory-budget: 15461882265  # 25% of 57.6 GiB (90% of 64 GiB) = 14.4 GiB
       storage-engine:
         type: memory

@@ -124,6 +124,7 @@ spec:
     namespaces:
       - name: test
         replication-factor: 2
+        migrate-sleep: 0 # For demo purposes only
         indexes-memory-budget: 98956046499  # 80% of 115.2 GiB (90% of 128 GiB) = 92.16 GiB
         storage-engine:
           type: device
