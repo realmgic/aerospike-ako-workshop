@@ -99,6 +99,16 @@ validate_lab_2_6_starting_state() {
     fi
   fi
 
+  local secret
+  for secret in aerospike-secret auth-secret auth-app-secret auth-exporter-secret; do
+    if kubectl -n "${NAMESPACE}" get secret "${secret}" >/dev/null 2>&1; then
+      echo "OK  secret ${secret}"
+    else
+      echo "FAIL secret ${secret} missing on upgrade-lab"
+      fail=1
+    fi
+  done
+
   if [[ "${fail}" -eq 0 ]]; then
     echo "Lab 2.6 starting state: PASS"
   else
@@ -125,7 +135,17 @@ prepare_lab_2_6() {
     if [[ "${RESET_OVERRIDE}" != "skip" ]]; then
       expected_engine="device"
       [[ "${EFFECTIVE_CLUSTER_STORAGE}" == dim ]] && expected_engine="memory"
-      if kubectl -n "${NAMESPACE}" get aerospikecluster aerocluster >/dev/null 2>&1; then
+      missing_secrets=false
+      for secret in aerospike-secret auth-secret auth-app-secret auth-exporter-secret; do
+        if ! kubectl -n "${NAMESPACE}" get secret "${secret}" >/dev/null 2>&1; then
+          missing_secrets=true
+          break
+        fi
+      done
+      if [[ "${missing_secrets}" == true ]]; then
+        echo "Upgrade-lab secrets missing — re-running post-bootstrap..."
+        "${WORKSHOP_SCRIPTS}/setup/upgrade-lab/setup-upgrade-lab-post-bootstrap.sh"
+      elif kubectl -n "${NAMESPACE}" get aerospikecluster aerocluster >/dev/null 2>&1; then
         actual="$(cluster_storage_engine_type)"
         if [[ "${actual}" != "${expected_engine}" ]]; then
           echo "Storage mismatch (${actual} vs ${expected_engine}) — re-running post-bootstrap..."

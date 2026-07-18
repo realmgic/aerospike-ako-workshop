@@ -4,6 +4,44 @@
 : "${NVME_WAIT_TIMEOUT:=1800}"
 : "${LOCAL_VOLUME_PROVISIONER_RESTART_TIMEOUT:=120}"
 : "${LOCAL_VOLUME_PROVISIONER_SETTLE_SECS:=10}"
+: "${LOCAL_SSD_STORAGE_CLASS:=local-ssd}"
+
+# PV field selectors only support metadata.name/namespace; filter by
+# spec.storageClassName client-side (local-volume-provisioner does not set a label).
+_local_ssd_pv_filter() {
+  local mode="$1"
+  python3 -c "
+import json, sys
+
+storage_class = sys.argv[1]
+mode = sys.argv[2]
+items = [
+    pv for pv in json.load(sys.stdin).get('items', [])
+    if pv.get('spec', {}).get('storageClassName') == storage_class
+]
+if mode == 'count':
+    print(len(items))
+elif mode == 'names':
+    print('\n'.join(pv['metadata']['name'] for pv in items))
+elif mode == 'node-hosts':
+    for pv in items:
+        terms = (
+            pv.get('spec', {})
+            .get('nodeAffinity', {})
+            .get('required', {})
+            .get('nodeSelectorTerms', [])
+        )
+        if not terms:
+            continue
+        exprs = terms[0].get('matchExpressions', [])
+        if exprs and exprs[0].get('values'):
+            print(exprs[0]['values'][0])
+" "${LOCAL_SSD_STORAGE_CLASS}" "${mode}"
+}
+
+kubectl_get_local_ssd_pvs() {
+  kubectl get pv -o json | _local_ssd_pv_filter names
+}
 
 nvme_bootstrap_desired() {
   kubectl -n kube-system get ds nvme-bootstrap -o jsonpath='{.status.desiredNumberScheduled}' 2>/dev/null || echo 0
@@ -62,7 +100,7 @@ restart_local_volume_provisioner() {
 }
 
 count_local_ssd_pvs() {
-  kubectl get pv -l storageclass=local-ssd --no-headers 2>/dev/null | wc -l | tr -d ' '
+  kubectl get pv -o json | _local_ssd_pv_filter count
 }
 
 disk_layouts_config() {
@@ -90,8 +128,7 @@ count_local_ssd_pvs_for_instance_type() {
   local instance_type="$1"
   local pv_hosts node count_on_node total=0
 
-  pv_hosts="$(kubectl get pv -l storageclass=local-ssd \
-    -o jsonpath='{range .items[*]}{.spec.nodeAffinity.required.nodeSelectorTerms[0].matchExpressions[0].values[0]}{"\n"}{end}' 2>/dev/null || true)"
+  pv_hosts="$(kubectl get pv -o json | _local_ssd_pv_filter node-hosts 2>/dev/null || true)"
 
   while IFS= read -r node; do
     [[ -z "${node}" ]] && continue
@@ -148,7 +185,7 @@ ensure_local_ssd_pvs_for_pool() {
   fi
 
   echo "FAIL ${pool_label}: local-ssd PVs not available (${actual}/${expected} for ${node_count}× ${instance_type})" >&2
-  echo "  Check: kubectl get pv -l storageclass=local-ssd" >&2
+  echo "  Check: kubectl get pv -o custom-columns=NAME:.metadata.name,CLASS:.spec.storageClassName --no-headers | awk '\$2 == \"local-ssd\"'" >&2
   echo "  Check: kubectl -n kube-system logs ds/nvme-bootstrap -c init-nvme --tail=30" >&2
   return 1
 }

@@ -7,6 +7,8 @@ metadata:
   namespace: aerospike
 data:
   useNodeNameOnly: "true"
+  labelsForPV: |
+    storageclass: local-ssd
   storageClassMap: |
     local-ssd:
        hostDir: /mnt/disks

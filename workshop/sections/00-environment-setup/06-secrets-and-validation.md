@@ -65,7 +65,7 @@ Secrets are deployed and the platform is validated — **no AerospikeCluster yet
 5. Local-ssd PVs discovered:
 
    ```bash
-   kubectl get pv -l storageclass=local-ssd
+   kubectl get pv -o custom-columns=NAME:.metadata.name,CLASS:.spec.storageClassName,CAPACITY:.spec.capacity.storage,STATUS:.status.phase --no-headers | awk '$2 == "local-ssd"'
    ```
 
    **Pass:** PV count matches instance-type layout × `${NODE_COUNT}` (e.g. 12 PVs for 4× i8g.2xlarge).

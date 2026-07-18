@@ -201,7 +201,7 @@ kubectl -n aerospike get events --sort-by='.lastTimestamp'
 
 ```bash
 kubectl -n aerospike get pvc -o wide
-kubectl get pv -l storageclass=local-ssd
+kubectl get pv -o custom-columns=NAME:.metadata.name,CLASS:.spec.storageClassName,CAPACITY:.spec.capacity.storage,STATUS:.status.phase --no-headers | awk '$2 == "local-ssd"'
 ```
 
 **Nodes**
@@ -234,7 +234,7 @@ kubectl akoctl collectinfo -n aerospike,operators --path /tmp/akoctl-lab
 | CRD upgrade failures | Never `kubectl delete` CRDs — use `kubectl replace` |
 | CR stuck `InProgress` | `describe aerospikecluster aerocluster`; AKO logs (`kubectl -n operators logs -f deployment/aerospike-operator-controller-manager manager`); `./scripts/verify-cluster.sh` |
 | Pods `Pending` (scheduling) | `describe pod`; node pool labels; `./scripts/labs/lab-nodes.sh <lab> validate` |
-| Pods `Pending` (PVC) | `get pvc -o wide`; `get pv -l storageclass=local-ssd` |
+| Pods `Pending` (PVC) | `get pvc -o wide`; `get pv -o custom-columns=NAME:.metadata.name,CLASS:.spec.storageClassName --no-headers \| awk '$2 == "local-ssd"'` |
 | Migration / scale-down slow | Expected during rack revision/replacement; watch AKO logs; wait for `migrate-fill-delay` |
 | Operator `CrashLoopBackOff` | AKO logs; Path B: cert-manager; Path A: OLM CSV/InstallPlan |
 | Safe eviction blocks drain | AKO webhook — wait for CR `Completed`; see [Lab 2.5](sections/02-maintenance-and-upgrade/05-k8s-node-maintenance.md) |

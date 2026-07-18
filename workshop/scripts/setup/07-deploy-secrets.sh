@@ -7,6 +7,8 @@ ensure_target_kubecontext
 
 require_cmd kubectl
 
+echo "Deploying secrets to cluster ${CLUSTER_NAME} (context: $(current_kube_context))"
+
 FEATURES="$(features_conf_path)"
 DEFAULT_FEATURES="${WORKSHOP_ROOT}/secrets/features.conf"
 if [[ ! -f "${FEATURES}" ]]; then
@@ -14,6 +16,8 @@ if [[ ! -f "${FEATURES}" ]]; then
   echo "Copy your Aerospike feature-key file to secrets/features.conf" >&2
   exit 1
 fi
+
+kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
 
 mkdir -p "${WORKSHOP_ROOT}/secrets"
 if [[ "${FEATURES}" != "${DEFAULT_FEATURES}" ]]; then

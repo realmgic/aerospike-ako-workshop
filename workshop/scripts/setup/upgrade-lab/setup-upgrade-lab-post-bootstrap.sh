@@ -35,11 +35,10 @@ else
   echo "akoctl already installed — skipping 04-install-akoctl.sh"
 fi
 
-if ! kubectl -n "${NAMESPACE}" get secret aerospike-secret >/dev/null 2>&1; then
-  "${UPGRADE_DIR}/02-setup-storage-secrets.sh"
-else
-  echo "Secrets already present on upgrade-lab — skipping 02-setup-storage-secrets.sh"
-fi
+# Same secrets as the main cluster (features.conf + lab auth passwords) — always
+# re-apply so upgrade-lab stays in sync after partial setup or main-cluster refresh.
+echo "Deploying secrets on upgrade-lab (same source as main cluster)..."
+"${UPGRADE_DIR}/02-setup-storage-secrets.sh"
 
 upgrade_lab_storage="$(resolve_cluster_storage 2.6)"
 echo "Upgrade-lab cluster storage: ${upgrade_lab_storage} ($(cluster_storage_reason 2.6 "${upgrade_lab_storage}"))"

@@ -6,6 +6,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSHOP_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 load_env() {
+  # Preserve CLUSTER_NAME when a wrapper targets upgrade-lab (or another cluster)
+  # before re-sourcing workshop.env — otherwise shared scripts hit the main cluster.
+  local preserve_cluster="${CLUSTER_NAME:-}"
   local env_file="${WORKSHOP_ROOT}/scripts/env/workshop.env"
   if [[ -f "${env_file}" ]]; then
     # shellcheck disable=SC1090
@@ -14,6 +17,9 @@ load_env() {
     # shellcheck disable=SC1090
     source "${WORKSHOP_ROOT}/scripts/env/workshop.env.example"
     echo "Note: using workshop.env.example — copy to workshop.env for production runs" >&2
+  fi
+  if [[ -n "${preserve_cluster}" ]]; then
+    CLUSTER_NAME="${preserve_cluster}"
   fi
   : "${CLUSTER_NAME:=my-cluster}"
   : "${AWS_REGION:=us-east-1}"

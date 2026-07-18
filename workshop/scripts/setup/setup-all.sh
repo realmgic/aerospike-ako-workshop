@@ -102,6 +102,25 @@ run_step() {
   "${SETUP_DIR}/${script}"
 }
 
+next_step_after_index() {
+  local idx="$1"
+  local next=$((idx + 1))
+  if [[ "${next}" -le "${END_IDX}" ]]; then
+    echo "${STEP_NAMES[$next]}"
+  fi
+}
+
+print_continue_hint() {
+  local last_idx="$1"
+  local next
+  next="$(next_step_after_index "${last_idx}")"
+  if [[ -n "${next}" ]]; then
+    echo ""
+    echo "Single-step mode stops here. Continue setup with:"
+    echo "  ./scripts/setup/setup-all.sh --from ${next}"
+  fi
+}
+
 run_upgrade_lab_post_bootstrap() {
   echo "=== Lab 0.7 (upgrade-lab) — step 0.7-upgrade-lab (upgrade-lab/setup-upgrade-lab-post-bootstrap.sh) ==="
   "${SETUP_DIR}/upgrade-lab/setup-upgrade-lab-post-bootstrap.sh"
@@ -231,6 +250,9 @@ if [[ "${MODE}" == "step" ]]; then
     run_step "${idx}"
   done
   echo "=== Step ${STEP_ARG} complete ==="
+  # Hint using the last index from a composite step (e.g. 0.5 → 0.5-local).
+  last_idx="${idx}"
+  print_continue_hint "${last_idx}"
   exit 0
 fi
 
