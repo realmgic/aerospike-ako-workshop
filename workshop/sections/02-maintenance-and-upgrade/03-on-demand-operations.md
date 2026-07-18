@@ -48,16 +48,7 @@ The `aerospike-cluster` chart `--version` must **match the installed AKO operato
 
 After Lab 2.2, your operator may be **4.4.1** (short path) or **4.5.0** (full ladder). Workshop Helm scripts call `resolve_cluster_helm_chart_version()` to pick the right chart version automatically.
 
-Optional advanced (manual `helm upgrade` after sourcing env):
-
-```bash
-source scripts/env/workshop.env
-source scripts/lib/common.sh
-load_env
-helm upgrade aerocluster aerospike/aerospike-cluster \
-  -n aerospike -f helm/disk-pod-warm-restart-op-values.yaml \
-  --version="$(resolve_cluster_helm_chart_version)"
-```
+Manual `helm upgrade` steps for each operation are under **Part 1** and **Part 2** Path B below.
 
 ## Optional — continuous workload (Terminal B)
 
@@ -110,6 +101,33 @@ kubectl -n aerospike describe aerospikecluster aerocluster | grep -A10 Operation
 kubectl -n aerospike get pods -w
 ```
 
+**Expected:** Warm restart runs on all pods; pods are **not** deleted; cluster stays available. **Database node uptime** (Aerospike) resets; **pod uptime** (`status.startTime`) does not.
+
+### Manual equivalent (Helm)
+
+The script runs `helm upgrade --install aerocluster` with the correct values file and chart `--version`. To run the same upgrade by hand (device storage default):
+
+```bash
+source scripts/env/workshop.env   # NAMESPACE, HELM_CLUSTER_RELEASE, etc.
+source scripts/lib/common.sh
+load_env
+
+helm repo add aerospike "${HELM_REPO}" 2>/dev/null || true
+helm repo update
+
+helm upgrade --install "${HELM_CLUSTER_RELEASE}" aerospike/aerospike-cluster \
+  --namespace "${NAMESPACE}" \
+  --version="$(resolve_cluster_helm_chart_version)" \
+  -f helm/disk-pod-warm-restart-op-values.yaml
+
+kubectl -n aerospike get pods -w
+kubectl -n aerospike describe aerospikecluster aerocluster | grep -A10 Operations
+```
+
+In-memory variant: use `-f helm/pod-warm-restart-op-values.yaml` (with `--dim` / `CLUSTER_STORAGE=dim`).
+
+**Expected:** Same as Path A — operation reconciles; phase returns `Completed`.
+
 ### Optional — single-pod scope
 
 To warm-restart one pod only, add `podList` under `operations` (see [AKO config reference](https://aerospike.com/docs/kubernetes/reference/config-reference)):
@@ -146,6 +164,33 @@ kubectl -n aerospike describe aerospikecluster aerocluster | grep -A10 Operation
 ./scripts/labs/apply-pod-restart-op-helm.sh
 kubectl -n aerospike get pods -w
 ```
+
+**Expected:** Pods restart sequentially; operation status progresses to complete in the CR; cluster phase returns `Completed`.
+
+### Manual equivalent (Helm)
+
+The script runs `helm upgrade --install aerocluster` with the correct values file and chart `--version`. To run the same upgrade by hand (device storage default):
+
+```bash
+source scripts/env/workshop.env   # NAMESPACE, HELM_CLUSTER_RELEASE, etc.
+source scripts/lib/common.sh
+load_env
+
+helm repo add aerospike "${HELM_REPO}" 2>/dev/null || true
+helm repo update
+
+helm upgrade --install "${HELM_CLUSTER_RELEASE}" aerospike/aerospike-cluster \
+  --namespace "${NAMESPACE}" \
+  --version="$(resolve_cluster_helm_chart_version)" \
+  -f helm/disk-pod-restart-op-values.yaml
+
+kubectl -n aerospike get pods -w
+kubectl -n aerospike describe aerospikecluster aerocluster | grep -A10 Operations
+```
+
+In-memory variant: use `-f helm/pod-restart-op-values.yaml` (with `--dim` / `CLUSTER_STORAGE=dim`).
+
+**Expected:** Same as Path A — sequential pod restarts; operation completes; phase `Completed`.
 
 ---
 

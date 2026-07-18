@@ -6,7 +6,7 @@
 | Section | Maintenance & Upgrade |
 | EKS cluster | `my-cluster` |
 | AKO min version | `4.5.0` |
-| Aerospike baseline | 3-node on **8.1.0.x** (device storage default) |
+| Aerospike baseline | 3-node on **8.1.0.x** (device storage default; same as `deploy-cluster.sh`) |
 | Deploy path | both |
 | Duration | ~20 min |
 | Validation status | `draft` |
@@ -14,19 +14,34 @@
 
 ## Takeaway
 
-Aerospike DB upgrade = change `spec.image`; AKO performs a **rolling restart** of pods.
+Aerospike DB upgrade = change `spec.image`; AKO performs a **rolling restart** of pods one node at a time.
 
 ## Prerequisites
 
 - Lab 2.3 complete (on-demand operations on **8.1.0.x**)
-- Lab 2.2 complete (AKO **4.5.0+**)
-- cluster Running on **8.1.0.x**
+- Lab 2.2 complete through **4.5.0** (required for **8.1.2.x** support)
+- Cluster Running on **8.1.0.x** with no `spec.operations` on the CR
 
-**Compatibility:** AKO 4.2.0–4.4.1 supports Aerospike up to **8.1.0.x** only. AKO **4.5.0** adds support for **8.1.2.x** — run this lab only after the 4.5.0 upgrade step in Lab 2.2.
+**Compatibility:** AKO 4.2.0–4.4.1 supports Aerospike up to **8.1.0.x** only. AKO **4.5.0** adds support for **8.1.2.x** — run this lab only after the 4.5.0 upgrade step in Lab 2.2. See the [AKO / Aerospike compatibility table](../../README.md#ako--aerospike-compatibility).
+
+```bash
+kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.spec.image}{"\n"}{.status.phase}{"\n"}'
+kubectl -n aerospike get pods
+kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.spec.operations}{"\n"}'
+```
+
+**Expected:** Image `aerospike/aerospike-server-enterprise:8.1.0.0` (or current 8.1.0.x patch); phase `Completed`; 3/3 pods `Running`; empty `spec.operations`.
+
+If the cluster image or config does not match, redeploy the baseline first:
+
+```bash
+./scripts/labs/deploy-cluster.sh           # Path A
+./scripts/labs/deploy-cluster-helm.sh      # Path B
+```
 
 ## Phase 0 — Prepare lab
 
-After **Lab 2.3**, the CR may still carry `spec.operations`. AKO cannot apply an image change together with an operations change — reset to a clean baseline before upgrading:
+After **Lab 2.3**, the CR may still carry `spec.operations`. AKO cannot apply an image change together with an operations change — reset to a clean baseline before upgrading.
 
 If you ran **[Lab 1.4](../01-scaling-and-capacity/04-replication-factor.md)**, the cluster may be at RF=3. If Lab 2.4 was attempted before, the image may already be on **8.1.2.x**. Reset to a clean baseline (**8.1.0.x**, RF=2, no operations):
 
@@ -58,13 +73,31 @@ Open a **second terminal window**. If the cluster has no records yet, load data 
 ./scripts/labs/run-lab-workload.sh start
 ```
 
-Watch TPS in Terminal B (`status` tails `--debug` output). Perform the upgrade steps below in Terminal A. When finished:
+Watch TPS in Terminal B (`status` tails `--debug` output). Perform Phase 1 below in Terminal A. When finished:
 
 ```bash
 ./scripts/labs/run-lab-workload.sh stop
 ```
 
-## Steps
+## Background
+
+| Mechanism | Effect |
+|-----------|--------|
+| `spec.image` change | AKO rolling-restarts pods sequentially to the new Aerospike version |
+| [Lab 2.3](03-on-demand-operations.md) operations | Restart pods **without** changing `spec.image` — different API |
+
+Unlike on-demand operations, the upgrade manifest changes **only** the image tag (plus the full cluster spec required by AKO). The workshop values already pin **8.1.2.0**.
+
+Reference artifacts:
+
+- [manifests/disk-aerospike-upgrade.yaml](../../manifests/disk-aerospike-upgrade.yaml) — device storage (default)
+- [manifests/aerospike-upgrade.yaml](../../manifests/aerospike-upgrade.yaml) — in-memory variant (`--dim`)
+- [helm/disk-aerospike-upgrade-values.yaml](../../helm/disk-aerospike-upgrade-values.yaml) — Path B device
+- [helm/aerospike-upgrade-values.yaml](../../helm/aerospike-upgrade-values.yaml) — Path B in-memory (`--dim`)
+
+---
+
+## Phase 1 — Upgrade to 8.1.2.x
 
 ### Path A — kubectl
 
@@ -76,44 +109,98 @@ Watch TPS in Terminal B (`status` tails `--debug` output). Perform the upgrade s
 
    **Expected:** `aerospike/aerospike-server-enterprise:8.1.0.0` (or current 8.1.0.x patch).
 
-2. Edit `manifests/disk-aerospike-upgrade.yaml` (or `manifests/aerospike-upgrade.yaml` with `--dim`) — set image to **8.1.2.x** (e.g. `8.1.2.0`), apply:
+2. Apply the upgrade manifest (image already set to **8.1.2.0**; edit tag if using a different patch):
 
    ```bash
    kubectl apply -f manifests/disk-aerospike-upgrade.yaml
    kubectl -n aerospike get pods -w
    ```
 
-   **Expected:** Sequential pod restarts; all `Running`.
+   **Expected:** Sequential pod restarts; all pods reach `Running`.
+
+3. Wait for reconciliation:
+
+   ```bash
+   kubectl -n aerospike wait --for=jsonpath='{.status.phase}'=Completed \
+     aerospikecluster/aerocluster --timeout=900s
+   ```
+
+   **Expected:** Phase `Completed`.
 
 ### Path B — Helm
 
-Update `image.tag` in `helm/disk-aerospike-upgrade-values.yaml` (or `helm/aerospike-upgrade-values.yaml` with `--dim`) to `8.1.2.0` and upgrade.
+Chart `--version` must match the installed AKO operator — see [Lab 2.3 — Helm chart version (Path B)](03-on-demand-operations.md#helm-chart-version-path-b). Prefer the workshop script over raw `helm upgrade`:
+
+```bash
+./scripts/labs/apply-aerospike-upgrade-helm.sh
+kubectl -n aerospike get pods -w
+kubectl -n aerospike wait --for=jsonpath='{.status.phase}'=Completed \
+  aerospikecluster/aerocluster --timeout=900s
+```
+
+**Expected:** Rolling pod restarts; image tag **8.1.2.x**; phase `Completed`.
+
+Optional advanced (edit `image.tag` in values, then manual upgrade):
+
+```bash
+source scripts/env/workshop.env
+source scripts/lib/common.sh
+load_env
+helm upgrade aerocluster aerospike/aerospike-cluster \
+  -n aerospike -f helm/disk-aerospike-upgrade-values.yaml \
+  --version="$(resolve_cluster_helm_chart_version)"
+```
+
+---
 
 ## Verify (pass/fail)
 
 ```bash
-kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.spec.image}'
-kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.status.phase}'
+kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.spec.image}{"\n"}{.status.phase}{"\n"}'
+kubectl -n aerospike get pods -o wide
 ```
 
-**Pass:** Image tag on **8.1.2.x** line; phase `Completed`.
+**Pass:** Image tag on **8.1.2.x** line; phase `Completed`; 3/3 pods `Running`.
 
-Optional:
+Optional — confirm build and unchanged replication factor:
 
 ```bash
-kubectl exec -it aerocluster-0-0 -c aerospike-server -n aerospike -- asinfo -U admin -P admin123 -v build
+kubectl exec -n aerospike aerocluster-0-0 -c aerospike-server -- \
+  asinfo -U admin -P admin123 -v build
+
+kubectl run -it --rm aerospike-tool-rf -n aerospike --restart=Never \
+  --image=aerospike/aerospike-tools:latest -- \
+  asadm -h aerocluster -U admin -P admin123 -e "show config like replication-factor"
 ```
+
+**Pass:** Build reports **8.1.2.x**; all nodes still report `replication-factor 2` (unless you intentionally changed RF in Lab 1.4).
 
 ## Observe
 
-- One pod at a time restarted
-- Cluster remains available during rolling upgrade
+- One pod at a time restarted during the rolling upgrade
+- Cluster remains available during the upgrade (if running workload in Terminal B, TPS may dip briefly per pod)
+- CR `status.phase` transitions `InProgress` → `Completed`
+- Contrast with [Lab 2.3](03-on-demand-operations.md) — operations restart processes without changing `spec.image`
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| Webhook: cannot change image with operations | Run `./scripts/labs/prepare-lab.sh 2.4` to clear `spec.operations` and reset baseline |
+| Upgrade rejected / unsupported DB version | Confirm operator ≥ 4.5.0 (`prepare-lab.sh 2.4` runs `validate_ako_min_version`); complete Lab 2.2 ladder to 4.5.0 |
+| Helm chart version mismatch | Use `./scripts/labs/apply-aerospike-upgrade-helm.sh` or see [Lab 2.3 — Helm chart version](03-on-demand-operations.md#helm-chart-version-path-b) |
+| Pods stuck / CR InProgress | `kubectl -n aerospike describe aerospikecluster aerocluster`; operator logs |
+| RF drift after Lab 1.4 | Re-run `./scripts/labs/prepare-lab.sh 2.4` for RF=2 baseline before upgrading |
 
 ## Handoff
 
-Proceed to [Lab 2.5](05-k8s-node-maintenance.md).
+Proceed to [Lab 2.5](05-k8s-node-maintenance.md). Cluster should be on **8.1.2.x** with phase `Completed`.
 
 ## References
 
+- [manifests/disk-aerospike-upgrade.yaml](../../manifests/disk-aerospike-upgrade.yaml)
+- [manifests/aerospike-upgrade.yaml](../../manifests/aerospike-upgrade.yaml)
+- [helm/disk-aerospike-upgrade-values.yaml](../../helm/disk-aerospike-upgrade-values.yaml)
+- [helm/aerospike-upgrade-values.yaml](../../helm/aerospike-upgrade-values.yaml)
 - [Upgrade Aerospike DB](https://aerospike.com/docs/kubernetes/install/deploy/upgrade-aerospike/)
 - [scripts/labs/run-lab-workload.sh](../../scripts/labs/run-lab-workload.sh)
