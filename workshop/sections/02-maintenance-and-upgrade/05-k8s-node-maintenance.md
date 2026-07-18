@@ -18,8 +18,8 @@
 Three layers govern worker node maintenance with local storage:
 
 1. **Safe eviction** blocks `kubectl drain` **only while Aerospike migration is active** (CR `InProgress`, non-zero migrate stats). Without active migration, drain proceeds.
-2. **local-ssd PVCs** bind to a node — the pod cannot reschedule elsewhere until those claims are deleted.
-3. **Node termination** triggers the PVC cleanup controller (Lab 0.5) to remove orphaned claims; the replacement pod schedules on a new node with fresh local storage.
+2. **local-ssd PVCs** bind to a node — the pod cannot reschedule elsewhere until those claims are deleted. With `spec.storage.localStorageClasses` set (workshop baseline), AKO may delete local PVCs during planned drain instead; if not, pinning is the fallback constraint after drain completes.
+3. **Node termination** triggers the PVC cleanup controller (Lab 0.5) to remove orphaned claims; the replacement pod schedules on a new node with fresh local storage in the same AZ.
 
 ## Prerequisites
 
@@ -155,16 +155,16 @@ Use **two terminals** for the primary path. The webhook blocks drain **only whil
 
 ### 2a — Capture pod placement
 
-Pick the node to drain and confirm the cluster is ready:
+Drain the node hosting `aerocluster-0-0` and confirm the cluster is ready:
 
 ```bash
 kubectl -n aerospike get pods -o wide
 kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.status.phase}{"\n"}{.spec.image}{"\n"}'
-NODE=$(kubectl -n aerospike get pods -o wide --no-headers | awk 'NR==1{print $7}')
-echo "Maintenance target node: ${NODE}"
+NODE=$(kubectl -n aerospike get pod aerocluster-0-0 -o jsonpath='{.spec.nodeName}')
+echo "Maintenance target node (aerocluster-0-0): ${NODE}"
 ```
 
-**Expected:** 3 pods `Running`; CR phase `Completed`; image `8.1.2.x`; no `spec.operations` in CR.
+**Expected:** 3 pods `Running`; CR phase `Completed`; image `8.1.2.x`; no `spec.operations` in CR; `$NODE` is the worker running `aerocluster-0-0`.
 
 ### 2b — First drain + migration
 
@@ -279,22 +279,59 @@ Watch `aerocluster-0-0` transition to `Terminating` and leave `$NODE` as migrati
 
 ## Phase 3 — PVC pinning observe
 
-After Phase 2d, the node is cordoned but the Aerospike pod may still appear on `$NODE` or stay `Pending` because the **local-ssd PVC** retains node affinity:
+After Phase 2d, the cordoned node and `aerocluster-0-0` placement depend on whether AKO removed local PVCs during drain. Run the observe commands below — you may see **Path A** (pinning) or **Path B** (AKO-managed delete).
 
 ```bash
 kubectl get node "$NODE" -o jsonpath='{.spec.unschedulable}{"\n"}'
+kubectl -n aerospike get pod aerocluster-0-0 -o wide
 kubectl -n aerospike get pod -l aerospike.com/cr=aerocluster -o wide --field-selector spec.nodeName="$NODE"
 kubectl -n aerospike get pvc -o wide
 kubectl -n aerospike describe pod aerocluster-0-0 | tail -20
 ```
 
-**Pass:** Node is cordoned; local-ssd PVC shows node affinity to `$NODE`; pod cannot schedule elsewhere until the claim is deleted.
+**Path A — PVC pinning (classic):**
 
-**Expected behavior:** Drain succeeded for the Kubernetes node, but the pod cannot move until PVCs are cleared. Proceed to Phase 4 to complete real node maintenance.
+- Node is cordoned (`true`)
+- `aerocluster-0-0` still on `$NODE` or `Pending`
+- local-ssd PVC bound with node affinity to `$NODE`
+- Pod cannot schedule elsewhere until the claim is deleted
+
+**Path B — AKO-managed delete (workshop baseline with `localStorageClasses`):**
+
+- Node is cordoned
+- No local-ssd PVC with affinity to `$NODE` (AKO deleted claims during drain)
+- `aerocluster-0-0` `Running` on a different node — empty instance store, accepting migrations
+- CR may have been `InProgress` briefly; should return to `Completed`
+
+**Expected behavior:** Drain succeeded for the Kubernetes node. Proceed to Phase 4 to replace the cordoned worker. If Path B, pinning did not occur — Phase 4 still terminates the drained instance and confirms the pod stays healthy.
 
 ## Phase 4 — Node termination + PVC cleanup (device storage)
 
-Simulate completing node maintenance — terminate the worker and let the PVC cleanup controller free orphaned claims:
+Simulate completing node maintenance — terminate the cordoned worker and let the PVC cleanup controller free any orphaned claims.
+
+### 4 optional — Add same-AZ capacity before termination (eksctl)
+
+Recommended when Path A showed PVC pinning, or to demonstrate production-style replacement: scale the per-AZ nodegroup where `aerocluster-0-0` lived **before** terminating the cordoned instance. No manual `kubectl delete pvc` — termination triggers the cleanup controller and the pod lands on fresh local storage in the correct AZ.
+
+```bash
+source scripts/env/workshop.env
+./scripts/labs/lab-nodes.sh 2.5 ensure --replace-zone --node="$NODE"
+```
+
+The script prints the target zone and nodegroup. Confirm an extra Ready node in that AZ:
+
+```bash
+TARGET_ZONE=$(kubectl get node "$NODE" -o jsonpath='{.metadata.labels.topology\.kubernetes\.io/zone}')
+kubectl get nodes -l "topology.kubernetes.io/zone=${TARGET_ZONE},workshop.aerospike.com/node-pool=baseline" -o wide
+```
+
+Then continue with the terminate steps below.
+
+**Pass (optional path):** Nodegroup in `$TARGET_ZONE` has +1 Ready node before terminate; after terminate and ~60s cleanup delay, orphaned PVCs are gone; `aerocluster-0-0` `Running` on a **new** node in `$TARGET_ZONE`; CR `Completed`.
+
+> **Karpenter sessions:** skip this subsection — NodeClaim replacement in [Phase 4 (Karpenter)](05-k8s-node-maintenance-karpenter.md#phase-4--node-termination--pvc-cleanup) already provisions same-zone capacity.
+
+### Terminate cordoned worker
 
 ```bash
 INSTANCE_ID=$(kubectl get node "$NODE" -o jsonpath='{.spec.providerID}' | sed 's|.*/||')
@@ -389,7 +426,8 @@ kubectl get nodes
 ## Observe
 
 - Safe eviction webhook denies eviction API **only while migration is active**
-- Without active migration, drain cordons the node; local PVC node affinity prevents pod reschedule
+- Without active migration, drain cordons the node; local PVC node affinity prevents pod reschedule (unless AKO deletes local claims via `localStorageClasses`)
+- Optional Phase 4 (eksctl): scale same-AZ nodegroup + terminate — no manual PVC deletion
 - Node termination → PVC cleanup controller → pod reschedules on fresh local storage
 - Blocklist triggers AKO-driven rolling migration (hostname affinity — eksctl only)
 - Cluster stays available during migration
@@ -439,7 +477,8 @@ Proceed to [Lab 2.6](06-k8s-control-plane-upgrade.md). Aerospike cluster should 
 |---------|-----|
 | Migration completes too fast to observe | Increase `MIGRATION_LOAD_RECORDS` (e.g. `8000000`); or use [Phase 2 optional](#2-optional--force-visible-drain-block-instructor--demo) |
 | Drain not blocked / no webhook denial | Confirm `ENABLE_SAFE_POD_EVICTION=true`; migration may have finished — use Phase 2 optional |
-| Drain succeeds but pod stuck on cordoned node | Expected with local PVC — proceed to Phase 4 |
+| Drain succeeds but pod stuck on cordoned node | Expected Path A (local PVC pinning) — use [Phase 4 optional](#4-optional--add-same-az-capacity-before-termination-eksctl) then terminate |
+| Pod already Running on another node after drain | Expected Path B (AKO `localStorageClasses`) — proceed to Phase 4 terminate to replace cordoned worker |
 | local-ssd PVC Pending | Re-run `./scripts/setup/08-validate-environment.sh`; confirm baseline local-ssd PVs |
 | No `eviction-blocked` annotation | Normal once pod is Terminating; check CR phase and migrate stats instead |
 | PVC not cleaned up after node delete | Check cleanup controller logs; wait 60s (`--pvc-deletion-delay=60s`) |
@@ -457,5 +496,6 @@ Proceed to [Lab 2.6](06-k8s-control-plane-upgrade.md). Aerospike cluster should 
 - [manifests/disk-cluster-maintenance.yaml](../../manifests/disk-cluster-maintenance.yaml)
 - [manifests/disk-node-blocklist.yaml](../../manifests/disk-node-blocklist.yaml)
 - [scripts/labs/load-data.sh](../../scripts/labs/load-data.sh)
+- [scripts/labs/lab-nodes.sh](../../scripts/labs/lab-nodes.sh) — Phase 4 optional `--replace-zone` (Lab 2.5)
 - [Node maintenance](https://aerospike.com/docs/kubernetes/manage/node-maintenance)
 - [Lab 0.5 — local PVC cleanup](../00-environment-setup/05-storage-layer.md#instructor-demo--local-pvc-cleanup-on-node-failure)

@@ -5,8 +5,10 @@
 #   ./scripts/labs/lab-nodes.sh <lab> ensure|validate [options]
 #
 # Options:
-#   --scale-up     Lab 1.1: scale workload pool to 5 nodes (eksctl) or trigger scale (karpenter)
-#   --vertical     Lab 1.2/1.3: add 4xl pool alongside existing 2xl (mid-lab vertical scale)
+#   --scale-up       Lab 1.1: scale workload pool to 5 nodes (eksctl) or trigger scale (karpenter)
+#   --vertical       Lab 1.2/1.3: add 4xl pool alongside existing 2xl (mid-lab vertical scale)
+#   --replace-zone   Lab 2.5: scale +1 in the maintenance target node's AZ (requires --node)
+#   --node=<name>    Kubernetes node name for --replace-zone (Lab 2.5)
 set -euo pipefail
 source "$(dirname "$0")/../lib/common.sh"
 source "$(dirname "$0")/../lib/zone-check.sh"
@@ -15,22 +17,33 @@ source "$(dirname "$0")/../lib/nodepool-zones.sh"
 load_env
 ensure_main_kubecontext
 
-LAB_ID="${1:?Usage: lab-nodes.sh <lab-id> ensure|validate [--scale-up|--vertical]}"
-ACTION="${2:?Usage: lab-nodes.sh <lab-id> ensure|validate [--scale-up|--vertical]}"
+LAB_ID="${1:?Usage: lab-nodes.sh <lab-id> ensure|validate [--scale-up|--vertical|--replace-zone --node=<name>]}"
+ACTION="${2:?Usage: lab-nodes.sh <lab-id> ensure|validate [--scale-up|--vertical|--replace-zone --node=<name>]}"
 shift 2 || true
 
 SCALE_UP=false
 VERTICAL=false
+REPLACE_ZONE=false
+TARGET_NODE=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --scale-up) SCALE_UP=true ;;
-    --vertical) VERTICAL=true ;;
+    --scale-up) SCALE_UP=true; shift ;;
+    --vertical) VERTICAL=true; shift ;;
+    --replace-zone) REPLACE_ZONE=true; shift ;;
+    --node=*)
+      TARGET_NODE="${1#*=}"
+      shift
+      ;;
+    --node)
+      shift
+      TARGET_NODE="${1:?--node requires a node name}"
+      shift
+      ;;
     *)
       echo "ERROR: unknown option: $1" >&2
       exit 1
       ;;
   esac
-  shift
 done
 
 require_cmd kubectl
@@ -540,6 +553,49 @@ ensure_2xl_pool() {
   fi
 }
 
+replace_zone_for_maintenance_node() {
+  local node_name="$1"
+
+  if [[ -z "${node_name}" ]]; then
+    echo "ERROR: --replace-zone requires --node=<kubernetes-node-name>" >&2
+    exit 1
+  fi
+
+  if [[ "${NODE_PROVISIONING}" == "karpenter" ]]; then
+    echo "SKIP --replace-zone on Karpenter: same-AZ replacement is handled by NodeClaim delete."
+    echo "      See workshop/sections/02-maintenance-and-upgrade/05-k8s-node-maintenance-karpenter.md Phase 4"
+    return 0
+  fi
+
+  if ! kubectl get node "${node_name}" >/dev/null 2>&1; then
+    echo "ERROR: node ${node_name} not found" >&2
+    exit 1
+  fi
+
+  local target_zone ng_name current target_count nodes_before
+  target_zone="$(kubectl get node "${node_name}" -o jsonpath='{.metadata.labels.topology\.kubernetes\.io/zone}')"
+  if [[ -z "${target_zone}" ]]; then
+    echo "ERROR: could not read topology.kubernetes.io/zone from node ${node_name}" >&2
+    exit 1
+  fi
+
+  ng_name="$(kubectl get node "${node_name}" -o jsonpath='{.metadata.labels.alpha\.eksctl\.io/nodegroup-name}')"
+  if [[ -z "${ng_name}" ]]; then
+    ng_name="$(pool_name_for_zone "${NODEGROUP_NAME}" "${target_zone}")"
+  fi
+
+  current="$(kubectl get nodes -l "alpha.eksctl.io/nodegroup-name=${ng_name}" --no-headers 2>/dev/null \
+    | grep -c ' Ready ' || true)"
+  target_count=$((current + 1))
+  nodes_before="$(count_2xl_nodes_ready)"
+
+  echo "=== Lab 2.5: scale ${ng_name} in ${target_zone} (${current} → ${target_count} Ready) ==="
+  ensure_eksctl_nodegroup_in_zone "${ng_name}" "${NODE_TYPE}" "${target_zone}" "${target_count}" "baseline"
+  maybe_wait_nvme_bootstrap "${nodes_before}" "${NODE_COUNT}"
+  echo "OK  ${ng_name} scaled to ${target_count} node(s) in ${target_zone}"
+  kubectl get nodes -l "alpha.eksctl.io/nodegroup-name=${ng_name}" -o wide
+}
+
 scale_up_2xl() {
   local target=5
   local nodes_before
@@ -679,6 +735,13 @@ case "${LAB_ID}:${ACTION}" in
     ;;
   1.4:validate)
     validate_min_nodes 3
+    ;;
+  2.5:ensure)
+    if [[ "${REPLACE_ZONE}" != true ]]; then
+      echo "ERROR: lab 2.5 ensure requires --replace-zone --node=<name>" >&2
+      exit 1
+    fi
+    replace_zone_for_maintenance_node "${TARGET_NODE}"
     ;;
   *)
     echo "ERROR: unsupported lab/action: ${LAB_ID} ${ACTION}" >&2

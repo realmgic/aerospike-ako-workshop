@@ -52,11 +52,11 @@ Optional: [Force visible drain block](05-k8s-node-maintenance.md#2-optional--for
 
 ## Phase 3 — PVC pinning observe
 
-Same as the [eksctl guide Phase 3](05-k8s-node-maintenance.md#phase-3--pvc-pinning-observe) — local-ssd PVC node affinity keeps the pod on the cordoned node until claims are deleted.
+Same as the [eksctl guide Phase 3](05-k8s-node-maintenance.md#phase-3--pvc-pinning-observe) — after drain you may see **Path A** (local-ssd PVC node affinity keeps the pod on the cordoned node) or **Path B** (AKO `localStorageClasses` deleted claims during drain; pod already `Running` elsewhere).
 
 ## Phase 4 — Node termination + PVC cleanup
 
-Replace the drained worker via Karpenter NodeClaim lifecycle:
+Replace the drained worker via Karpenter NodeClaim lifecycle. The eksctl [Phase 4 optional same-AZ scale-up](05-k8s-node-maintenance.md#4-optional--add-same-az-capacity-before-termination-eksctl) is not needed here — deleting the NodeClaim provisions replacement capacity in the same zone automatically.
 
 1. Delete the NodeClaim for `$NODE`:
 
