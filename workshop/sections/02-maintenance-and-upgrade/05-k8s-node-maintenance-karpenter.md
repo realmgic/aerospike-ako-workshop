@@ -424,7 +424,7 @@ sequenceDiagram
     K->>API: Evict pod (consolidation / drift / drain)
     API->>AKO: Validate eviction
     AKO-->>API: Deny (migration in progress)
-    Note over AS: AKO migrates data; CR → Completed
+    Note over AS: AKO migrates data until CR reaches Completed
     K->>API: Retry eviction
     API->>AKO: Validate eviction
     AKO-->>API: Allow
