@@ -338,9 +338,15 @@ kubectl -n aerospike describe pod aerocluster-0-0 | tail -20
 - `aerocluster-0-0` `Running` on a different node — empty instance store, accepting migrations
 - CR may have been `InProgress` briefly; should return to `Completed`
 
-**Expected behavior:** Drain succeeded for the Kubernetes node. Proceed to Phase 4 to replace the cordoned worker via NodeClaim. If Path B, pinning did not occur — Phase 4 still terminates the drained instance and confirms the pod stays healthy.
+**Expected behavior:** Drain succeeded for the Kubernetes node. Proceed to Phase 4 to replace the cordoned worker. If Path B, pinning did not occur — Phase 4 still terminates the drained instance and confirms the pod stays healthy.
 
 ## Phase 4 — Node termination + PVC cleanup
+
+Simulate completing node maintenance — terminate the cordoned worker and let the PVC cleanup controller free any orphaned claims. See [Lab 2.5 eksctl Phase 4](05-k8s-node-maintenance.md#phase-4--node-termination--pvc-cleanup-device-storage) for the equivalent manual terminate commands on the ASG path.
+
+Pick **one** termination method below (both reach the same pass criteria).
+
+### 4a — Primary: NodeClaim delete (Karpenter-native)
 
 Replace the drained worker via Karpenter NodeClaim lifecycle:
 
@@ -365,7 +371,41 @@ Replace the drained worker via Karpenter NodeClaim lifecycle:
    kubectl -n aerospike get pod -l aerospike.com/cr=aerocluster -o wide -w
    ```
 
-**Pass:** Orphaned local-ssd PVCs removed; replacement node `Ready`; `aerocluster-0-0` pod `Running` on new node; CR `Completed`.
+### 4b — Alternate: Manual EC2 termination (same as eksctl)
+
+Same outcome as [eksctl Phase 4](05-k8s-node-maintenance.md#phase-4--node-termination--pvc-cleanup-device-storage): terminate the cordoned worker and let the PVC cleanup controller free orphaned claims. Use when you want the **same demo steps as the ASG/eksctl lab**, or to show node-loss + cleanup-controller behavior without using the NodeClaim API.
+
+```bash
+source scripts/env/workshop.env
+INSTANCE_ID=$(kubectl get node "$NODE" -o jsonpath='{.spec.providerID}' | sed 's|.*/||')
+kubectl delete node "$NODE"
+aws ec2 terminate-instances --region "${AWS_REGION}" --instance-ids "$INSTANCE_ID"
+```
+
+Watch cleanup and reschedule:
+
+```bash
+kubectl -n aerospike get pvc -w
+kubectl -n aerospike get pod -l aerospike.com/cr=aerocluster -o wide -w
+```
+
+Wait for replacement node:
+
+```bash
+kubectl get nodes -w
+kubectl get nodeclaims -w
+```
+
+**Karpenter notes (manual path):**
+
+- Do **not** use `kubectl delete node --force` — bypasses AKO safe eviction webhook.
+- Orphaned NodeClaim may linger briefly after instance termination; Karpenter reconciles it automatically.
+- Same ~60s PVC cleanup delay via `local-volume-node-cleanup-controller` (Lab 0.5).
+- Karpenter still provisions a same-zone replacement when the rescheduling pod needs capacity (may already exist if nominated earlier).
+
+### Pass (both paths)
+
+**Pass:** Orphaned local-ssd PVCs removed; replacement node `Ready` (Karpenter-provisioned); `aerocluster-0-0` pod `Running` on new node; CR `Completed`.
 
 Ctrl+C once replacement is stable. `nvme-bootstrap` initializes NVMe on the new instance (Lab 0.5).
 
@@ -546,13 +586,13 @@ kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.status.phas
 kubectl get nodes
 ```
 
-**Pass:** Webhook denied drain during active migration; node cordoned after CR `Completed`; local PVCs cleaned up after NodeClaim replacement; Aerospike pods `Running` on other nodes; CR `Completed`. No `k8sNodeBlockList` applied.
+**Pass:** Webhook denied drain during active migration; node cordoned after CR `Completed`; local PVCs cleaned up after Phase 4 (NodeClaim delete or manual EC2 terminate); Aerospike pods `Running` on other nodes; CR `Completed`. No `k8sNodeBlockList` applied.
 
 ## Observe
 
 - Safe eviction webhook denies eviction API **only while migration is active**
 - Without active migration, drain cordons the node; local PVC node affinity prevents pod reschedule (unless AKO deletes local claims via `localStorageClasses`)
-- NodeClaim deletion → PVC cleanup controller → pod reschedules on fresh local storage in the same AZ
+- NodeClaim deletion or manual EC2 terminate → PVC cleanup controller → pod reschedules on fresh local storage in the same AZ
 - Karpenter provisions replacement capacity automatically — no manual nodegroup scale-up
 - `k8sNodeBlockList` is **not supported** on Karpenter ([AKO #305](https://github.com/aerospike/aerospike-kubernetes-operator/issues/305))
 - Cluster stays available during migration
@@ -575,7 +615,7 @@ Proceed to [Lab 2.6](06-k8s-control-plane-upgrade.md). Aerospike cluster should 
 |---------|-----|
 | Migration completes too fast to observe | Increase `MIGRATION_LOAD_RECORDS` (e.g. `8000000`); or use [Phase 2 optional (instructor)](#2-optional-instructor--force-visible-drain-block) |
 | Drain not blocked / no webhook denial | Confirm `ENABLE_SAFE_POD_EVICTION=true` via `./scripts/labs/verify-safe-pod-eviction.sh`; migration may have finished — use Phase 2 optional (instructor) |
-| Drain succeeds but pod stuck on cordoned node | Expected Path A (local PVC pinning) — proceed to Phase 4 NodeClaim delete |
+| Drain succeeds but pod stuck on cordoned node | Expected Path A (local PVC pinning) — proceed to Phase 4 (NodeClaim delete or manual EC2 terminate) |
 | Pod already Running on another node after drain | Expected Path B (AKO `localStorageClasses`) — proceed to Phase 4 |
 | local-ssd PVC Pending | Re-run `./scripts/setup/08-validate-environment.sh`; confirm baseline local-ssd PVs |
 | No `eviction-blocked` annotation | Normal once pod is Terminating; check CR phase and migrate stats instead |

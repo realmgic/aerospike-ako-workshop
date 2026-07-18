@@ -9,7 +9,7 @@
 | 2.3 | ~10m | WarmRestart then PodRestart (cold) on 8.1.0.x cluster (match deploy-cluster.sh); optional Terminal B `run-lab-workload.sh` |
 | 2.4 | ~20m | Rolling DB upgrade 8.1.0.x → 8.1.2.x (requires AKO 4.5.0); start `run-lab-workload.sh` in Terminal B before image apply |
 | 2.5 (eksctl) | ~25m | Drain demo: migration-gated webhook block; Phase 3 Path A/B; optional same-AZ nodegroup scale before drain; Phase 4 EC2 terminate + PVC cleanup; optional blocklist alternate; optional asadm quiesce step |
-| 2.5 (Karpenter) | ~25m (+15m add-on) | Same drain + Phase 3 story; Phase 4 NodeClaim delete + replacement; optional Karpenter disruption add-on; no blocklist |
+| 2.5 (Karpenter) | ~25m (+15m add-on) | Same drain + Phase 3 story; Phase 4: primary NodeClaim delete **or** alternate manual EC2 terminate (same as eksctl); optional Karpenter disruption add-on; no blocklist |
 | 2.6 | ~45–60m | Two-phase EKS upgrade: CP (~10–20m) then nodegroup (~15–25m); Phase 1 seed + Terminal B workload recommended; nodegroup = Lab 2.5 drain mechanics at scale |
 
 ## AKO upgrade (2.2)
@@ -51,7 +51,7 @@ Pick **one** guide by `NODE_PROVISIONING` — [eksctl](05-k8s-node-maintenance.m
 
 ### Lab 2.5 — Karpenter path
 
-- **Phase 4** — delete NodeClaim for drained node; Karpenter provisions same-zone replacement automatically (no manual nodegroup scale-up)
+- **Phase 4** — primary: delete NodeClaim for drained node; alternate: manual EC2 terminate (same as eksctl). Karpenter provisions same-zone replacement automatically (no manual nodegroup scale-up)
 - **Never** demo blocklist ([AKO #305](https://github.com/aerospike/aerospike-kubernetes-operator/issues/305))
 - **Add-on (~15m):** run after drain demo when audience is planning to allow voluntary Karpenter disruption
   - Frame customer's `do-not-disrupt` approach as valid Phase 1, not the long-term target
