@@ -51,4 +51,4 @@ Full reset adds ~5–15 min (node provisioning + nvme-bootstrap on first i8g cre
 
 - Vertical scale + revision (1.2) — node pool locator + revision + dual local-ssd
 - Revision (1.2) vs replacement (1.3) — both reach 2× vertical profile; revision keeps rack IDs, replacement changes them (3+4)
-- RF change without restart (1.4) — AP vs SC limitations
+- RF change without restart (1.4) — scale up 2→3, then `./scripts/labs/deploy-cluster.sh` again for immediate 3→2; AP vs SC limitations

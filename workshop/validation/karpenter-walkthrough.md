@@ -34,7 +34,7 @@ Update [LAB_REGISTRY.yaml](../LAB_REGISTRY.yaml) `karpenter_validation` when com
 
 ## Lab 1.4 (after 2.2)
 
-- [ ] **1.4** Replication factor — RF 2→3 dynamic *(requires AKO 4.4.0+ from Lab 2.2)*
+- [ ] **1.4** Replication factor — RF 2→3 then 3→2 dynamic *(requires AKO 4.4.0+ from Lab 2.2)*
 
 ## Section 2 — Maintenance & Upgrade (continued)
 - [ ] **2.3** Upgrade Aerospike DB — 8.1.0.x→8.1.2.x rolling restart

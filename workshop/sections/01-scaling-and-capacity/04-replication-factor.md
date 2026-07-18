@@ -20,7 +20,7 @@
 
 ## Takeaway
 
-For AP namespaces, AKO **4.4.0+** applies `replication-factor` changes dynamically — **no rolling restart** — when `enableDynamicConfigUpdate: true`. Change **only** RF for **one** namespace per apply.
+For AP namespaces, AKO **4.4.0+** applies `replication-factor` changes dynamically — **no rolling restart** — when `enableDynamicConfigUpdate: true`. Scale **up and down** by changing **only** RF for **one** namespace per apply.
 
 ## Prerequisites
 
@@ -96,12 +96,18 @@ Skip this section if you used `--skip-reset` and the cluster from Lab 2.2 is alr
      asadm -h aerocluster -U admin -P admin123 -e "show config like replication-factor"
   ```
    **Pass:** CR shows RF=2; all nodes report `replication-factor 2`.
-2. Apply **only** RF change:
+2. Apply **only** RF change (2 → 3):
   ```bash
    kubectl apply -f manifests/replication-factor-rf3.yaml
   ```
    **Expected:** No pod rolling restart; operator reconciles config.
 3. Verify RF=3 in CR status and on nodes.
+4. Scale down — reapply the baseline manifest (RF 3 → 2):
+  ```bash
+   ./scripts/labs/deploy-cluster.sh
+  ```
+   **Expected:** RF drops to 2 immediately; no pod rolling restart.
+5. Verify RF=2 in CR status and on nodes (same pods as before step 2).
 
 
 
@@ -114,12 +120,23 @@ helm upgrade --install aerocluster aerospike/aerospike-cluster \
   -n aerospike -f helm/disk-cluster-values.yaml --version=4.4.1
 ```
 
-RF change:
+RF change (2 → 3):
 
 ```bash
 helm upgrade aerocluster aerospike/aerospike-cluster \
   -n aerospike -f helm/replication-factor-rf3-values.yaml --version=4.4.1
 ```
+
+Scale down — reapply baseline (RF 3 → 2):
+
+```bash
+./scripts/labs/deploy-cluster-helm.sh
+# or:
+helm upgrade aerocluster aerospike/aerospike-cluster \
+  -n aerospike -f helm/disk-cluster-values.yaml --version=4.4.1
+```
+
+**Expected:** RF drops to 2 immediately; no pod rolling restart.
 
 
 
@@ -129,15 +146,16 @@ helm upgrade aerocluster aerospike/aerospike-cluster \
 ./scripts/labs/lab-nodes.sh 1.4 validate
 ```
 
-1. CR status shows RF=3 for namespace `test`
-2. Pods remain `Running` (same pod names/ages as before apply)
-3. asadm:
+1. After step 3 (RF=3): CR status shows RF=3 for namespace `test`; all nodes report `replication-factor 3`.
+2. After scale down: CR status shows RF=2 for namespace `test`; all nodes report `replication-factor 2`.
+3. Pods remain `Running` throughout (same pod names/ages as before the RF changes).
+4. asadm (after scale down):
   ```bash
    kubectl run -it --rm aerospike-tool -n aerospike --restart=Never \
      --image=aerospike/aerospike-tools:latest -- \
      asadm -h aerocluster -U admin -P admin123 -e "show config like replication-factor"
   ```
-   **Pass:** All nodes report `replication-factor 3`.
+   **Pass:** All nodes report `replication-factor 2`.
 
 
 
