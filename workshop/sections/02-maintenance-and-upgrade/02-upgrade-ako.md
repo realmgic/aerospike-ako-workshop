@@ -103,7 +103,7 @@ kubectl -n aerospike get pods
 
 **Expected per step:** CSV `Succeeded`; subscription `currentCSV` matches target; Aerospike CR still `Completed`.
 
-
+> **OLM gotcha:** Old CSVs stay in `Succeeded` after upgrade. Always check `subscription.status.currentCSV`, not CSV phase alone. OLM may create multi-hop InstallPlans that skip rungs — approve only plans whose `clusterServiceVersionNames` contains a single target CSV (the scripts enforce this).
 
 ## Steps — Path B (Helm)
 
@@ -177,6 +177,15 @@ kubectl -n aerospike get pods
 ## Short demo path
 
 If time-limited: demo **4.2.0 → 4.3.0** live; pre-stage **4.4.1** and **4.5.0**; state production must follow [official ladder](https://aerospike.com/docs/kubernetes/manage/upgrade/upgrading-operator).
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `verify-ako-version.sh 4.3.0` fails but CSV 4.3.0 shows `Succeeded` | OLM `installedCSV` already past 4.3.0 (multi-hop InstallPlan or next step ran) | Check `kubectl get subscription aerospike-kubernetes-operator -n operators -o jsonpath='{.status.installedCSV}{"\n"}'`. Continue from that version or reset AKO at 4.2.0 |
+| `verify-ako-version.sh 4.4.1` fails with `currentCSV=4.4.1` but CSV missing | UpgradePending — InstallPlan not approved | Run `./scripts/labs/upgrade-ako/upgrade-step-olm.sh 4.4.1` to approve the pending plan |
+| Multi-hop InstallPlan (lists 4.3.0, 4.4.1, …) | OLM stable channel resolves to latest | Delete the plan; re-run `upgrade-step-olm.sh` (script keeps `installPlanApproval: Manual` and deletes only true multi-hop plans) |
+| `upgrade-step-olm.sh` loops deleting InstallPlans (`CSVs: unknown`) | macOS kubectl jsonpath bug + script deleted valid single-hop plans | Fixed in script — pull latest and re-run the upgrade step |
 
 ## Not covered here
 
