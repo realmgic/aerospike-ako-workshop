@@ -31,7 +31,9 @@ Full reset adds ~5–15 min (node provisioning + nvme-bootstrap on first i8g cre
 | Issue | Mitigation |
 |-------|------------|
 | Scale-up pods Pending on eksctl | Run `lab-nodes.sh 1.1 ensure --scale-up` before scale-up manifest |
-| 1.2 starts with 5 nodes from 1.1 | `prepare-lab.sh 1.2` scales baseline pool back to 4 automatically |
+| 1.2 starts with 5 nodes from 1.1 | `prepare-lab.sh 1.2` scales baseline pool back to 4 automatically (Karpenter: per-AZ NodeClaim termination, mirroring eksctl per-zone ASG scale) |
+| Karpenter 1.1→1.2 multi-AZ mismatch (e.g. 1+3 on baseline) | Re-run `prepare-lab.sh 1.2 --skip-reset`; or delete excess NodeClaim in over-provisioned AZ then re-run prepare |
+| Karpenter vertical pool multi-AZ mismatch (Lab 1.2 Phase 2) | Re-run `lab-nodes.sh 1.2 ensure --vertical` — same per-AZ NodeClaim rebalance as baseline |
 | Rack pods Pending (node affinity) | `./scripts/reset-cluster.sh --yes && ./scripts/labs/prepare-lab.sh 1.2` |
 | Scale-down stuck | Check CR events; watch migration in `asadm`; wait for AKO to migrate records off removed nodes |
 | Lab 1.2 Phase 2 quota | Expect **8 nodes** (4× baseline idle + 4× vertical); verify EC2 quota |

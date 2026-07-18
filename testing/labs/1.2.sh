@@ -11,6 +11,13 @@ source "$(dirname "${BASH_SOURCE[0]}")/../lib/lab-env.sh"
 
 "${LABS}/prepare-lab.sh" 1.2
 
+if [[ "${NODE_PROVISIONING}" == "karpenter" ]]; then
+  # shellcheck disable=SC1091
+  source "${WORKSHOP_ROOT}/scripts/lib/zone-check.sh"
+  assert_multi_az_nodes fail "${NODE_TYPE}" || fail_lab "Lab 1.2: baseline pool multi-AZ distribution mismatch after prepare"
+  log_pass "baseline pool multi-AZ distribution OK (${NODE_TYPE})"
+fi
+
 if [[ "${DEPLOY_PATH}" == "helm" ]]; then
   "${LABS}/deploy-rack-cluster-helm.sh"
 else
@@ -30,6 +37,11 @@ assert_eq "${mem}" "57Gi" "Phase 1 memory limit (${v1_pod})" || fail_lab "Lab 1.
 
 "${LABS}/lab-nodes.sh" 1.2 ensure --vertical
 "${LABS}/lab-nodes.sh" 1.2 validate --vertical
+
+if [[ "${NODE_PROVISIONING}" == "karpenter" ]]; then
+  assert_multi_az_nodes fail "${NODE_TYPE_VERTICAL}" || fail_lab "Lab 1.2: vertical pool multi-AZ distribution mismatch"
+  log_pass "vertical pool multi-AZ distribution OK (${NODE_TYPE_VERTICAL})"
+fi
 
 if [[ "${DEPLOY_PATH}" == "helm" ]]; then
   "${LABS}/deploy-rack-cluster-v2-revision-helm.sh"

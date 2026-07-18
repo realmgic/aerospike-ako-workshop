@@ -79,12 +79,6 @@ count_workload_nodes_ready() {
   fi
 }
 
-count_nodes_instance_type() {
-  local instance_type="$1"
-  kubectl get nodes -l "node.kubernetes.io/instance-type=${instance_type}" --no-headers 2>/dev/null \
-    | grep -c ' Ready ' || true
-}
-
 eksctl_nodegroup_exists() {
   local name="$1"
   eksctl get nodegroup --cluster="${CLUSTER_NAME}" --region="${AWS_REGION}" --name="${name}" >/dev/null 2>&1
@@ -125,26 +119,6 @@ wait_4xl_nodes() {
       exit 1
     fi
     sleep 15
-  done
-}
-
-drain_excess_nodes_by_instance_type() {
-  local instance_type="$1"
-  local target="$2"
-  local ready
-  ready="$(count_nodes_instance_type "${instance_type}")"
-  while [[ "${ready}" -gt "${target}" ]]; do
-    local excess=$((ready - target))
-    echo "Draining ${excess} excess ${instance_type} node(s) (${ready} > ${target})..."
-    while IFS= read -r node; do
-      [[ -z "${node}" ]] && continue
-      kubectl cordon "${node}"
-      kubectl drain "${node}" --ignore-daemonsets --delete-emptydir-data --force --grace-period=120
-    done < <(
-      kubectl get nodes -l "node.kubernetes.io/instance-type=${instance_type}" \
-        --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null | head -n "${excess}"
-    )
-    ready="$(count_nodes_instance_type "${instance_type}")"
   done
 }
 
@@ -359,105 +333,117 @@ verify_karpenter_nodepools_per_zone() {
   done
 }
 
-bootstrap_karpenter_pool_per_zone() {
-  local instance_type="$1"
-  local total_count="$2"
-  local deployment_prefix="$3"
-  local wait_fn="$4"
-  local pool_base_name="$5"
-
-  read_aws_zones_array
-  local num_zones="${#AWS_ZONES_ARRAY[@]}"
-  local zone idx=0 replicas dep_name app_label nodepool_name
-
-  app_label="${deployment_prefix}"
-  for zone in "${AWS_ZONES_ARRAY[@]}"; do
-    [[ -z "${zone}" ]] && continue
-    replicas="$(nodes_for_zone "${total_count}" "${idx}" "${num_zones}")"
-    dep_name="$(karpenter_bootstrap_deployment_name "${deployment_prefix}" "${zone}")"
-    nodepool_name="$(pool_name_for_zone "${pool_base_name}" "${zone}")"
-    echo "Bootstrap ${dep_name}: ${replicas} pod(s) in ${zone} via NodePool ${nodepool_name} (${instance_type})..."
-    kubectl apply -f - <<EOF
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: ${dep_name}
-  namespace: kube-system
-  labels:
-    app: ${app_label}
-    workshop.aerospike.com/zone: $(zone_resource_suffix "${zone}")
-spec:
-  replicas: ${replicas}
-  selector:
-    matchLabels:
-      app: ${app_label}
-      workshop.aerospike.com/zone: $(zone_resource_suffix "${zone}")
-  template:
-    metadata:
-      labels:
-        app: ${app_label}
-        workshop.aerospike.com/zone: $(zone_resource_suffix "${zone}")
-    spec:
-      nodeSelector:
-        node.kubernetes.io/instance-type: ${instance_type}
-        karpenter.sh/nodepool: ${nodepool_name}
-      tolerations:
-        - operator: Exists
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: topology.kubernetes.io/zone
-                    operator: In
-                    values:
-                      - ${zone}
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app: ${app_label}
-                  workshop.aerospike.com/zone: $(zone_resource_suffix "${zone}")
-              topologyKey: kubernetes.io/hostname
-      containers:
-        - name: pause
-          image: registry.k8s.io/pause:3.10
-          resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-EOF
-    idx=$((idx + 1))
-  done
-
-  "${wait_fn}" "${total_count}"
-  delete_karpenter_bootstrap_deployments "${deployment_prefix}"
+count_pool_nodes_in_zone() {
+  local zone="$1"
+  local instance_type="$2"
+  local pool_base_name="$3"
+  local pool_name
+  pool_name="$(pool_name_for_zone "${pool_base_name}" "${zone}")"
+  kubectl get nodes -l "topology.kubernetes.io/zone=${zone},node.kubernetes.io/instance-type=${instance_type},karpenter.sh/nodepool=${pool_name}" \
+    --no-headers 2>/dev/null | grep -c ' Ready ' || true
 }
 
-scale_karpenter_pool_to_count() {
+karpenter_pool_needs_rebalance() {
   local instance_type="$1"
-  local target="$2"
-  local deployment_prefix="$3"
-  local wait_fn="$4"
-  local count_fn="$5"
+  local total_count="$2"
+  local pool_base_name="$3"
 
-  local ready
-  ready="$("${count_fn}")"
-  if [[ "${ready}" -le "${target}" ]]; then
-    return 0
-  fi
-
-  echo "Scaling Karpenter ${instance_type} pool down: ${ready} → ${target}..."
   read_aws_zones_array
   local num_zones="${#AWS_ZONES_ARRAY[@]}"
-  local zone idx=0 replicas dep_name app_label="${deployment_prefix}" nodepool_name
-
+  local zone idx=0 target current
   for zone in "${AWS_ZONES_ARRAY[@]}"; do
     [[ -z "${zone}" ]] && continue
-    replicas="$(nodes_for_zone "${target}" "${idx}" "${num_zones}")"
-    dep_name="$(karpenter_bootstrap_deployment_name "${deployment_prefix}" "${zone}")"
-    nodepool_name="$(pool_name_for_zone "${KARPENTER_NODEPOOL_NAME}" "${zone}")"
-    kubectl apply -f - <<EOF
+    target="$(nodes_for_zone "${total_count}" "${idx}" "${num_zones}")"
+    current="$(count_pool_nodes_in_zone "${zone}" "${instance_type}" "${pool_base_name}")"
+    if [[ "${current}" -ne "${target}" ]]; then
+      return 0
+    fi
+    idx=$((idx + 1))
+  done
+  return 1
+}
+
+wait_karpenter_nodes_in_zone() {
+  local zone="$1"
+  local instance_type="$2"
+  local pool_base_name="$3"
+  local target="$4"
+  local pool_name
+  pool_name="$(pool_name_for_zone "${pool_base_name}" "${zone}")"
+  local deadline=$((SECONDS + NODE_WAIT_TIMEOUT))
+  while true; do
+    local ready
+    ready="$(count_pool_nodes_in_zone "${zone}" "${instance_type}" "${pool_base_name}")"
+    echo "  ${pool_name} nodes Ready in ${zone}: ${ready}/${target}"
+    if [[ "${ready}" -ge "${target}" ]]; then
+      return 0
+    fi
+    if [[ "${SECONDS}" -gt "${deadline}" ]]; then
+      echo "ERROR: timed out waiting for ${target}× ${instance_type} in ${zone} (NodePool ${pool_name})" >&2
+      kubectl get nodes -o wide
+      exit 1
+    fi
+    sleep 15
+  done
+}
+
+terminate_excess_nodeclaims_in_zone() {
+  local pool_base_name="$1"
+  local zone="$2"
+  local instance_type="$3"
+  local target="$4"
+  local nodepool_name current claim node prev
+  nodepool_name="$(pool_name_for_zone "${pool_base_name}" "${zone}")"
+  current="$(count_pool_nodes_in_zone "${zone}" "${instance_type}" "${pool_base_name}")"
+  while [[ "${current}" -gt "${target}" ]]; do
+    local excess=$((current - target))
+    echo "Terminating ${excess} excess NodeClaim(s) in ${zone} (${nodepool_name}: ${current} > ${target})..."
+    claim="$(kubectl get nodeclaims -l "karpenter.sh/nodepool=${nodepool_name}" \
+      -o jsonpath='{.items[-1].metadata.name}' 2>/dev/null || true)"
+    if [[ -z "${claim}" ]]; then
+      node="$(kubectl get nodes -l "topology.kubernetes.io/zone=${zone},karpenter.sh/nodepool=${nodepool_name},node.kubernetes.io/instance-type=${instance_type}" \
+        -o jsonpath='{.items[-1].metadata.name}' 2>/dev/null || true)"
+      if [[ -n "${node}" ]]; then
+        claim="$(kubectl get nodeclaims -o jsonpath="{.items[?(@.status.nodeName==\"${node}\")].metadata.name}" 2>/dev/null || true)"
+      fi
+    fi
+    if [[ -z "${claim}" ]]; then
+      echo "ERROR: could not find NodeClaim to terminate in ${nodepool_name} (${zone})" >&2
+      kubectl get nodeclaims,nodes -o wide 2>/dev/null || true
+      exit 1
+    fi
+    echo "  Deleting NodeClaim ${claim}..."
+    kubectl delete nodeclaim "${claim}" --wait=true --timeout=180s
+    prev="${current}"
+    local claim_deadline=$((SECONDS + NODE_WAIT_TIMEOUT))
+    while [[ "${SECONDS}" -lt "${claim_deadline}" ]]; do
+      current="$(count_pool_nodes_in_zone "${zone}" "${instance_type}" "${pool_base_name}")"
+      if [[ "${current}" -lt "${prev}" ]] || [[ "${current}" -le "${target}" ]]; then
+        break
+      fi
+      echo "  Waiting for node count in ${zone} to drop (${current} > ${target})..."
+      sleep 10
+    done
+    current="$(count_pool_nodes_in_zone "${zone}" "${instance_type}" "${pool_base_name}")"
+    if [[ "${current}" -ge "${prev}" ]] && [[ "${current}" -gt "${target}" ]]; then
+      echo "ERROR: node count in ${zone} did not decrease after deleting NodeClaim ${claim}" >&2
+      kubectl get nodeclaims,nodes -o wide 2>/dev/null || true
+      exit 1
+    fi
+  done
+}
+
+apply_karpenter_bootstrap_deployment() {
+  local deployment_prefix="$1"
+  local zone="$2"
+  local nodepool_name="$3"
+  local instance_type="$4"
+  local replicas="$5"
+  local dep_name app_label="${deployment_prefix}"
+
+  dep_name="$(karpenter_bootstrap_deployment_name "${deployment_prefix}" "${zone}")"
+  echo "Bootstrap ${dep_name}: ${replicas} pod(s) in ${zone} via NodePool ${nodepool_name} (${instance_type})..."
+  kubectl apply -f - <<EOF
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -507,46 +493,79 @@ spec:
               cpu: 100m
               memory: 128Mi
 EOF
+}
+
+ensure_karpenter_pools_per_zone() {
+  local pool_base_name="$1"
+  local instance_type="$2"
+  local total_count="$3"
+  local deployment_prefix="$4"
+  local vertical="${5:-false}"
+
+  apply_karpenter_ec2nodeclass
+  apply_karpenter_pools_per_zone "${vertical}"
+  verify_karpenter_nodepools_per_zone "${vertical}"
+
+  read_aws_zones_array
+  local num_zones="${#AWS_ZONES_ARRAY[@]}"
+  local zone idx=0 target pool_name current
+
+  for zone in "${AWS_ZONES_ARRAY[@]}"; do
+    [[ -z "${zone}" ]] && continue
+    target="$(nodes_for_zone "${total_count}" "${idx}" "${num_zones}")"
+    pool_name="$(pool_name_for_zone "${pool_base_name}" "${zone}")"
+    current="$(count_pool_nodes_in_zone "${zone}" "${instance_type}" "${pool_base_name}")"
+
+    apply_karpenter_bootstrap_deployment "${deployment_prefix}" "${zone}" "${pool_name}" \
+      "${instance_type}" "${target}"
+
+    if [[ "${current}" -gt "${target}" ]]; then
+      terminate_excess_nodeclaims_in_zone "${pool_base_name}" "${zone}" "${instance_type}" "${target}"
+    fi
+
+    wait_karpenter_nodes_in_zone "${zone}" "${instance_type}" "${pool_base_name}" "${target}"
     idx=$((idx + 1))
   done
 
-  "${wait_fn}" "${target}"
-  drain_excess_nodes_by_instance_type "${instance_type}" "${target}"
   delete_karpenter_bootstrap_deployments "${deployment_prefix}"
+  echo "OK  Karpenter NodePools active (${total_count} target across ${num_zones} zone(s), ${instance_type})"
 }
 
 apply_karpenter_baseline_pool() {
   local total_count="${1:-${NODE_COUNT}}"
-  apply_karpenter_ec2nodeclass
-  apply_karpenter_pools_per_zone false
-  verify_karpenter_nodepools_per_zone false
-  bootstrap_karpenter_pool_per_zone "${NODE_TYPE}" "${total_count}" \
-    "karpenter-bootstrap" wait_2xl_nodes "${KARPENTER_NODEPOOL_NAME}"
+  ensure_karpenter_pools_per_zone "${KARPENTER_NODEPOOL_NAME}" "${NODE_TYPE}" "${total_count}" \
+    "karpenter-bootstrap" false
 }
 
 ensure_karpenter_baseline_pool() {
   local count="${1:-${NODE_COUNT}}"
-  apply_karpenter_ec2nodeclass
-  apply_karpenter_pools_per_zone false
-  verify_karpenter_nodepools_per_zone false
-  local ready
-  ready="$(count_2xl_nodes_ready)"
-  if [[ "${ready}" -gt "${count}" ]]; then
-    scale_karpenter_pool_to_count "${NODE_TYPE}" "${count}" "karpenter-bootstrap" wait_2xl_nodes count_2xl_nodes_ready
-  elif [[ "${ready}" -lt "${count}" ]]; then
-    bootstrap_karpenter_pool_per_zone "${NODE_TYPE}" "${count}" \
-      "karpenter-bootstrap" wait_2xl_nodes "${KARPENTER_NODEPOOL_NAME}"
+  if karpenter_pool_needs_rebalance "${NODE_TYPE}" "${count}" "${KARPENTER_NODEPOOL_NAME}"; then
+    ensure_karpenter_pools_per_zone "${KARPENTER_NODEPOOL_NAME}" "${NODE_TYPE}" "${count}" \
+      "karpenter-bootstrap" false
   else
-    echo "OK  Karpenter baseline NodePools active with ${ready} Ready nodes"
+    apply_karpenter_ec2nodeclass
+    apply_karpenter_pools_per_zone false
+    verify_karpenter_nodepools_per_zone false
+    echo "OK  Karpenter baseline NodePools active with $(count_2xl_nodes_ready) Ready nodes"
   fi
 }
 
 apply_karpenter_vertical_pool() {
   local total_count="${1:-${NODE_COUNT}}"
-  apply_karpenter_pools_per_zone true
-  verify_karpenter_nodepools_per_zone true
-  bootstrap_karpenter_pool_per_zone "${NODE_TYPE_VERTICAL}" "${total_count}" \
-    "karpenter-vertical-bootstrap" wait_4xl_nodes "${KARPENTER_NODEPOOL_VERTICAL_NAME}"
+  ensure_karpenter_pools_per_zone "${KARPENTER_NODEPOOL_VERTICAL_NAME}" "${NODE_TYPE_VERTICAL}" "${total_count}" \
+    "karpenter-vertical-bootstrap" true
+}
+
+ensure_karpenter_vertical_pool() {
+  local count="${1:-${NODE_COUNT}}"
+  if karpenter_pool_needs_rebalance "${NODE_TYPE_VERTICAL}" "${count}" "${KARPENTER_NODEPOOL_VERTICAL_NAME}"; then
+    ensure_karpenter_pools_per_zone "${KARPENTER_NODEPOOL_VERTICAL_NAME}" "${NODE_TYPE_VERTICAL}" "${count}" \
+      "karpenter-vertical-bootstrap" true
+  else
+    apply_karpenter_pools_per_zone true
+    verify_karpenter_nodepools_per_zone true
+    echo "OK  Karpenter vertical NodePools active with $(count_4xl_nodes_ready) Ready nodes"
+  fi
 }
 
 wait_nvme_bootstrap() {
@@ -584,7 +603,12 @@ ensure_2xl_pool() {
 
   print_zone_distribution "${NODE_TYPE}"
   if ! assert_multi_az_nodes fail "${NODE_TYPE}"; then
-    echo "ERROR: multi-AZ distribution failed — run ./scripts/reset-cluster.sh --yes then prepare-lab.sh" >&2
+    if [[ "${NODE_PROVISIONING}" == "karpenter" ]]; then
+      echo "ERROR: multi-AZ distribution failed — re-run ./scripts/labs/prepare-lab.sh ${LAB_ID}" >&2
+      echo "       Or: ./scripts/reset-cluster.sh --yes && ./scripts/labs/prepare-lab.sh ${LAB_ID}" >&2
+    else
+      echo "ERROR: multi-AZ distribution failed — run ./scripts/reset-cluster.sh --yes then prepare-lab.sh" >&2
+    fi
     exit 1
   fi
 
@@ -656,7 +680,7 @@ ensure_vertical_4xl() {
   echo "=== Vertical scale: add ${NODE_TYPE_VERTICAL} pool per AZ (keep ${NODE_TYPE} pool) ==="
 
   if [[ "${NODE_PROVISIONING}" == "karpenter" ]]; then
-    apply_karpenter_vertical_pool "${NODE_COUNT}"
+    ensure_karpenter_vertical_pool "${NODE_COUNT}"
   else
     ensure_eksctl_pools_per_zone "${NODEGROUP_NAME_VERTICAL}" "${NODE_TYPE_VERTICAL}" "${NODE_COUNT}" "vertical"
   fi
@@ -687,6 +711,9 @@ validate_2xl_pool() {
   fi
   print_zone_distribution "${NODE_TYPE}"
   if [[ "${expected}" -ge "${MIN_NODES_PER_ZONE}" ]] && ! assert_multi_az_nodes fail "${NODE_TYPE}"; then
+    if [[ "${NODE_PROVISIONING}" == "karpenter" ]]; then
+      echo "Hint: re-run ./scripts/labs/prepare-lab.sh ${LAB_ID} (Karpenter will rebalance per-AZ NodePools)" >&2
+    fi
     echo "Hint: run ./scripts/reset-cluster.sh --yes && ./scripts/labs/prepare-lab.sh ${LAB_ID}" >&2
     exit 1
   fi
@@ -704,6 +731,10 @@ validate_4xl_pool() {
   fi
   print_zone_distribution "${NODE_TYPE_VERTICAL}"
   if ! assert_multi_az_nodes fail "${NODE_TYPE_VERTICAL}"; then
+    if [[ "${NODE_PROVISIONING}" == "karpenter" ]]; then
+      echo "Hint: re-run ./scripts/labs/lab-nodes.sh ${LAB_ID} ensure --vertical (Karpenter will rebalance per-AZ NodePools)" >&2
+    fi
+    echo "Hint: run ./scripts/reset-cluster.sh --yes && ./scripts/labs/prepare-lab.sh ${LAB_ID}" >&2
     exit 1
   fi
   echo "OK  ${ready}× ${NODE_TYPE_VERTICAL} Ready"
