@@ -8,7 +8,7 @@
 | 2.2 | ~30–40m | Three steps: 4.3.0 → 4.4.1 → 4.5.0; demo one step live |
 | 2.3 | ~10m | WarmRestart then PodRestart (cold) on 8.1.0.x cluster (match deploy-cluster.sh); optional Terminal B `run-lab-workload.sh` |
 | 2.4 | ~20m | Rolling DB upgrade 8.1.0.x → 8.1.2.x (requires AKO 4.5.0); start `run-lab-workload.sh` in Terminal B before image apply |
-| 2.5 | ~25m (+15m add-on) | Two-terminal drain demo: pre-load data; show pod held during `InProgress` + `eviction-blocked`; Karpenter add-on: do-not-disrupt graduation + terminationGracePeriod |
+| 2.5 | ~25m (+15m add-on) | Drain demo: migration-gated webhook block; local PVC pinning; Phase 4 node termination + PVC cleanup; optional asadm quiesce step |
 | 2.6 | ~45m | Mostly waiting; pre-stage cluster + Aerospike; optional `run-lab-workload.sh --upgrade-lab` in Terminal B through CP + nodegroup upgrade |
 
 ## AKO upgrade (2.2)
@@ -31,10 +31,12 @@
 
 - **Enable safe pod eviction first** — verify `ENABLE_SAFE_POD_EVICTION=true` on the operator before the drain demo ([Aerospike docs](https://aerospike.com/docs/kubernetes/manage/node-maintenance/#enabling-safe-pod-eviction)); OLM installs do not set this by default
 - **Pre-load data (Phase 1)** — empty cluster migrates too fast (especially `--dim`); run `load-data.sh` (Option A) or `prepare-lab.sh 2.5 --load-data` (Option B)
-- **Two-terminal demo** — Terminal A: `kubectl drain`; Terminal B: prove pod still `Running` on node while CR is `InProgress`
-- If migration window is too short, increase `MIGRATION_LOAD_RECORDS` (e.g. `8000000`)
+- **Three-layer story** — (1) webhook blocks drain only while migration active; (2) local-ssd PVC node affinity pins pod after drain; (3) node termination → PVC cleanup controller → pod reschedules
+- **Two-terminal demo** — Terminal A: `kubectl drain`; Terminal B: CR `InProgress`, migrate stats, pod on `$NODE` (`Running` or `Terminating` both valid)
+- If migration window is too short, use [Phase 2 optional](05-k8s-node-maintenance.md#2-optional--force-visible-drain-block-instructor--demo) (`migrate-fill-delay` 3600 + quiesce node 3)
+- **Phase 4 required (device storage)** — terminate node, watch PVC cleanup controller, confirm pod reschedules
 - **eksctl path:** drain (primary) + optional blocklist demo
-- **Karpenter path:** drain only; optional NodeClaim disruption observe — see [05-k8s-node-maintenance-karpenter.md](05-k8s-node-maintenance-karpenter.md)
+- **Karpenter path:** drain + Phase 4 NodeClaim replacement — see [05-k8s-node-maintenance-karpenter.md](05-k8s-node-maintenance-karpenter.md)
 - **Never** demo blocklist on Karpenter ([AKO #305](https://github.com/aerospike/aerospike-kubernetes-operator/issues/305))
 - **Karpenter add-on (~15m):** run after drain demo when audience is planning to allow voluntary Karpenter disruption
   - Frame customer's `do-not-disrupt` approach as valid Phase 1, not the long-term target

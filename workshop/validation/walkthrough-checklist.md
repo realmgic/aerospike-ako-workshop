@@ -43,9 +43,9 @@ For **Karpenter path** runs, use [karpenter-walkthrough.md](karpenter-walkthroug
 ## Section 2 — Maintenance & Upgrade (continued)
 - [ ] **2.3** On-demand operations — WarmRestart then PodRestart (cold) on 8.1.0.x cluster; optional `run-lab-workload.sh` in Terminal B during ops
 - [ ] **2.4** Upgrade Aerospike DB — 8.1.0.x→8.1.2.x, rolling restart; `run-lab-workload.sh` ~10k TPS through upgrade (Terminal B)
-- [ ] **2.5** K8s node maintenance — data loaded (`load-data.sh` or `prepare-lab.sh 2.5 --load-data`); pod held on node during `InProgress`; drain succeeds after `Completed`
+- [ ] **2.5** K8s node maintenance — data loaded; webhook blocks drain during active migration; local PVC pinning after drain; node termination + PVC cleanup; pod rescheduled
 - [ ] **2.5 (eksctl only)** — blocklist path validated (same migration observation)
-- [ ] **2.5 (Karpenter only)** — drain + optional disruption; **no blocklist**
+- [ ] **2.5 (Karpenter only)** — drain + Phase 4 NodeClaim replacement; **no blocklist**
 - [ ] **2.5 (Karpenter only) add-on** — do-not-disrupt graduation + `terminationGracePeriod` (instructor-led)
 - [ ] **2.6** K8s control plane upgrade — 3 pods Running through upgrade; optional `run-lab-workload.sh --upgrade-lab` in Terminal B (upgrade-lab eksctl cluster)
 

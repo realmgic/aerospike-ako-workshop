@@ -236,7 +236,7 @@ kubectl akoctl collectinfo -n aerospike,operators --path /tmp/akoctl-lab
 | Pods `Pending` (PVC) | `get pvc -o wide`; `get pv -o custom-columns=NAME:.metadata.name,CLASS:.spec.storageClassName --no-headers \| awk '$2 == "local-ssd"'` |
 | Migration / scale-down slow | Expected during rack revision/replacement or scale-down with data; watch AKO logs and `asadm` migrate stats |
 | Operator `CrashLoopBackOff` | AKO logs; Path B: cert-manager; Path A: OLM CSV/InstallPlan |
-| Safe eviction blocks drain | AKO webhook — wait for CR `Completed`; see [Lab 2.5](sections/02-maintenance-and-upgrade/05-k8s-node-maintenance.md) |
+| Safe eviction blocks drain | AKO webhook blocks drain only during active migration; local PVC pinning and PVC cleanup on node termination — see [Lab 2.5](sections/02-maintenance-and-upgrade/05-k8s-node-maintenance.md) |
 
 ## Security
 

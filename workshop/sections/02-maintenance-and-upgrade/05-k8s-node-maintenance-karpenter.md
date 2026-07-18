@@ -13,7 +13,9 @@
 
 ## Takeaway
 
-On Karpenter, use **drain + AKO safe eviction** for planned node maintenance. Pre-load data so trainees see the pod held on the node while migration runs (`InProgress`, `eviction-blocked`). For **Karpenter-initiated** disruption (consolidation, drift/AMI rollouts), pair safe eviction with a correctly sized **`terminationGracePeriod`** — do not rely on `k8sNodeBlockList` ([AKO #305](https://github.com/aerospike/aerospike-kubernetes-operator/issues/305)).
+On Karpenter, use **drain + AKO safe eviction** for planned node maintenance. Safe eviction blocks drain **only while Aerospike migration is active**; without active migration, drain cordons the node. **local-ssd PVCs** pin pods to the node until claims are cleared — node termination triggers the PVC cleanup controller and pod rescheduling on a replacement NodeClaim.
+
+For **Karpenter-initiated** disruption (consolidation, drift/AMI rollouts), pair safe eviction with a correctly sized **`terminationGracePeriod`** — do not rely on `k8sNodeBlockList` ([AKO #305](https://github.com/aerospike/aerospike-kubernetes-operator/issues/305)).
 
 ## Prerequisites
 
@@ -37,41 +39,53 @@ Same as the [eksctl guide](05-k8s-node-maintenance.md#phase-1--seed-data-make-mi
 
 ## Phase 2 — Drain + observe (primary)
 
-AKO safe eviction applies regardless of node provisioner. Use two terminals — see [Phase 2 in the main guide](05-k8s-node-maintenance.md#phase-2--drain--observe-core-demo).
+AKO safe eviction applies regardless of node provisioner. Follow [Phase 2 in the main guide](05-k8s-node-maintenance.md#phase-2--drain--observe-core-demo) — capture `$NODE`, drain, observe migration, retry after CR `Completed`.
 
-**Terminal A:**
+**Pass during active migration:**
 
-```bash
-kubectl drain "$NODE" --ignore-daemonsets --delete-emptydir-data
-```
+- Terminal A shows webhook denial for the Aerospike pod
+- CR phase **`InProgress`**
+- asadm shows non-zero migrate stats
+- Pod on `$NODE` may be `Running` or `Terminating`
 
-**Terminal B (while drain blocks):**
+Optional: [Force visible drain block](05-k8s-node-maintenance.md#2-optional--force-visible-drain-block-instructor--demo) if migration finishes too fast.
 
-```bash
-kubectl -n aerospike get pod -o wide --field-selector spec.nodeName="$NODE"
-kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.status.phase}{"\n"}'
-kubectl -n aerospike get pod -l aerospike.com/cr=aerocluster --field-selector spec.nodeName="$NODE" \
-  -o custom-columns='NAME:.metadata.name,EVICTION-BLOCKED:.metadata.annotations.aerospike\.com/eviction-blocked'
-kubectl run -it --rm aerospike-tool-migrate -n aerospike --restart=Never \
-  --image=aerospike/aerospike-tools:latest -- \
-  asadm -h aerocluster -U admin -P admin123 -e "show stat like migrate"
-```
+## Phase 3 — PVC pinning observe
 
-**Pass during migration:** pod on `$NODE` still `Running`; CR `InProgress`; `eviction-blocked` set.
+Same as the [eksctl guide Phase 3](05-k8s-node-maintenance.md#phase-3--pvc-pinning-observe) — local-ssd PVC node affinity keeps the pod on the cordoned node until claims are deleted.
 
-## Phase 3 — Complete drain
+## Phase 4 — Node termination + PVC cleanup
 
-```bash
-kubectl -n aerospike wait --for=jsonpath='{.status.phase}'=Completed aerospikecluster/aerocluster --timeout=900s
-kubectl drain "$NODE" --ignore-daemonsets --delete-emptydir-data
-kubectl -n aerospike get pods -o wide
-```
+Replace the drained worker via Karpenter NodeClaim lifecycle:
 
-**Pass:** Drain succeeds without `--force` after cluster stable.
+1. Delete the NodeClaim for `$NODE`:
+
+   ```bash
+   CLAIM=$(kubectl get nodeclaims -o jsonpath="{.items[?(@.status.nodeName==\"${NODE}\")].metadata.name}")
+   kubectl delete nodeclaim "$CLAIM"
+   ```
+
+2. Watch NodeClaim termination and replacement:
+
+   ```bash
+   kubectl get nodeclaims,nodes -w
+   ```
+
+3. Watch PVC cleanup and pod reschedule:
+
+   ```bash
+   kubectl -n kube-system logs deploy/local-volume-node-cleanup-controller -f
+   kubectl -n aerospike get pvc -w
+   kubectl -n aerospike get pod -l aerospike.com/cr=aerocluster -o wide -w
+   ```
+
+**Pass:** Orphaned local-ssd PVCs removed; replacement node `Ready`; `aerocluster-0-0` pod `Running` on new node; CR `Completed`.
+
+Ctrl+C once replacement is stable. `nvme-bootstrap` initializes NVMe on the new instance (Lab 0.5).
 
 ## Steps — Observe Karpenter disruption (optional demo)
 
-After successful drain, show how Karpenter manages node lifecycle:
+After Phase 4, optionally show broader Karpenter node lifecycle:
 
 1. Watch NodeClaim termination:
 
@@ -240,7 +254,7 @@ Workshop EC2NodeClass tracks **`al2023@latest`** (`01-ec2nodeclass-i8g.yaml`). P
 
 ## Verify (pass/fail)
 
-**Pass:** Pod held on node during `InProgress`; node drained after CR `Completed`; Aerospike pods `Running` on other nodes. No `k8sNodeBlockList` applied.
+**Pass:** Webhook denied drain during active migration; node cordoned after CR `Completed`; local PVCs cleaned up after node replacement; Aerospike pods `Running` on other nodes. No `k8sNodeBlockList` applied.
 
 ## What NOT to demo on Karpenter
 
@@ -254,6 +268,9 @@ Workshop EC2NodeClass tracks **`al2023@latest`** (`01-ec2nodeclass-i8g.yaml`). P
 
 | Symptom | Fix |
 |---------|-----|
+| Drain not blocked | Migration may have finished; use [Phase 2 optional](05-k8s-node-maintenance.md#2-optional--force-visible-drain-block-instructor--demo) |
+| Pod stuck on cordoned node | Expected with local PVC — proceed to Phase 4 |
+| PVC not cleaned up after node delete | Check cleanup controller logs; wait 60s |
 | Node not terminating after drain | Check PDB; verify terminationGracePeriod |
 | Replacement node missing NVMe | Verify `nvme-bootstrap` DaemonSet Ready |
 | Consolidation removes nodes mid-lab | Set `KARPENTER_CONSOLIDATION=Off` |

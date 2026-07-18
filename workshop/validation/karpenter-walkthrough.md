@@ -39,7 +39,7 @@ Update [LAB_REGISTRY.yaml](../LAB_REGISTRY.yaml) `karpenter_validation` when com
 ## Section 2 — Maintenance & Upgrade (continued)
 - [ ] **2.3** On-demand operations — WarmRestart then PodRestart (cold) on 8.1.0.x cluster; optional `run-lab-workload.sh` in Terminal B
 - [ ] **2.4** Upgrade Aerospike DB — 8.1.0.x→8.1.2.x rolling restart; `run-lab-workload.sh` ~10k TPS through upgrade
-- [ ] **2.5** Karpenter maintenance — data loaded (`load-data.sh` or `prepare-lab.sh 2.5 --load-data`); pod held during `InProgress`; drain after `Completed`; **no blocklist**
+- [ ] **2.5** Karpenter maintenance — data loaded; webhook blocks during active migration; local PVC pinning; Phase 4 NodeClaim replacement + PVC cleanup; **no blocklist**
 - [ ] **2.5 add-on** — do-not-disrupt graduation discussion; three protection layers; `terminationGracePeriod` sizing (instructor-led)
 - [ ] **2.6** Control plane upgrade — **upgrade-lab eksctl cluster**; optional `run-lab-workload.sh --upgrade-lab` in Terminal B
 
