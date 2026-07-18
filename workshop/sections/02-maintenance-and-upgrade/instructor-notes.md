@@ -8,7 +8,8 @@
 | 2.2 | ~30–40m | Three steps: 4.3.0 → 4.4.1 → 4.5.0; demo one step live |
 | 2.3 | ~10m | WarmRestart then PodRestart (cold) on 8.1.0.x cluster (match deploy-cluster.sh); optional Terminal B `run-lab-workload.sh` |
 | 2.4 | ~20m | Rolling DB upgrade 8.1.0.x → 8.1.2.x (requires AKO 4.5.0); start `run-lab-workload.sh` in Terminal B before image apply |
-| 2.5 | ~25m (+15m add-on) | Drain demo: migration-gated webhook block; Phase 3 Path A (pinning) or Path B (AKO auto-delete); optional same-AZ nodegroup scale before drain (eksctl); Phase 4 terminate + PVC cleanup; optional asadm quiesce step |
+| 2.5 (eksctl) | ~25m | Drain demo: migration-gated webhook block; Phase 3 Path A/B; optional same-AZ nodegroup scale before drain; Phase 4 EC2 terminate + PVC cleanup; optional blocklist alternate; optional asadm quiesce step |
+| 2.5 (Karpenter) | ~25m (+15m add-on) | Same drain + Phase 3 story; Phase 4 NodeClaim delete + replacement; optional Karpenter disruption add-on; no blocklist |
 | 2.6 | ~45–60m | Two-phase EKS upgrade: CP (~10–20m) then nodegroup (~15–25m); Phase 1 seed + Terminal B workload recommended; nodegroup = Lab 2.5 drain mechanics at scale |
 
 ## AKO upgrade (2.2)
@@ -33,24 +34,31 @@
 
 ## Lab 2.5 (node maintenance)
 
+Pick **one** guide by `NODE_PROVISIONING` — [eksctl](05-k8s-node-maintenance.md) or [Karpenter](05-k8s-node-maintenance-karpenter.md). Shared teaching points apply to both paths.
+
 - **Enable safe pod eviction first** — verify `ENABLE_SAFE_POD_EVICTION=true` on the operator before the drain demo ([Aerospike docs](https://aerospike.com/docs/kubernetes/manage/node-maintenance/#enabling-safe-pod-eviction)); OLM installs do not set this by default
 - **Pre-load data (Phase 1)** — empty cluster migrates too fast (especially `--dim`); run `load-data.sh` (Option A) or `prepare-lab.sh 2.5 --load-data` (Option B)
 - **Three-layer story** — (1) webhook blocks drain only while migration active; (2) after drain, Path A = local-ssd PVC pins pod on cordoned node, Path B = AKO `localStorageClasses` deletes claims and pod reschedules empty; (3) node termination → PVC cleanup controller → pod on fresh local storage in same AZ
 - **Two-terminal demo** — Terminal A: `kubectl drain`; Terminal B: CR `InProgress`, migrate stats, pod on `$NODE` (`Running` or `Terminating` both valid)
-- If migration window is too short, use [Phase 2 optional (instructor)](05-k8s-node-maintenance.md#2-optional-instructor--force-visible-drain-block) (`migrate-fill-delay` 3600 + quiesce node 3)
-- **Phase 4 required (device storage)** — terminate node, watch PVC cleanup controller, confirm pod reschedules
+- If migration window is too short, use Phase 2 optional (instructor) in the active guide (`migrate-fill-delay` 3600 + quiesce node 3)
+- **Phase 4 required (device storage)** — terminate/replace node, watch PVC cleanup controller, confirm pod reschedules
+- **`CLUSTER_STORAGE_DIM_LABS=2.5`** — disk default everywhere except Lab 2.5 stays in-memory for faster drain demos
+
+### Lab 2.5 — eksctl path
+
 - **Phase 2 optional (eksctl)** — `./scripts/labs/lab-nodes.sh 2.5 ensure --replace-zone --node=$NODE` after 2a, before first drain; pre-provisions same-AZ capacity for pod reschedule during drain or after Phase 4 terminate
-- **eksctl path:** drain (primary) + optional blocklist demo
-- **Karpenter path:** drain + Phase 4 NodeClaim replacement — see [05-k8s-node-maintenance-karpenter.md](05-k8s-node-maintenance-karpenter.md)
-- **Never** demo blocklist on Karpenter ([AKO #305](https://github.com/aerospike/aerospike-kubernetes-operator/issues/305))
-- **Karpenter add-on (~15m):** run after drain demo when audience is planning to allow voluntary Karpenter disruption
+- **Alternate demo** — optional `k8sNodeBlockList` section (eksctl guide only)
+
+### Lab 2.5 — Karpenter path
+
+- **Phase 4** — delete NodeClaim for drained node; Karpenter provisions same-zone replacement automatically (no manual nodegroup scale-up)
+- **Never** demo blocklist ([AKO #305](https://github.com/aerospike/aerospike-kubernetes-operator/issues/305))
+- **Add-on (~15m):** run after drain demo when audience is planning to allow voluntary Karpenter disruption
   - Frame customer's `do-not-disrupt` approach as valid Phase 1, not the long-term target
   - Walk the three layers: `do-not-disrupt` → safe eviction → `terminationGracePeriod`
   - Show live NodePool grace value: `kubectl get nodepool … -o jsonpath='{.spec.template.spec.terminationGracePeriod}'`
   - Emphasize AKO docs: Karpenter **force-deletes** after grace period — 600s workshop default is a starting point, not production gospel
   - Do **not** live-demo removing `do-not-disrupt` or enabling consolidation during class unless on a throwaway cluster
-
-- **`CLUSTER_STORAGE_DIM_LABS=2.5`** — disk default everywhere except Lab 2.5 stays in-memory for faster drain demos
 
 ## Pitfalls
 

@@ -194,7 +194,12 @@ kubectl run -it --rm aerospike-tool-rf -n aerospike --restart=Never \
 
 ## Handoff
 
-Proceed to [Lab 2.5](05-k8s-node-maintenance.md). Cluster should be on **8.1.2.x** with phase `Completed`.
+Proceed to Lab 2.5 — pick one guide from the [Section 2 README](README.md#labs) by `NODE_PROVISIONING`:
+
+- **eksctl:** [K8s Worker Node Maintenance](05-k8s-node-maintenance.md)
+- **Karpenter:** [K8s Worker Node Maintenance (Karpenter)](05-k8s-node-maintenance-karpenter.md)
+
+Cluster should be on **8.1.2.x** with phase `Completed`.
 
 ## References
 

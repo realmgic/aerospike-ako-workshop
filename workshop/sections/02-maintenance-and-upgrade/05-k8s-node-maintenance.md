@@ -1,5 +1,7 @@
 # Lab 2.5 — K8s Worker Node Maintenance
 
+> **Node provisioning:** This guide is for `NODE_PROVISIONING=eksctl`. If you use Karpenter, use [Lab 2.5 — K8s Worker Node Maintenance (Karpenter)](05-k8s-node-maintenance-karpenter.md) instead — do not mix guides mid-session.
+
 
 | Field              | Value                                                                             |
 | ------------------ | --------------------------------------------------------------------------------- |
@@ -9,7 +11,7 @@
 | AKO min version    | `4.5.0`                                                                           |
 | Aerospike baseline | 3-node device storage on local-ssd (**8.1.2.x**); in-memory with `--dim`          |
 | Deploy path        | both                                                                              |
-| Node provisioning  | both (blocklist **eksctl only**)                                                  |
+| Node provisioning  | **eksctl**                                                                        |
 | Duration           | ~25 min                                                                           |
 | Validation status  | `draft`                                                                           |
 | Official docs      | [Node maintenance](https://aerospike.com/docs/kubernetes/manage/node-maintenance) |
@@ -233,8 +235,6 @@ kubectl get nodes -l "topology.kubernetes.io/zone=${TARGET_ZONE},workshop.aerosp
 
 **Pass:** Nodegroup in `$TARGET_ZONE` has +1 Ready node. Then continue with **2b**.
 
-> **Karpenter sessions:** skip this subsection — NodeClaim replacement in [Phase 4 (Karpenter)](05-k8s-node-maintenance-karpenter.md#phase-4--node-termination--pvc-cleanup) provisions same-zone capacity automatically.
-
 ### 2b — First drain + migration
 
 **Terminal A:**
@@ -402,8 +402,6 @@ Ctrl+C once a replacement node is `Ready`. `nvme-bootstrap` initializes NVMe on 
 
 **Pass:** Orphaned local-ssd PVCs removed; replacement `aerocluster-0-0` pod `Running` on a new node; CR `Completed`. If you ran [Phase 2 optional (eksctl)](#2-optional-eksctl--add-same-az-capacity-before-drain), the pod should land on the **new** node in `$TARGET_ZONE` after terminate and ~60s cleanup delay.
 
-> **Karpenter sessions:** use [05-k8s-node-maintenance-karpenter.md](05-k8s-node-maintenance-karpenter.md) Phase 4 for NodeClaim replacement instead of EC2 terminate.
-
 
 
 ## Alternate — k8sNodeBlockList (eksctl path only)
@@ -547,7 +545,6 @@ Proceed to [Lab 2.6](06-k8s-control-plane-upgrade.md). Aerospike cluster should 
 
 ## Not covered here
 
-- Karpenter voluntary disruption, `do-not-disrupt`, and `terminationGracePeriod` → [Karpenter lab add-on](05-k8s-node-maintenance-karpenter.md#add-on--graduating-from-do-not-disrupt-to-karpenter-native-disruption-15-min)
 - Control plane upgrade → [Lab 2.6](06-k8s-control-plane-upgrade.md)
 
 
