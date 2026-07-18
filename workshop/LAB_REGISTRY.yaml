@@ -340,6 +340,7 @@ labs:
         - helm/node-blocklist-values.yaml
     scripts:
       - scripts/labs/prepare-lab.sh
+      - scripts/labs/verify-safe-pod-eviction.sh
       - scripts/labs/load-data.sh
       - scripts/labs/load-migration-data.sh
       - scripts/labs/load-dim-migration-data.sh

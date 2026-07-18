@@ -33,15 +33,7 @@ enable_safe_pod_eviction() {
 }
 
 verify_safe_pod_eviction() {
-  local env_dump webhook
-  env_dump="$(kubectl -n "${OPERATOR_NAMESPACE}" get "deployment/$(ako_operator_deployment_name)" \
-    -o jsonpath='{range .spec.template.spec.containers[0].env[*]}{.name}{"="}{.value}{"\n"}{end}' 2>/dev/null)"
-  assert_contains "${env_dump}" "ENABLE_SAFE_POD_EVICTION=true" "operator env ENABLE_SAFE_POD_EVICTION" \
-    || fail_lab "Lab 2.5: safe pod eviction not enabled on operator deployment"
-
-  webhook="$(kubectl get validatingwebhookconfiguration -o name 2>/dev/null | grep aerospikeeviction || true)"
-  assert_not_empty "${webhook}" "aerospikeeviction validating webhook present" \
-    || fail_lab "Lab 2.5: aerospikeeviction validating webhook not found"
+  "${LABS}/verify-safe-pod-eviction.sh"
 }
 
 enable_safe_pod_eviction

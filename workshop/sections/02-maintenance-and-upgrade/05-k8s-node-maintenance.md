@@ -86,17 +86,48 @@ safePodEviction:
 
 ### Verify
 
+Both paths — workshop script (uses the correct operator deployment name for OLM vs Helm):
+
+```bash
+source scripts/env/workshop.env
+./scripts/labs/verify-safe-pod-eviction.sh
+```
+
+**Expected:** `ENABLE_SAFE_POD_EVICTION=true`; a validating webhook with a `pods/eviction` rule (typically `aerospike-operator-validating-webhook-configuration` on Helm); controller Ready.
+
+If the webhook is missing after Lab 2.2, re-apply [helm/operator-values.yaml](../../helm/operator-values.yaml) — `upgrade-step-helm.sh` does not merge workshop values.
+
+#### Path A — manual (OLM)
+
 ```bash
 kubectl -n operators get deployment aerospike-operator-controller-manager \
   -o jsonpath='{range .spec.template.spec.containers[0].env[*]}{.name}{"="}{.value}{"\n"}{end}' \
   | grep ENABLE_SAFE_POD_EVICTION
 
-kubectl get validatingwebhookconfiguration | grep aerospikeeviction
+kubectl get validatingwebhookconfiguration -o jsonpath='{range .items[*]}{.metadata.name}{": "}{range .webhooks[*].rules[*].resources}{.}{" "}{end}{"\n"}{end}' \
+  | grep 'pods/eviction'
 
 kubectl -n operators rollout status deployment/aerospike-operator-controller-manager --timeout=120s
 ```
 
-**Expected:** `ENABLE_SAFE_POD_EVICTION=true`; eviction validating webhook listed; controller Ready.
+#### Path B — manual (Helm)
+
+```bash
+source scripts/env/workshop.env
+
+kubectl -n "${OPERATOR_NAMESPACE}" get deployment "${HELM_OPERATOR_RELEASE}" \
+  -o jsonpath='{range .spec.template.spec.containers[0].env[*]}{.name}{"="}{.value}{"\n"}{end}' \
+  | grep ENABLE_SAFE_POD_EVICTION
+
+helm get values "${HELM_OPERATOR_RELEASE}" -n "${OPERATOR_NAMESPACE}" -o yaml | grep -A2 safePodEviction
+
+kubectl get validatingwebhookconfiguration -o jsonpath='{range .items[*]}{.metadata.name}{": "}{range .webhooks[*].rules[*].resources}{.}{" "}{end}{"\n"}{end}' \
+  | grep 'pods/eviction'
+
+kubectl -n "${OPERATOR_NAMESPACE}" rollout status "deployment/${HELM_OPERATOR_RELEASE}" --timeout=120s
+```
+
+**Expected:** Same as above — deployment name is `${HELM_OPERATOR_RELEASE}` (default `aerospike-kubernetes-operator`), not `aerospike-operator-controller-manager`.
 
 ## Phase 0 — Prepare lab
 
