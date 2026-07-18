@@ -5,6 +5,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSHOP_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
+ensure_noninteractive_cli() {
+  export AWS_PAGER=""
+  export AWS_CLI_AUTO_PROMPT=off
+  export KUBE_PAGER=""
+}
+
 load_env() {
   # Preserve CLUSTER_NAME when a wrapper targets upgrade-lab (or another cluster)
   # before re-sourcing workshop.env — otherwise shared scripts hit the main cluster.
@@ -68,6 +74,7 @@ load_env() {
 
   IFS=',' read -r NODE_ZONE_A NODE_ZONE_B _ <<< "${AWS_ZONES},,"
   export NODE_ZONE_A NODE_ZONE_B
+  ensure_noninteractive_cli
 }
 
 # OLM installs deployment/aerospike-operator-controller-manager; Helm uses release name.

@@ -34,18 +34,25 @@ for subnet in $(aws eks describe-cluster --name "${CLUSTER_NAME}" --region "${AW
 done
 
 # Node IAM role + instance profile
+KARPENTER_NODE_POLICIES=(
+  AmazonEKSWorkerNodePolicy
+  AmazonEKS_CNI_Policy
+  AmazonEC2ContainerRegistryReadOnly
+  AmazonSSMManagedInstanceCore
+)
 if ! aws iam get-role --role-name "${NODE_ROLE_NAME}" >/dev/null 2>&1; then
   aws iam create-role --role-name "${NODE_ROLE_NAME}" \
     --assume-role-policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"ec2.amazonaws.com"},"Action":"sts:AssumeRole"}]}' >/dev/null
-  for pol in AmazonEKSWorkerNodePolicy AmazonEKS_CNI_Policy AmazonEC2ContainerRegistryReadOnly AmazonSSMManagedInstanceCore; do
-    aws iam attach-role-policy --role-name "${NODE_ROLE_NAME}" \
-      --policy-arn "arn:aws:iam::aws:policy/${pol}"
-  done
   aws iam create-instance-profile --instance-profile-name "${NODE_ROLE_NAME}" >/dev/null 2>&1 || true
   aws iam add-role-to-instance-profile \
     --instance-profile-name "${NODE_ROLE_NAME}" \
     --role-name "${NODE_ROLE_NAME}" 2>/dev/null || true
 fi
+for pol in "${KARPENTER_NODE_POLICIES[@]}"; do
+  aws iam attach-role-policy --role-name "${NODE_ROLE_NAME}" \
+    --policy-arn "arn:aws:iam::aws:policy/${pol}"
+done
+echo "Ensured ${#KARPENTER_NODE_POLICIES[@]} policies on ${NODE_ROLE_NAME}"
 
 # EKS must authorize the Karpenter node role to register worker nodes (access entries API).
 # EC2_LINUX type grants system:nodes group automatically — do not associate AmazonEKSNodeRole
@@ -60,7 +67,9 @@ if ! aws eks describe-access-entry \
     --cluster-name "${CLUSTER_NAME}" \
     --region "${AWS_REGION}" \
     --principal-arn "${NODE_ROLE_ARN}" \
-    --type EC2_LINUX
+    --type EC2_LINUX \
+    --no-cli-pager >/dev/null
+  echo "Created EKS access entry for ${NODE_ROLE_ARN}"
 fi
 
 # Controller IAM policy
