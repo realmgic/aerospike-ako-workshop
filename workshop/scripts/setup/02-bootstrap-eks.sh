@@ -7,6 +7,7 @@ apply_workshop_kubeconfig
 
 require_cmd eksctl
 require_cmd kubectl
+require_cmd aws
 
 SETUP_DIR="$(dirname "$0")"
 KARPENTER_DIR="${SETUP_DIR}/karpenter"

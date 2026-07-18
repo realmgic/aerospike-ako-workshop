@@ -446,7 +446,7 @@ spec:
       expireAfter: 720h
       terminationGracePeriod: 600s   # max wait before Karpenter force-deletes
   disruption:
-    consolidationPolicy: WhenEmpty   # or Off during live demos
+    consolidationPolicy: WhenEmpty   # set KARPENTER_CONSOLIDATION=Off in workshop.env for demo-safe minimal churn
     consolidateAfter: 30m
 ```
 

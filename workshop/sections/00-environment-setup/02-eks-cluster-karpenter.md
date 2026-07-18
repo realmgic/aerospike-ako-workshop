@@ -41,7 +41,8 @@ A Karpenter-managed EKS cluster with a **system** managed nodegroup for the cont
    ```
 
    **Expected:**
-   - eksctl creates cluster + `${KARPENTER_SYSTEM_NODEGROUP}` (2× `${KARPENTER_SYSTEM_NODE_TYPE}`, tainted)
+   - eksctl creates cluster + `${KARPENTER_SYSTEM_NODEGROUP}` (2× `${KARPENTER_SYSTEM_NODE_TYPE}`, `CriticalAddonsOnly` taint)
+   - CoreDNS and metrics-server schedule on system nodes via declarative addon config in [main-cluster-karpenter.yaml](../../clusters/main-cluster-karpenter.yaml)
    - Karpenter controller Running in `karpenter` namespace
    - **No** workload nodes yet (system nodes only)
 
@@ -73,28 +74,46 @@ A Karpenter-managed EKS cluster with a **system** managed nodegroup for the cont
 ```bash
 kubectl -n karpenter get deploy karpenter
 kubectl get nodes
+kubectl get nodepool -o custom-columns=NAME:.metadata.name,POLICY:.spec.disruption.consolidationPolicy,AFTER:.spec.disruption.consolidateAfter
+kubectl get nodes -l workshop.aerospike.com/workload=aerospike -o custom-columns=NAME:.metadata.name,ZONE:.metadata.labels.topology\\.kubernetes\\.io/zone,POOL:.metadata.labels.karpenter\\.sh/nodepool
 ```
 
-**Pass:** Karpenter Ready; `${NODE_COUNT}` workload nodes Ready (per-AZ NodePools `${KARPENTER_NODEPOOL_NAME}-*`).
+**Pass:** Karpenter Ready; `${NODE_COUNT}` workload nodes Ready (per-AZ NodePools `${KARPENTER_NODEPOOL_NAME}-*`); each node's `karpenter.sh/nodepool` matches its zone pool name.
 
 Reference config: [clusters/main-cluster-karpenter.yaml](../../clusters/main-cluster-karpenter.yaml)
 
 ## Observe
 
-- System nodes carry taint `role=system:NoSchedule` — OLM and AKO schedule on untainted workload nodes
+- System nodes carry taint `CriticalAddonsOnly=true:NoSchedule` — OLM and AKO schedule on untainted workload nodes (they need `i8g` instance types anyway)
 - Per-AZ workload NodePools applied in step **0.2-nodes**; Lab 1.1 re-ensures after full reset via `prepare-lab.sh 1.1`
+
+## Recover partial NodePool state
+
+If NodePool apply failed (e.g. `consolidationPolicy: Off`) or bootstrap pods show zone mismatches, reset and re-apply:
+
+```bash
+./scripts/setup/karpenter/01-reset-workload-nodepools.sh
+./scripts/setup/02-ensure-workload-nodepool.sh
+```
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---------|-----|
-| Controller Pending | Ensure system MNG exists and tolerations match |
+| Controller Pending | Ensure system MNG exists; Karpenter Helm values use `nodeSelector: role=system` + `CriticalAddonsOnly` toleration |
 | No NodeClaims in Lab 1.1 | Check controller logs; verify subnet/SG discovery tags |
+| Bootstrap pod zone mismatch (`us-east-1c` vs `us-east-1d`) | Partial NodePool state — run [01-reset-workload-nodepools.sh](../../scripts/setup/karpenter/01-reset-workload-nodepools.sh), then re-run `02-ensure-workload-nodepool.sh`; verify each NodePool's zone requirement |
+| NodeClaims `Launched` but nodes never join (`Registered=Unknown`, `Node not registered with cluster`) | `KarpenterNodeRole-${CLUSTER_NAME}` missing from EKS access entries — re-run `./scripts/setup/karpenter/00-install-controller.sh` (creates `EC2_LINUX` access entry), or: `aws eks create-access-entry --cluster-name ${CLUSTER_NAME} --principal-arn arn:aws:iam::<account>:role/KarpenterNodeRole-${CLUSTER_NAME} --type EC2_LINUX` |
+| Helm install error: `ServiceAccount "karpenter" ... exists and cannot be imported ... managed-by" must equal "Helm"` | Cluster/IAM already created by a prior run of this step; `00-install-controller.sh` sets `serviceAccount.create=false` so Helm reuses the eksctl-created IRSA ServiceAccount instead of conflicting with it. Just re-run `./scripts/setup/karpenter/00-install-controller.sh` — do not re-run cluster creation |
+| Karpenter pods `CrashLoopBackOff` with DNS lookup errors to `ec2.<region>.amazonaws.com`, and `coredns` addon shows `DEGRADED`/pods `Pending` | CoreDNS must tolerate `CriticalAddonsOnly` on system nodes — declarative config is in `main-cluster-karpenter.yaml` for **new** clusters. On **existing** clusters with the old `role=system` taint, rebuild the cluster or one-time: `aws eks update-addon --cluster-name ${CLUSTER_NAME} --addon-name coredns --resolve-conflicts OVERWRITE --configuration-values '{"tolerations":[{"key":"CriticalAddonsOnly","operator":"Exists"},{"key":"node-role.kubernetes.io/control-plane","effect":"NoSchedule"}]}'` then wait for addon active |
+| `metrics-server` pods `Pending` / addon shows `DEGRADED` with `untolerated taint` | Same as coredns — use declarative addon config on new clusters; on existing clusters update the metrics-server addon tolerations similarly |
+| NodePool apply fails: `consolidationPolicy: Unsupported value: "Off"` | Karpenter 1.11+ only accepts `WhenEmpty` or `WhenEmptyOrUnderutilized`. `Off` is a **workshop alias** in `workshop.env` — `lab-nodes.sh` maps it to `WhenEmpty` + `720h consolidateAfter` at apply time. Reset NodePools and re-run `02-ensure-workload-nodepool.sh` after updating scripts |
 
 ## Instructor notes
 
-- Set `KARPENTER_CONSOLIDATION=Off` during class to limit consolidation churn
+- Set `KARPENTER_CONSOLIDATION=Off` during class to limit consolidation churn (workshop alias — not a Karpenter API value; scripts apply `WhenEmpty` + `720h consolidateAfter`)
 - Lab 2.6 upgrade-lab cluster stays on **eksctl MNG** — not this path
+- For cleanest bootstrap, rebuild clusters created before the `CriticalAddonsOnly` system taint change rather than patching addons one-by-one
 
 ## Not covered here
 

@@ -31,6 +31,13 @@ load_env() {
   : "${KARPENTER_VERSION:=1.1.1}"
   : "${KARPENTER_NAMESPACE:=karpenter}"
   : "${KARPENTER_CONSOLIDATION:=WhenEmpty}"
+  case "${KARPENTER_CONSOLIDATION}" in
+    Off|WhenEmpty|WhenEmptyOrUnderutilized) ;;
+    *)
+      echo "ERROR: KARPENTER_CONSOLIDATION must be Off, WhenEmpty, or WhenEmptyOrUnderutilized (got: ${KARPENTER_CONSOLIDATION})" >&2
+      exit 1
+      ;;
+  esac
   : "${KARPENTER_SYSTEM_NODEGROUP:=ng-system}"
   : "${KARPENTER_SYSTEM_NODE_TYPE:=t3.large}"
   : "${KARPENTER_SYSTEM_NODE_COUNT:=2}"

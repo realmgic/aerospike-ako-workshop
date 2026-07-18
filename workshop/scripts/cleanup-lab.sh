@@ -4,6 +4,9 @@ source "$(dirname "$0")/lib/common.sh"
 load_env
 require_cmd eksctl
 require_cmd kubectl
+require_cmd aws
+
+KARPENTER_IAM_TEARDOWN="$(dirname "$0")/setup/karpenter/99-teardown-controller-iam.sh"
 
 usage() {
   cat <<EOF
@@ -14,6 +17,12 @@ Delete EKS training cluster(s).
 Default (no flags): delete BOTH clusters in parallel:
   - ${UPGRADE_LAB_CLUSTER_NAME} (upgrade-lab)
   - ${CLUSTER_NAME} (main)
+
+If NODE_PROVISIONING=karpenter, deleting the main cluster also:
+  - Drains Karpenter NodePools/NodeClaims first, then sweeps any orphaned
+    EC2 instances tagged karpenter.sh/discovery=${CLUSTER_NAME}
+  - Removes the raw IAM role/policy from scripts/setup/karpenter/00-install-controller.sh
+    (not tracked by eksctl, so cluster deletion alone would leak them)
 
 Options:
   --main-only          Delete main cluster only
@@ -95,12 +104,60 @@ confirm_teardown() {
   esac
 }
 
+# Karpenter is only ever used on the main cluster (upgrade-lab stays on eksctl MNG).
+is_karpenter_main_cluster() {
+  local name="$1"
+  [[ "${NODE_PROVISIONING}" == "karpenter" && "${name}" == "${CLUSTER_NAME}" ]]
+}
+
+# Karpenter-launched EC2 instances aren't in any ASG/eksctl-tracked stack, so deleting the
+# cluster before they're drained orphans them (they keep running/billing indefinitely).
+# Best-effort: delete NodePools/NodeClaims first so Karpenter terminates its own instances.
+drain_karpenter_nodepools() {
+  local name="$1"
+  echo "[delete-${name}] Draining Karpenter NodePools/NodeClaims before cluster deletion..."
+  local kc
+  kc="$(kubeconfig_path_for_cluster "${name}")"
+  if ! aws eks update-kubeconfig --name "${name}" --region "${AWS_REGION}" --kubeconfig "${kc}" >/dev/null 2>&1; then
+    echo "[delete-${name}] Could not reach cluster to drain NodePools — skipping (orphan sweep will still run)"
+    return 0
+  fi
+  KUBECONFIG="${kc}" kubectl delete nodepool --all --wait=true --timeout=180s >/dev/null 2>&1 || true
+  KUBECONFIG="${kc}" kubectl delete nodeclaim --all --wait=true --timeout=180s >/dev/null 2>&1 || true
+}
+
+# Fail-safe for instances that didn't finish draining above (or if the cluster was already
+# unreachable): terminate anything still tagged for this cluster by Karpenter's discovery tag.
+sweep_orphan_karpenter_instances() {
+  local name="$1"
+  local orphan_ids
+  orphan_ids="$(aws ec2 describe-instances --region "${AWS_REGION}" \
+    --filters "Name=tag:karpenter.sh/discovery,Values=${name}" \
+              "Name=instance-state-name,Values=pending,running,stopping,stopped" \
+    --query 'Reservations[].Instances[].InstanceId' --output text 2>/dev/null || true)"
+  if [[ -n "${orphan_ids}" && "${orphan_ids}" != "None" ]]; then
+    echo "[delete-${name}] Terminating orphaned Karpenter EC2 instances: ${orphan_ids}"
+    aws ec2 terminate-instances --region "${AWS_REGION}" --instance-ids ${orphan_ids} >/dev/null 2>&1 || true
+  else
+    echo "[delete-${name}] No orphaned Karpenter EC2 instances found"
+  fi
+}
+
 delete_cluster_async() {
   local name="$1"
   (
+    if is_karpenter_main_cluster "${name}"; then
+      drain_karpenter_nodepools "${name}"
+    fi
     echo "[delete-${name}] Deleting EKS cluster ${name}..."
     eksctl delete cluster --name "${name}" --region "${AWS_REGION}" --wait || exit 1
     echo "[delete-${name}] Deleted ${name}"
+    if is_karpenter_main_cluster "${name}"; then
+      sweep_orphan_karpenter_instances "${name}"
+      if [[ -x "${KARPENTER_IAM_TEARDOWN}" ]]; then
+        "${KARPENTER_IAM_TEARDOWN}" || true
+      fi
+    fi
   )
 }
 

@@ -15,6 +15,21 @@ availabilityZones:
   - ${NODE_ZONE_B}
 iam:
   withOIDC: true
+addons:
+  - name: coredns
+    resolveConflicts: overwrite
+    configurationValues: |-
+      tolerations:
+        - key: CriticalAddonsOnly
+          operator: Exists
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
+  - name: metrics-server
+    resolveConflicts: overwrite
+    configurationValues: |-
+      tolerations:
+        - key: CriticalAddonsOnly
+          operator: Exists
 managedNodeGroups:
   - name: ${KARPENTER_SYSTEM_NODEGROUP}
     instanceType: ${KARPENTER_SYSTEM_NODE_TYPE}
@@ -26,8 +41,8 @@ managedNodeGroups:
     labels:
       role: system
     taints:
-      - key: role
-        value: system
+      - key: CriticalAddonsOnly
+        value: "true"
         effect: NoSchedule
     ssh:
       allow: true

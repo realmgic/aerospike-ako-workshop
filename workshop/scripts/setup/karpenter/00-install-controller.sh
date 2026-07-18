@@ -47,6 +47,22 @@ if ! aws iam get-role --role-name "${NODE_ROLE_NAME}" >/dev/null 2>&1; then
     --role-name "${NODE_ROLE_NAME}" 2>/dev/null || true
 fi
 
+# EKS must authorize the Karpenter node role to register worker nodes (access entries API).
+# EC2_LINUX type grants system:nodes group automatically — do not associate AmazonEKSNodeRole
+# (that policy is only for STANDARD-type access entries).
+NODE_ROLE_ARN="$(aws iam get-role --role-name "${NODE_ROLE_NAME}" --query Role.Arn --output text)"
+echo "Ensuring EKS access entry for Karpenter node role ${NODE_ROLE_ARN}..."
+if ! aws eks describe-access-entry \
+  --cluster-name "${CLUSTER_NAME}" \
+  --region "${AWS_REGION}" \
+  --principal-arn "${NODE_ROLE_ARN}" >/dev/null 2>&1; then
+  aws eks create-access-entry \
+    --cluster-name "${CLUSTER_NAME}" \
+    --region "${AWS_REGION}" \
+    --principal-arn "${NODE_ROLE_ARN}" \
+    --type EC2_LINUX
+fi
+
 # Controller IAM policy
 if ! aws iam get-policy --policy-arn "arn:aws:iam::${ACCOUNT_ID}:policy/${CONTROLLER_POLICY_NAME}" >/dev/null 2>&1; then
   aws iam create-policy --policy-name "${CONTROLLER_POLICY_NAME}" \
@@ -63,33 +79,36 @@ eksctl create iamserviceaccount \
   --override-existing-serviceaccounts \
   --approve
 
-CONTROLLER_ROLE_ARN="$(aws iam get-role --role-name "${CONTROLLER_ROLE_NAME}" \
-  --query Role.Arn --output text)"
+# Toleration/nodeSelector for the tainted system nodegroup must be set at install time, not
+# patched afterward: with --wait, helm blocks until pods schedule, and pods can't schedule
+# without these until a post-install patch runs — a deadlock. Bake them into the values instead.
+SCHEDULING_VALUES="$(mktemp)"
+trap 'rm -f "${SCHEDULING_VALUES}"' EXIT
+cat > "${SCHEDULING_VALUES}" <<EOF
+nodeSelector:
+  role: system
+tolerations:
+  - key: CriticalAddonsOnly
+    operator: Exists
+EOF
 
+# serviceAccount.create=false — the eksctl-created IRSA ServiceAccount above is reused as-is;
+# creating it again via Helm conflicts with eksctl's ownership metadata. serviceAccount.name
+# must also be set explicitly: without it the chart falls back to the "default" SA (no IRSA),
+# which crash-loops on 403s since it has no AWS permissions.
 helm upgrade --install karpenter oci://public.ecr.aws/karpenter/karpenter \
   --version "${KARPENTER_VERSION}" \
   --namespace "${KARPENTER_NAMESPACE}" \
   --create-namespace \
+  --set serviceAccount.create=false \
+  --set serviceAccount.name=karpenter \
   --set "settings.clusterName=${CLUSTER_NAME}" \
   --set "settings.clusterEndpoint=${CLUSTER_ENDPOINT}" \
-  --set "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn=${CONTROLLER_ROLE_ARN}" \
   --set "controller.resources.requests.cpu=1" \
   --set "controller.resources.requests.memory=1Gi" \
   --set "controller.resources.limits.cpu=1" \
   --set "controller.resources.limits.memory=1Gi" \
+  -f "${SCHEDULING_VALUES}" \
   --wait
-
-# Schedule controller on system nodegroup (tainted ${KARPENTER_SYSTEM_NODEGROUP})
-kubectl -n "${KARPENTER_NAMESPACE}" patch deployment karpenter --type=strategic -p '{
-  "spec": {
-    "template": {
-      "spec": {
-        "tolerations": [{"key":"role","operator":"Equal","value":"system","effect":"NoSchedule"}],
-        "nodeSelector": {"role": "system"}
-      }
-    }
-  }
-}' 2>/dev/null || true
-kubectl -n "${KARPENTER_NAMESPACE}" rollout status deployment/karpenter --timeout=300s
 
 echo "Karpenter controller Ready. Node role: ${NODE_ROLE_NAME}"

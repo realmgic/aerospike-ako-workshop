@@ -20,6 +20,8 @@
 | Set `KARPENTER_CONSOLIDATION=Off` during demos | Avoid surprise node termination |
 | Never demo `k8sNodeBlockList` on Karpenter | AKO #305 — use drain path only |
 | Pre-stage 4+ nodes before class | Ensure `NODE_COUNT=4` and per-AZ baseline pools from step 0.2-nodes |
+| System MNG uses `CriticalAddonsOnly` taint | EKS-standard pattern — coredns/metrics-server tolerations declared in cluster yaml, not patched ad hoc |
+| Partial NodePool apply → reset before bootstrap | Run `01-reset-workload-nodepools.sh` then `02-ensure-workload-nodepool.sh` if zone mismatch or consolidationPolicy errors |
 
 ## Pitfalls
 

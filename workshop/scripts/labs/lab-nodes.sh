@@ -248,13 +248,14 @@ ensure_eksctl_pools_per_zone() {
   fi
 }
 
-karpenter_consolidation_exports() {
-  local consolidate_after="30m"
+# Map workshop alias Off -> WhenEmpty + long consolidateAfter (Karpenter 1.11+ has no Off enum).
+# Must run in the parent shell — export inside $(...) subshells does not persist.
+resolve_karpenter_consolidation() {
+  CONSOLIDATE_AFTER="30m"
   if [[ "${KARPENTER_CONSOLIDATION}" == "Off" ]]; then
     export KARPENTER_CONSOLIDATION="WhenEmpty"
-    consolidate_after="720h"
+    CONSOLIDATE_AFTER="720h"
   fi
-  echo "${consolidate_after}"
 }
 
 apply_karpenter_ec2nodeclass() {
@@ -297,8 +298,8 @@ apply_karpenter_nodepool_in_zone() {
 
 apply_karpenter_pools_per_zone() {
   local vertical="${1:-false}"
-  local consolidate_after
-  consolidate_after="$(karpenter_consolidation_exports)"
+  resolve_karpenter_consolidation
+  local consolidate_after="${CONSOLIDATE_AFTER}"
 
   read_aws_zones_array
   local zone pid
@@ -332,28 +333,59 @@ delete_karpenter_bootstrap_deployments() {
   done
 }
 
+verify_karpenter_nodepools_per_zone() {
+  local vertical="${1:-false}"
+  local pool_base
+  if [[ "${vertical}" == true ]]; then
+    pool_base="${KARPENTER_NODEPOOL_VERTICAL_NAME}"
+  else
+    pool_base="${KARPENTER_NODEPOOL_NAME}"
+  fi
+
+  read_aws_zones_array
+  local zone pool_name zone_req
+  for zone in "${AWS_ZONES_ARRAY[@]}"; do
+    [[ -z "${zone}" ]] && continue
+    pool_name="$(pool_name_for_zone "${pool_base}" "${zone}")"
+    if ! kubectl get nodepool "${pool_name}" >/dev/null 2>&1; then
+      echo "ERROR: NodePool ${pool_name} missing — run ./scripts/setup/karpenter/01-reset-workload-nodepools.sh then re-apply" >&2
+      exit 1
+    fi
+    zone_req="$(kubectl get nodepool "${pool_name}" -o jsonpath='{.spec.template.spec.requirements[?(@.key=="topology.kubernetes.io/zone")].values[0]}' 2>/dev/null || true)"
+    if [[ "${zone_req}" != "${zone}" ]]; then
+      echo "ERROR: NodePool ${pool_name} zone requirement is '${zone_req:-<none>}' (expected ${zone}) — reset and re-apply NodePools" >&2
+      exit 1
+    fi
+  done
+}
+
 bootstrap_karpenter_pool_per_zone() {
   local instance_type="$1"
   local total_count="$2"
   local deployment_prefix="$3"
   local wait_fn="$4"
+  local pool_base_name="$5"
 
   read_aws_zones_array
   local num_zones="${#AWS_ZONES_ARRAY[@]}"
-  local zone idx=0 replicas dep_name app_label
+  local zone idx=0 replicas dep_name app_label nodepool_name
 
   app_label="${deployment_prefix}"
   for zone in "${AWS_ZONES_ARRAY[@]}"; do
     [[ -z "${zone}" ]] && continue
     replicas="$(nodes_for_zone "${total_count}" "${idx}" "${num_zones}")"
     dep_name="$(karpenter_bootstrap_deployment_name "${deployment_prefix}" "${zone}")"
-    echo "Bootstrap ${dep_name}: ${replicas} pod(s) in ${zone} (${instance_type})..."
+    nodepool_name="$(pool_name_for_zone "${pool_base_name}" "${zone}")"
+    echo "Bootstrap ${dep_name}: ${replicas} pod(s) in ${zone} via NodePool ${nodepool_name} (${instance_type})..."
     kubectl apply -f - <<EOF
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ${dep_name}
   namespace: kube-system
+  labels:
+    app: ${app_label}
+    workshop.aerospike.com/zone: $(zone_resource_suffix "${zone}")
 spec:
   replicas: ${replicas}
   selector:
@@ -368,6 +400,7 @@ spec:
     spec:
       nodeSelector:
         node.kubernetes.io/instance-type: ${instance_type}
+        karpenter.sh/nodepool: ${nodepool_name}
       tolerations:
         - operator: Exists
       affinity:
@@ -417,18 +450,22 @@ scale_karpenter_pool_to_count() {
   echo "Scaling Karpenter ${instance_type} pool down: ${ready} → ${target}..."
   read_aws_zones_array
   local num_zones="${#AWS_ZONES_ARRAY[@]}"
-  local zone idx=0 replicas dep_name app_label="${deployment_prefix}"
+  local zone idx=0 replicas dep_name app_label="${deployment_prefix}" nodepool_name
 
   for zone in "${AWS_ZONES_ARRAY[@]}"; do
     [[ -z "${zone}" ]] && continue
     replicas="$(nodes_for_zone "${target}" "${idx}" "${num_zones}")"
     dep_name="$(karpenter_bootstrap_deployment_name "${deployment_prefix}" "${zone}")"
+    nodepool_name="$(pool_name_for_zone "${KARPENTER_NODEPOOL_NAME}" "${zone}")"
     kubectl apply -f - <<EOF
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ${dep_name}
   namespace: kube-system
+  labels:
+    app: ${app_label}
+    workshop.aerospike.com/zone: $(zone_resource_suffix "${zone}")
 spec:
   replicas: ${replicas}
   selector:
@@ -443,6 +480,7 @@ spec:
     spec:
       nodeSelector:
         node.kubernetes.io/instance-type: ${instance_type}
+        karpenter.sh/nodepool: ${nodepool_name}
       tolerations:
         - operator: Exists
       affinity:
@@ -481,21 +519,23 @@ apply_karpenter_baseline_pool() {
   local total_count="${1:-${NODE_COUNT}}"
   apply_karpenter_ec2nodeclass
   apply_karpenter_pools_per_zone false
+  verify_karpenter_nodepools_per_zone false
   bootstrap_karpenter_pool_per_zone "${NODE_TYPE}" "${total_count}" \
-    "karpenter-bootstrap" wait_2xl_nodes
+    "karpenter-bootstrap" wait_2xl_nodes "${KARPENTER_NODEPOOL_NAME}"
 }
 
 ensure_karpenter_baseline_pool() {
   local count="${1:-${NODE_COUNT}}"
   apply_karpenter_ec2nodeclass
   apply_karpenter_pools_per_zone false
+  verify_karpenter_nodepools_per_zone false
   local ready
   ready="$(count_2xl_nodes_ready)"
   if [[ "${ready}" -gt "${count}" ]]; then
     scale_karpenter_pool_to_count "${NODE_TYPE}" "${count}" "karpenter-bootstrap" wait_2xl_nodes count_2xl_nodes_ready
   elif [[ "${ready}" -lt "${count}" ]]; then
     bootstrap_karpenter_pool_per_zone "${NODE_TYPE}" "${count}" \
-      "karpenter-bootstrap" wait_2xl_nodes
+      "karpenter-bootstrap" wait_2xl_nodes "${KARPENTER_NODEPOOL_NAME}"
   else
     echo "OK  Karpenter baseline NodePools active with ${ready} Ready nodes"
   fi
@@ -504,8 +544,9 @@ ensure_karpenter_baseline_pool() {
 apply_karpenter_vertical_pool() {
   local total_count="${1:-${NODE_COUNT}}"
   apply_karpenter_pools_per_zone true
+  verify_karpenter_nodepools_per_zone true
   bootstrap_karpenter_pool_per_zone "${NODE_TYPE_VERTICAL}" "${total_count}" \
-    "karpenter-vertical-bootstrap" wait_4xl_nodes
+    "karpenter-vertical-bootstrap" wait_4xl_nodes "${KARPENTER_NODEPOOL_VERTICAL_NAME}"
 }
 
 wait_nvme_bootstrap() {
