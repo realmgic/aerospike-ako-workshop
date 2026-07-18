@@ -15,10 +15,10 @@ for crd in aerospikeclusters aerospikebackupservices aerospikebackups aerospiker
 done
 
 helm repo update
-helm upgrade "${HELM_OPERATOR_RELEASE}" aerospike/aerospike-kubernetes-operator \
-  --namespace "${OPERATOR_NAMESPACE}" \
+helm upgrade --install "${HELM_OPERATOR_RELEASE}" aerospike/aerospike-kubernetes-operator \
+  --namespace "${OPERATOR_NAMESPACE}" --create-namespace \
   --version="${TARGET}" \
   -f "${WORKSHOP_ROOT}/helm/operator-values.yaml"
 
-kubectl -n "${OPERATOR_NAMESPACE}" rollout status deployment/aerospike-operator-controller-manager --timeout=300s
+kubectl -n "${OPERATOR_NAMESPACE}" rollout status "deployment/$(ako_operator_deployment_name)" --timeout=300s
 "$(dirname "$0")/verify-ako-version.sh" "${TARGET}"

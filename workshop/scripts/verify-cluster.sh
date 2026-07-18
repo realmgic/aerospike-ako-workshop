@@ -23,4 +23,4 @@ if kubectl -n "${NAMESPACE}" get aerospikecluster aerocluster >/dev/null 2>&1; t
 fi
 
 echo "=== Operator logs (last 50) ==="
-kubectl -n "${OPERATOR_NAMESPACE}" logs deployment/aerospike-operator-controller-manager --tail=50 2>/dev/null || true
+kubectl -n "${OPERATOR_NAMESPACE}" logs "deployment/$(ako_operator_deployment_name)" --tail=50 2>/dev/null || true

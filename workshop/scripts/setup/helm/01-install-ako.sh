@@ -16,6 +16,6 @@ helm upgrade --install "${HELM_OPERATOR_RELEASE}" aerospike/aerospike-kubernetes
   --version="${AKO_VERSION_START}" \
   -f "${WORKSHOP_ROOT}/helm/operator-values.yaml"
 
-kubectl -n "${OPERATOR_NAMESPACE}" rollout status deployment/aerospike-operator-controller-manager --timeout=300s || true
+kubectl -n "${OPERATOR_NAMESPACE}" rollout status "deployment/${HELM_OPERATOR_RELEASE}" --timeout=300s
 helm list -n "${OPERATOR_NAMESPACE}"
 echo "Expected: release ${HELM_OPERATOR_RELEASE} at ${AKO_VERSION_START}, operator pods Running."

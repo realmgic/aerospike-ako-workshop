@@ -54,9 +54,20 @@ load_env() {
   : "${CLUSTER_STORAGE_DIM_LABS:=}"
   : "${CLUSTER_STORAGE_DISK_LABS:=}"
   : "${FEATURES_CONF_PATH:=secrets/features.conf}"
+  : "${HELM_OPERATOR_RELEASE:=aerospike-kubernetes-operator}"
+  : "${HELM_CLUSTER_RELEASE:=aerocluster}"
 
   IFS=',' read -r NODE_ZONE_A NODE_ZONE_B _ <<< "${AWS_ZONES},,"
   export NODE_ZONE_A NODE_ZONE_B
+}
+
+# OLM installs deployment/aerospike-operator-controller-manager; Helm uses release name.
+ako_operator_deployment_name() {
+  if [[ "${DEPLOY_PATH}" == "helm" ]]; then
+    echo "${HELM_OPERATOR_RELEASE}"
+  else
+    echo "aerospike-operator-controller-manager"
+  fi
 }
 
 features_conf_path() {

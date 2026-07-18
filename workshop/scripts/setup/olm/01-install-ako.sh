@@ -56,7 +56,7 @@ skip_if_ako_already_installed() {
   echo "  ./scripts/setup/setup-all.sh --from 0.4" >&2
   echo "Or reset the operator and re-run Lab 0.3:" >&2
   echo "  kubectl delete subscription aerospike-kubernetes-operator -n ${OPERATOR_NAMESPACE}" >&2
-  echo "  kubectl delete csv -n ${OPERATOR_NAMESPACE} \$(kubectl get csv -n ${OPERATOR_NAMESPACE} -o name | grep aerospike)" >&2
+  echo "  kubectl delete -n ${OPERATOR_NAMESPACE} \$(kubectl get csv -n ${OPERATOR_NAMESPACE} -o name | grep aerospike) --ignore-not-found" >&2
   return 2
 }
 
