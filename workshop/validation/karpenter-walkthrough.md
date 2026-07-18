@@ -41,7 +41,7 @@ Update [LAB_REGISTRY.yaml](../LAB_REGISTRY.yaml) `karpenter_validation` when com
 - [ ] **2.4** Upgrade Aerospike DB — 8.1.0.x→8.1.2.x rolling restart; `run-lab-workload.sh` ~10k TPS through upgrade
 - [ ] **2.5** Karpenter maintenance — data loaded; webhook blocks during active migration; Phase 3 Path A (pinning) or Path B (AKO auto-delete); Phase 4 NodeClaim replacement + PVC cleanup; **no blocklist**
 - [ ] **2.5 add-on** — do-not-disrupt graduation discussion; three protection layers; `terminationGracePeriod` sizing (instructor-led)
-- [ ] **2.6** Control plane upgrade — **upgrade-lab eksctl cluster**; optional `run-lab-workload.sh --upgrade-lab` in Terminal B
+- [ ] **2.6** Control plane upgrade — Phase 1 seed + Terminal B workload; CP upgrade no pod restarts; nodegroup rolling replace + migration/PVC observe; `validate-post-upgrade.sh` PASS (**upgrade-lab eksctl cluster**)
 
 ## Path coverage (Karpenter + deploy path)
 

@@ -9,7 +9,7 @@
 | 2.3 | ~10m | WarmRestart then PodRestart (cold) on 8.1.0.x cluster (match deploy-cluster.sh); optional Terminal B `run-lab-workload.sh` |
 | 2.4 | ~20m | Rolling DB upgrade 8.1.0.x → 8.1.2.x (requires AKO 4.5.0); start `run-lab-workload.sh` in Terminal B before image apply |
 | 2.5 | ~25m (+15m add-on) | Drain demo: migration-gated webhook block; Phase 3 Path A (pinning) or Path B (AKO auto-delete); optional same-AZ nodegroup scale before drain (eksctl); Phase 4 terminate + PVC cleanup; optional asadm quiesce step |
-| 2.6 | ~45m | Mostly waiting; pre-stage cluster + Aerospike; optional `run-lab-workload.sh --upgrade-lab` in Terminal B through CP + nodegroup upgrade |
+| 2.6 | ~45–60m | Two-phase EKS upgrade: CP (~10–20m) then nodegroup (~15–25m); Phase 1 seed + Terminal B workload recommended; nodegroup = Lab 2.5 drain mechanics at scale |
 
 ## AKO upgrade (2.2)
 
@@ -21,9 +21,13 @@
 ## Lab 2.6 (control plane)
 
 - **Separate cluster only** — `./scripts/lib/kubecontext.sh upgrade-lab` or `./scripts/labs/prepare-lab.sh 2.6`
-- Start demo with Aerospike already Running + optional load
-- **Terminal B workload** — `./scripts/labs/run-lab-workload.sh --upgrade-lab start` before CP/nodegroup upgrade; stop after validate
-- Do not tear down Aerospike during upgrade
+- **Two-phase story** — Phase 3 (CP): pods stay Running, no kubelet change; Phase 4 (nodegroup): first Aerospike restarts, Lab 2.5 mechanics (drain, migration, local-ssd PVC cleanup)
+- **Bridge from Lab 2.5** — frame nodegroup upgrade as automated rolling drain; safe eviction on upgrade-lab is OLM-default off — patch subscription before Phase 4 (same as Lab 2.5 Path A)
+- **Phase 1 seed data** — `load-data.sh --upgrade-lab` or `prepare-lab.sh 2.6 --load-data`; empty cluster makes availability demo weak
+- **Terminal B recommended** — `./scripts/labs/run-lab-workload.sh --upgrade-lab start` before Phase 3; watch TPS through CP blips and nodegroup pod moves; stop after Phase 5
+- **Two-terminal observe** — Terminal A: upgrade scripts; Terminal B: pods, CR phase, migrate stats (Phase 4), PVC watch (device storage)
+- **Timing** — CP `upgrade-control-plane.sh` waits `cluster-active` (~10–20m); nodegroup `upgrade-nodegroup.sh` waits `nodegroup-active` (~15–25m for 3 nodes)
+- Do not scale down Aerospike during either phase
 - After Lab 2.6 (keep main cluster): `./scripts/cleanup-lab.sh --upgrade-lab-only --yes` then `./scripts/lib/kubecontext.sh main`
 - End of full training: `./scripts/cleanup-lab.sh --yes` (both clusters)
 
@@ -59,6 +63,7 @@
 | Force drain | Never demo `--force` |
 | Wrong cluster context | `./scripts/lib/kubecontext.sh show`; main labs use `./scripts/labs/prepare-lab.sh <lab>` |
 | Wrong cluster after 2.6 / Section 0.7 | `./scripts/lib/kubecontext.sh main` |
+| `load-data.sh` on upgrade-lab hits main cluster | Use `load-data.sh --upgrade-lab` |
 | EKS version unsupported | Adjust START/TARGET to (latest-1)→latest |
 | DB 8.1.2.x before AKO 4.5.0 | Baseline manifests use 8.1.0.x; upgrade only in Lab 2.4 |
 

@@ -1,10 +1,35 @@
 #!/usr/bin/env bash
 # Load records into the cluster (5M x 1KB insert via asbench).
+#
+# Usage:
+#   ./scripts/labs/load-data.sh
+#   ./scripts/labs/load-data.sh --upgrade-lab   # Lab 2.6 upgrade-lab cluster
 set -euo pipefail
 source "$(dirname "$0")/../lib/common.sh"
 load_env
-ensure_main_kubecontext
 require_cmd kubectl
+
+UPGRADE_LAB=false
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --upgrade-lab) UPGRADE_LAB=true ;;
+    -h|--help)
+      cat <<EOF
+Usage: $(basename "$0") [--upgrade-lab]
+
+Load records into the Aerospike cluster via asbench insert.
+
+  --upgrade-lab   Target Lab 2.6 upgrade-lab cluster (default: main cluster)
+EOF
+      exit 0
+      ;;
+    *)
+      echo "ERROR: unknown argument: $1" >&2
+      exit 1
+      ;;
+  esac
+  shift
+done
 
 : "${MIGRATION_LOAD_NAMESPACE:=test}"
 : "${MIGRATION_LOAD_RECORDS:=5000000}"
@@ -13,6 +38,14 @@ require_cmd kubectl
 : "${MIGRATION_LOAD_DURATION:=0}"
 : "${AEROSPIKE_AUTH_USER:=app}"
 : "${AEROSPIKE_AUTH_PASSWORD:=app123}"
+
+ensure_target_kubecontext() {
+  if [[ "${UPGRADE_LAB}" == true ]]; then
+    ensure_upgrade_lab_kubecontext
+  else
+    ensure_main_kubecontext
+  fi
+}
 
 validate_cluster_exists() {
   if kubectl -n "${NAMESPACE}" get aerospikecluster aerocluster >/dev/null 2>&1; then
@@ -31,6 +64,8 @@ print_namespace_stats() {
     asadm -h aerocluster -U "${AEROSPIKE_AUTH_USER}" -P "${AEROSPIKE_AUTH_PASSWORD}" \
     -e "info" 2>/dev/null || true
 }
+
+ensure_target_kubecontext
 
 echo "=== Load data ==="
 validate_cluster_exists

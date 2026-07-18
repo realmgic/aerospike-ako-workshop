@@ -159,6 +159,11 @@ prepare_lab_2_6() {
 
   ensure_upgrade_lab_kubecontext
   validate_lab_2_6_starting_state
+
+  if [[ "${LOAD_DATA}" == true ]]; then
+    "${SCRIPT_DIR}/load-data.sh" --upgrade-lab
+  fi
+
   echo "=== Lab 2.6 prepared ==="
 }
 
