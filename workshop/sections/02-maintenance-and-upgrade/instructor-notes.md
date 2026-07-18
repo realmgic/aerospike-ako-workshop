@@ -29,7 +29,7 @@
 ## Lab 2.5 (node maintenance)
 
 - **Enable safe pod eviction first** — verify `ENABLE_SAFE_POD_EVICTION=true` on the operator before the drain demo ([Aerospike docs](https://aerospike.com/docs/kubernetes/manage/node-maintenance/#enabling-safe-pod-eviction)); OLM installs do not set this by default
-- **Pre-load data** — empty cluster migrates too fast (especially `--dim`); run `load-data.sh` or `prepare-lab.sh 2.5 --load-data`
+- **Pre-load data (Phase 1)** — empty cluster migrates too fast (especially `--dim`); run `load-data.sh` (Option A) or `prepare-lab.sh 2.5 --load-data` (Option B)
 - **Two-terminal demo** — Terminal A: `kubectl drain`; Terminal B: prove pod still `Running` on node while CR is `InProgress`
 - If migration window is too short, increase `MIGRATION_LOAD_RECORDS` (e.g. `8000000`)
 - **eksctl path:** drain (primary) + optional blocklist demo

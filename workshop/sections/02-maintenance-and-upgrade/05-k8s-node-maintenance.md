@@ -33,8 +33,20 @@ AKO's [safe pod eviction webhook](https://aerospike.com/docs/kubernetes/manage/n
 
 | Path | Enabled at install? | Action before Lab 2.5 |
 |------|---------------------|------------------------|
-| **B — Helm** | Yes — `safePodEviction.enable=true` in [helm/operator-values.yaml](../../helm/operator-values.yaml) (Lab 0.3) | Verify below; re-apply values if AKO was upgraded without `-f helm/operator-values.yaml` |
 | **A — OLM** | **No** — not set by `./scripts/setup/03-install-ako.sh` | Patch subscription with `ENABLE_SAFE_POD_EVICTION=true` (below) |
+| **B — Helm** | Yes — `safePodEviction.enable=true` in [helm/operator-values.yaml](../../helm/operator-values.yaml) (Lab 0.3) | Verify below; re-apply values if AKO was upgraded without `-f helm/operator-values.yaml` |
+
+### Path A — OLM
+
+Patch the Subscription to set `ENABLE_SAFE_POD_EVICTION=true` ([Aerospike docs](https://aerospike.com/docs/kubernetes/manage/node-maintenance/#enabling-safe-pod-eviction)):
+
+```bash
+kubectl -n operators patch subscription aerospike-kubernetes-operator \
+  --type='merge' \
+  -p '{"spec":{"config":{"env":[{"name":"ENABLE_SAFE_POD_EVICTION","value":"true"}]}}}'
+```
+
+Wait for OLM to reconcile and the operator deployment to roll out.
 
 ### Path B — Helm
 
@@ -55,18 +67,6 @@ safePodEviction:
   enable: "true"
   timeoutSeconds: "20"   # webhook response wait per eviction request, not migration budget
 ```
-
-### Path A — OLM
-
-Patch the Subscription to set `ENABLE_SAFE_POD_EVICTION=true` ([Aerospike docs](https://aerospike.com/docs/kubernetes/manage/node-maintenance/#enabling-safe-pod-eviction)):
-
-```bash
-kubectl -n operators patch subscription aerospike-kubernetes-operator \
-  --type='merge' \
-  -p '{"spec":{"config":{"env":[{"name":"ENABLE_SAFE_POD_EVICTION","value":"true"}]}}}'
-```
-
-Wait for OLM to reconcile and the operator deployment to roll out.
 
 ### Verify
 
@@ -90,32 +90,25 @@ Tears down existing `aerocluster` if present and deploys fresh maintenance basel
 ./scripts/labs/prepare-lab.sh 2.5
 ```
 
-Optionally load migration data during prep:
-
-```bash
-./scripts/labs/prepare-lab.sh 2.5 --load-data
-```
-
-Capture pod placement:
-
-```bash
-kubectl -n aerospike get pods -o wide
-kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.status.phase}{"\n"}{.spec.image}{"\n"}'
-NODE=$(kubectl -n aerospike get pods -o wide --no-headers | awk 'NR==1{print $7}')
-echo "Maintenance target node: ${NODE}"
-```
-
-**Expected:** 3 pods `Running`; CR phase `Completed`; image `8.1.2.x`; no `spec.operations` in CR.
+**Expected:** `prepare-lab.sh` completes; cluster redeployed for maintenance baseline.
 
 ## Phase 1 — Seed data (make migration visible)
 
-An empty cluster migrates too fast to observe (especially in-memory — use `--dim` or pre-load data). Load records first using the **`app`** user (`read` + `write` roles; secret `auth-app-secret` / password `app123`), defined in the maintenance baseline manifest:
+An empty cluster migrates too fast to observe (especially in-memory — use `--dim` or pre-load data). Load records using the **`app`** user (`read` + `write` roles; secret `auth-app-secret` / password `app123`), defined in the maintenance baseline manifest.
+
+**Option A — load after Phase 0:**
 
 ```bash
 ./scripts/labs/load-data.sh
 ```
 
-Tunable via env (increase if migration completes too quickly):
+**Option B — combine deploy + load** (skip Phase 0 if using this):
+
+```bash
+./scripts/labs/prepare-lab.sh 2.5 --load-data
+```
+
+Tunable via env when using Option A (increase if migration completes too quickly):
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
@@ -133,11 +126,24 @@ kubectl run -it --rm aerospike-tool-ns -n aerospike --restart=Never \
 
 **Pass:** Non-zero `objects` and `used-bytes` in namespace `test`.
 
-Skip this phase if you used `prepare-lab.sh 2.5 --load-data`.
+If you used Option B (`--load-data`), skip Option A and proceed to Phase 2 after verifying data is present.
 
 ## Phase 2 — Drain + observe (core demo)
 
 Use **two terminals**. Terminal A starts drain; Terminal B proves the pod is held on the node while AKO migrates.
+
+### Capture pod placement
+
+Pick the node to drain and confirm the cluster is ready:
+
+```bash
+kubectl -n aerospike get pods -o wide
+kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.status.phase}{"\n"}{.spec.image}{"\n"}'
+NODE=$(kubectl -n aerospike get pods -o wide --no-headers | awk 'NR==1{print $7}')
+echo "Maintenance target node: ${NODE}"
+```
+
+**Expected:** 3 pods `Running`; CR phase `Completed`; image `8.1.2.x`; no `spec.operations` in CR.
 
 ### Terminal A — start drain
 
@@ -322,7 +328,7 @@ Proceed to [Lab 2.6](06-k8s-control-plane-upgrade.md). Aerospike cluster should 
 |---------|-----|
 | Migration completes too fast to observe | Increase `MIGRATION_LOAD_RECORDS` (e.g. `8000000`) and re-run load script |
 | local-ssd PVC Pending | Re-run `./scripts/setup/08-validate-environment.sh`; confirm baseline local-ssd PVs |
-| No `eviction-blocked` annotation | Confirm `ENABLE_SAFE_POD_EVICTION=true` on operator deployment; Helm: re-apply `helm/operator-values.yaml`; OLM: patch subscription env; check eviction webhook Ready |
+| No `eviction-blocked` annotation | Confirm `ENABLE_SAFE_POD_EVICTION=true` on operator deployment; OLM: patch subscription env; Helm: re-apply `helm/operator-values.yaml`; check eviction webhook Ready |
 | CR stays `InProgress` | Check operator logs; wait for migrate stats to reach zero |
 | Force delete bypasses webhook | Never use `--force` in production demo |
 | Blocklist changes cluster profile | Use updated blocklist manifest matching your storage (`disk-node-blocklist.yaml` default) |

@@ -6,7 +6,7 @@ AKO and the platform can be upgraded and maintained safely — operator upgrades
 
 ## Prerequisites
 
-Section 0 complete. Run `./scripts/labs/prepare-lab.sh 2.1` before Lab 2.1 (cluster baseline after Section 1; device storage default). Run `./scripts/labs/prepare-lab.sh 2.3` before Lab 2.3 if coming from Lab 1.4 or the cluster spec has drifted. Run `./scripts/labs/prepare-lab.sh 2.4` before Lab 2.4 if retrying the DB upgrade. Run `./scripts/labs/prepare-lab.sh 2.5` before Lab 2.5 (teardown + fresh maintenance cluster; optional `--load-data`). Default storage is device (`CLUSTER_STORAGE=disk`); use `--dim` for in-memory.
+Section 0 complete. Run `./scripts/labs/prepare-lab.sh 2.1` before Lab 2.1 (cluster baseline after Section 1; device storage default). Run `./scripts/labs/prepare-lab.sh 2.3` before Lab 2.3 if coming from Lab 1.4 or the cluster spec has drifted. Run `./scripts/labs/prepare-lab.sh 2.4` before Lab 2.4 if retrying the DB upgrade. Run `./scripts/labs/prepare-lab.sh 2.5` before Lab 2.5 (teardown + fresh maintenance cluster). Seed data in Lab 2.5 Phase 1 (`load-data.sh` or `prepare-lab.sh 2.5 --load-data`). Default storage is device (`CLUSTER_STORAGE=disk`); use `--dim` for in-memory.
 
 ## Labs
 

@@ -21,7 +21,7 @@ On Karpenter, use **drain + AKO safe eviction** for planned node maintenance. Pr
 - Lab 2.4 complete — cluster on **8.1.2.x** (device storage default)
 - [Safe pod eviction enabled](05-k8s-node-maintenance.md#enable-safe-pod-eviction-required) — **disabled by default**; OLM path must patch `ENABLE_SAFE_POD_EVICTION=true`
 - NodePool `terminationGracePeriod` ≥600s (configured in bootstrap)
-- Cluster Running; note pod→node mapping
+- Cluster `Running`
 
 ## Phase 0 — Prepare lab
 
@@ -29,16 +29,11 @@ Same as the [eksctl guide](05-k8s-node-maintenance.md#phase-0--prepare-lab):
 
 ```bash
 ./scripts/labs/prepare-lab.sh 2.5
-# optional: ./scripts/labs/prepare-lab.sh 2.5 --load-data
-
-kubectl -n aerospike get pods -o wide
-NODE=$(kubectl -n aerospike get pods -o wide --no-headers | awk 'NR==1{print $7}')
-echo "Maintenance target node: ${NODE}"
 ```
 
 ## Phase 1 — Seed data
 
-Same as the [eksctl guide](05-k8s-node-maintenance.md#phase-1--seed-data-make-migration-visible). Skip if you used `--load-data` during prep.
+Same as the [eksctl guide](05-k8s-node-maintenance.md#phase-1--seed-data-make-migration-visible) — Option A (`load-data.sh`) or Option B (`prepare-lab.sh 2.5 --load-data`).
 
 ## Phase 2 — Drain + observe (primary)
 
@@ -215,7 +210,7 @@ EXPIRE:.spec.template.spec.expireAfter
 
 **Phase 3 — controlled rollout checklist (production, not live demo):**
 
-1. Confirm `ENABLE_SAFE_POD_EVICTION=true` on operator (Helm: `safePodEviction.enable=true`; OLM: subscription env) and eviction webhook Ready — see [main guide](05-k8s-node-maintenance.md#enable-safe-pod-eviction-required).
+1. Confirm `ENABLE_SAFE_POD_EVICTION=true` on operator (OLM: subscription env; Helm: `safePodEviction.enable=true`) and eviction webhook Ready — see [main guide](05-k8s-node-maintenance.md#enable-safe-pod-eviction-required).
 2. Measure worst-case migration time; set `terminationGracePeriod` accordingly.
 3. Enable `WhenEmpty` consolidation on one NodePool; keep `do-not-disrupt` on other pools until validated.
 4. Watch for `aerospike.com/eviction-blocked` and CR phase during first consolidation events.
