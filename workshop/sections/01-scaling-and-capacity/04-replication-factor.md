@@ -184,7 +184,7 @@ Listed in Section 1 but **run after Lab 2.2** despite section number.
 
 ## Teardown / handoff
 
-Continue to [Lab 2.3](../02-maintenance-and-upgrade/03-upgrade-aerospike-db.md). Run `./scripts/reset-cluster.sh --yes` only when done for the day or before a hard wipe.
+Continue to [Lab 2.3](../02-maintenance-and-upgrade/03-on-demand-operations.md). Run `./scripts/reset-cluster.sh --yes` only when done for the day or before a hard wipe.
 
 ## References
 

@@ -269,42 +269,45 @@ labs:
     validated_with: { ako: null, k8s: null }
 
   - id: "2.3"
-    title: Upgrade Aerospike DB
-    section: "02-maintenance-and-upgrade"
-    guide: sections/02-maintenance-and-upgrade/03-upgrade-aerospike-db.md
-    eks_cluster: my-cluster
-    ako_min_version: "4.5.0"
-    deploy_paths: [kubectl, helm]
-    node_provisioning: [eksctl, karpenter]
-    artifacts:
-      kubectl: [manifests/aerospike-upgrade.yaml]
-      helm: [helm/aerospike-upgrade-values.yaml]
-    scripts:
-      - scripts/labs/prepare-lab.sh
-      - scripts/labs/deploy-dim-cluster.sh
-      - scripts/labs/deploy-dim-cluster-helm.sh
-    depends_on: ["2.2"]
-    doc_urls:
-      - https://aerospike.com/docs/kubernetes/install/deploy/upgrade-aerospike/
-    validation_status: draft
-    validated_on: null
-    validated_with: { ako: null, k8s: null }
-
-  - id: "2.4"
     title: On-demand operations
     section: "02-maintenance-and-upgrade"
-    guide: sections/02-maintenance-and-upgrade/04-on-demand-operations.md
+    guide: sections/02-maintenance-and-upgrade/03-on-demand-operations.md
     eks_cluster: my-cluster
     ako_min_version: "4.4.0"
     deploy_paths: [kubectl, helm]
     node_provisioning: [eksctl, karpenter]
     artifacts:
-      kubectl: [manifests/pod-restart-op.yaml, manifests/pod-warm-restart-op.yaml]
-      helm: [helm/pod-restart-op-values.yaml, helm/pod-warm-restart-op-values.yaml]
-    scripts: []
-    depends_on: ["2.3"]
+      kubectl: [manifests/pod-restart-op.yaml, manifests/pod-warm-restart-op.yaml, manifests/disk-pod-restart-op.yaml, manifests/disk-pod-warm-restart-op.yaml]
+      helm: [helm/pod-restart-op-values.yaml, helm/pod-warm-restart-op-values.yaml, helm/disk-pod-restart-op-values.yaml, helm/disk-pod-warm-restart-op-values.yaml]
+    scripts:
+      - scripts/labs/prepare-lab.sh
+      - scripts/labs/deploy-cluster.sh
+      - scripts/labs/deploy-cluster-helm.sh
+    depends_on: ["2.2"]
     doc_urls:
       - https://aerospike.com/docs/kubernetes/manage/configure/on-demand-operations
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
+  - id: "2.4"
+    title: Upgrade Aerospike DB
+    section: "02-maintenance-and-upgrade"
+    guide: sections/02-maintenance-and-upgrade/04-upgrade-aerospike-db.md
+    eks_cluster: my-cluster
+    ako_min_version: "4.5.0"
+    deploy_paths: [kubectl, helm]
+    node_provisioning: [eksctl, karpenter]
+    artifacts:
+      kubectl: [manifests/aerospike-upgrade.yaml, manifests/disk-aerospike-upgrade.yaml]
+      helm: [helm/aerospike-upgrade-values.yaml, helm/disk-aerospike-upgrade-values.yaml]
+    scripts:
+      - scripts/labs/prepare-lab.sh
+      - scripts/labs/deploy-dim-cluster.sh
+      - scripts/labs/deploy-dim-cluster-helm.sh
+    depends_on: ["2.3"]
+    doc_urls:
+      - https://aerospike.com/docs/kubernetes/install/deploy/upgrade-aerospike/
     validation_status: draft
     validated_on: null
     validated_with: { ako: null, k8s: null }

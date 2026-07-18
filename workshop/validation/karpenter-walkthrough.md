@@ -37,8 +37,8 @@ Update [LAB_REGISTRY.yaml](../LAB_REGISTRY.yaml) `karpenter_validation` when com
 - [ ] **1.4** Replication factor — RF 2→3 then 3→2 dynamic *(requires AKO 4.4.0+ from Lab 2.2)*
 
 ## Section 2 — Maintenance & Upgrade (continued)
-- [ ] **2.3** Upgrade Aerospike DB — 8.1.0.x→8.1.2.x rolling restart
-- [ ] **2.4** On-demand operations — WarmRestart then PodRestart (cold) on dim 8.1.2.x
+- [ ] **2.3** On-demand operations — WarmRestart then PodRestart (cold) on 8.1.0.x cluster
+- [ ] **2.4** Upgrade Aerospike DB — 8.1.0.x→8.1.2.x rolling restart
 - [ ] **2.5** Karpenter maintenance — data loaded; pod held during `InProgress`; drain after `Completed`; **no blocklist**
 - [ ] **2.5 add-on** — do-not-disrupt graduation discussion; three protection layers; `terminationGracePeriod` sizing (instructor-led)
 - [ ] **2.6** Control plane upgrade — **upgrade-lab eksctl cluster** (unchanged)

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prepare a lab: reset (Section 1), cluster staging (Labs 2.1/2.3/2.5), or upgrade-lab (Lab 2.6).
+# Prepare a lab: reset (Section 1), cluster staging (Labs 2.1/2.3/2.4/2.5), or upgrade-lab (Lab 2.6).
 #
 # Usage:
 #   ./scripts/labs/prepare-lab.sh <lab-id> [--dim|--disk] [--full|--light|--skip-reset] [--load-data]
@@ -204,7 +204,7 @@ validate_maintenance_image() {
     echo "OK  maintenance image (${image})"
     return 0
   fi
-  echo "FAIL expected 8.1.2.x image (got ${image}) — complete Lab 2.3 first" >&2
+  echo "FAIL expected 8.1.2.x image (got ${image}) — complete Lab 2.4 first" >&2
   return 1
 }
 
@@ -279,7 +279,13 @@ prepare_lab_2_1() {
 
 prepare_lab_2_3() {
   prepare_cluster_lab "2.3" \
-    "Resetting to baseline on 8.1.0.x (e.g. after Lab 1.4 RF=3 or a prior 2.3 attempt)." \
+    "Resetting to baseline on 8.1.0.x for on-demand operations (e.g. after Lab 1.4 or spec drift)." \
+    true
+}
+
+prepare_lab_2_4() {
+  prepare_cluster_lab "2.4" \
+    "Resetting to baseline on 8.1.0.x (e.g. after Lab 1.4 RF=3, Lab 2.3 operations, or a prior 2.4 attempt)." \
     true
 }
 
@@ -356,6 +362,11 @@ if [[ "${LAB_ID}" == "2.3" ]]; then
   exit 0
 fi
 
+if [[ "${LAB_ID}" == "2.4" ]]; then
+  prepare_lab_2_4
+  exit 0
+fi
+
 if [[ "${LAB_ID}" == "2.5" ]]; then
   prepare_lab_2_5
   exit 0
@@ -367,7 +378,7 @@ default_reset_for_lab() {
   case "$1" in
     1.1|1.2|1.3|1.4) echo "light" ;;
     *)
-      echo "ERROR: unknown lab id: $1 (expected 1.1–1.4, 2.1, 2.3, 2.5, or 2.6)" >&2
+      echo "ERROR: unknown lab id: $1 (expected 1.1–1.4, 2.1, 2.3, 2.4, 2.5, or 2.6)" >&2
       exit 1
       ;;
   esac

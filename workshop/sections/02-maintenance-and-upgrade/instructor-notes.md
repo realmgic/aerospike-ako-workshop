@@ -6,8 +6,8 @@
 |-----|----------|-------|
 | 2.1 | ~15m (+10m optional) | Install verify, collectinfo tarball; optional: global flags, auth |
 | 2.2 | ~30–40m | Three steps: 4.3.0 → 4.4.1 → 4.5.0; demo one step live |
-| 2.3 | ~20m | Rolling DB upgrade 8.1.0.x → 8.1.2.x (requires AKO 4.5.0) |
-| 2.4 | ~10m | WarmRestart then PodRestart (cold) on 8.1.2.x cluster |
+| 2.3 | ~10m | WarmRestart then PodRestart (cold) on 8.1.0.x cluster (match deploy-cluster.sh) |
+| 2.4 | ~20m | Rolling DB upgrade 8.1.0.x → 8.1.2.x (requires AKO 4.5.0) |
 | 2.5 | ~25m (+15m add-on) | Two-terminal drain demo: pre-load data; show pod held during `InProgress` + `eviction-blocked`; Karpenter add-on: do-not-disrupt graduation + terminationGracePeriod |
 | 2.6 | ~45m | Mostly waiting; pre-stage cluster + Aerospike |
 
@@ -15,7 +15,7 @@
 
 - **Never skip versions** in production — enforce ladder in `versions.env`
 - Keep cluster Running throughout — key demo point
-- DB stays at **8.1.0.x** during AKO upgrade (AKO 4.2.0–4.4.1 max); 8.1.2.x comes in Lab 2.3 after 4.5.0
+- DB stays at **8.1.0.x** during AKO upgrade (AKO 4.2.0–4.4.1 max); 8.1.2.x comes in Lab 2.4 after 4.5.0
 - Per-step timing ~15–20 min (OLM wait)
 
 ## Lab 2.6 (control plane)
@@ -48,13 +48,14 @@
 | Issue | Mitigation |
 |-------|------------|
 | Section 1 cluster blocks deploy | Run `./scripts/labs/prepare-lab.sh 2.1` — tears down `aerocluster` and deploys baseline (device default) |
-| Lab 1.4 / prior 2.3 wrong starting state | Run `./scripts/labs/prepare-lab.sh 2.3` — resets to **8.1.0.x** baseline before DB upgrade |
+| Lab 1.4 / prior 2.4 wrong starting state | Run `./scripts/labs/prepare-lab.sh 2.4` — resets to **8.1.0.x** baseline before DB upgrade |
+| Lab 2.3 operations / spec drift | Run `./scripts/labs/prepare-lab.sh 2.3` — redeploys **8.1.0.x** baseline before on-demand operations |
 | CRD delete during Helm upgrade | Never delete CRDs — use replace |
 | Force drain | Never demo `--force` |
 | Wrong cluster context | `./scripts/lib/kubecontext.sh show`; main labs use `./scripts/labs/prepare-lab.sh <lab>` |
 | Wrong cluster after 2.6 / Section 0.7 | `./scripts/lib/kubecontext.sh main` |
 | EKS version unsupported | Adjust START/TARGET to (latest-1)→latest |
-| DB 8.1.2.x before AKO 4.5.0 | Baseline manifests use 8.1.0.x; upgrade only in Lab 2.3 |
+| DB 8.1.2.x before AKO 4.5.0 | Baseline manifests use 8.1.0.x; upgrade only in Lab 2.4 |
 
 ## Curriculum order
 

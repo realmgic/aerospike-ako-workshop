@@ -1,8 +1,8 @@
-# Lab 2.3 — Upgrade Aerospike DB
+# Lab 2.4 — Upgrade Aerospike DB
 
 | Field | Value |
 |-------|-------|
-| Lab ID | `2.3` |
+| Lab ID | `2.4` |
 | Section | Maintenance & Upgrade |
 | EKS cluster | `my-cluster` |
 | AKO min version | `4.5.0` |
@@ -18,6 +18,7 @@ Aerospike DB upgrade = change `spec.image`; AKO performs a **rolling restart** o
 
 ## Prerequisites
 
+- Lab 2.3 complete (on-demand operations on **8.1.0.x**)
 - Lab 2.2 complete (AKO **4.5.0+**)
 - cluster Running on **8.1.0.x**
 
@@ -25,15 +26,17 @@ Aerospike DB upgrade = change `spec.image`; AKO performs a **rolling restart** o
 
 ## Phase 0 — Prepare lab
 
-If you ran **[Lab 1.4](../01-scaling-and-capacity/04-replication-factor.md)**, the cluster may be at RF=3. If Lab 2.3 was attempted before, the image may already be on **8.1.2.x**. Reset to a clean baseline (**8.1.0.x**, RF=2):
+After **Lab 2.3**, the CR may still carry `spec.operations`. AKO cannot apply an image change together with an operations change — reset to a clean baseline before upgrading:
+
+If you ran **[Lab 1.4](../01-scaling-and-capacity/04-replication-factor.md)**, the cluster may be at RF=3. If Lab 2.4 was attempted before, the image may already be on **8.1.2.x**. Reset to a clean baseline (**8.1.0.x**, RF=2, no operations):
 
 ```bash
-./scripts/labs/prepare-lab.sh 2.3
+./scripts/labs/prepare-lab.sh 2.4
 ```
 
 **Expected:** Prior `aerocluster` deleted; fresh 3-node cluster on **8.1.0.x**; phase `Completed`.
 
-Use `./scripts/labs/prepare-lab.sh 2.3 --skip-reset` only if the baseline is already on **8.1.0.x** and Running.
+Use `./scripts/labs/prepare-lab.sh 2.4 --skip-reset` only if the baseline is already on **8.1.0.x** and Running.
 
 Confirm starting state:
 
@@ -94,7 +97,7 @@ kubectl exec -it aerocluster-0-0 -c aerospike-server -n aerospike -- asinfo -U a
 
 ## Handoff
 
-Proceed to [Lab 2.4](04-on-demand-operations.md).
+Proceed to [Lab 2.5](05-k8s-node-maintenance.md).
 
 ## References
 

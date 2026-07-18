@@ -19,13 +19,13 @@ AKO's safe pod eviction webhook blocks `kubectl drain` while data migrates. The 
 
 ## Prerequisites
 
-- Lab 2.4 complete (on-demand operations; implies AKO **4.5.0** and DB on **8.1.2.x**)
+- Lab 2.4 complete (DB upgrade to **8.1.2.x**; implies AKO **4.5.0**)
 - `safePodEviction.enable=true` on operator (Helm values or OLM config)
 - 3-node cluster `Running`; phase `Completed` (device storage by default)
 
 ## Phase 0 — Prepare lab
 
-Tears down existing `aerocluster` if present and deploys fresh maintenance baseline (clears Lab 2.4 operations):
+Tears down existing `aerocluster` if present and deploys fresh maintenance baseline (clears Lab 2.3 operations):
 
 ```bash
 ./scripts/labs/prepare-lab.sh 2.5

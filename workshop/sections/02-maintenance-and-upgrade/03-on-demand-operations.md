@@ -1,12 +1,12 @@
-# Lab 2.4 — On-Demand Operations
+# Lab 2.3 — On-Demand Operations
 
 | Field | Value |
 |-------|-------|
-| Lab ID | `2.4` |
+| Lab ID | `2.3` |
 | Section | Maintenance & Upgrade |
 | EKS cluster | `my-cluster` |
 | AKO min version | `4.4.0` |
-| Aerospike baseline | 3-node on **8.1.2.x** (device storage default; from Lab 2.3) |
+| Aerospike baseline | 3-node on **8.1.0.x** (device storage default; same as `deploy-cluster.sh`) |
 | Deploy path | both |
 | Duration | ~10 min |
 | Validation status | `draft` |
@@ -18,15 +18,23 @@
 
 ## Prerequisites
 
-- Lab 2.3 complete — cluster Running on **8.1.2.x**
-- Cluster spec matches the operation manifests (3-node cluster, `7` CPU / `57Gi`, EBS workdir + local-ssd when using device storage):
+- Lab 2.2 complete (AKO **4.4.0+**)
+- Cluster Running on **8.1.0.x** with the same spec as [manifests/disk-cluster.yaml](../../manifests/disk-cluster.yaml) (e.g. `./scripts/labs/deploy-cluster.sh`)
+- AKO rejects applying `spec.operations` together with any other spec change (image, storage, namespace config, etc.) — operation manifests differ **only** by the `operations` block
 
 ```bash
 kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.spec.image}{"\n"}'
 kubectl -n aerospike get pods
 ```
 
-**Expected:** Image `aerospike/aerospike-server-enterprise:8.1.2.0`; 3/3 pods `Running`; phase `Completed`.
+**Expected:** Image `aerospike/aerospike-server-enterprise:8.1.0.0`; 3/3 pods `Running`; phase `Completed`.
+
+If the cluster image or config does not match, redeploy the baseline first:
+
+```bash
+./scripts/labs/deploy-cluster.sh           # Path A
+./scripts/labs/deploy-cluster-helm.sh      # Path B
+```
 
 ## Background
 
@@ -143,7 +151,7 @@ kubectl -n aerospike get pod aerocluster-0-0 -o jsonpath='{.status.startTime}{"\
 
 - **WarmRestart** vs **PodRestart** — warm keeps the pod running; cold deletes the pod
 - **WarmRestart:** Aerospike **node uptime** resets; Kubernetes **pod uptime** (`startTime`) does not — process reload inside the same pod
-- Difference from image upgrade ([Lab 2.3](03-upgrade-aerospike-db.md)) — operations do not change `spec.image`
+- Difference from image upgrade ([Lab 2.4](04-upgrade-aerospike-db.md)) — operations do not change `spec.image`
 - Only one `spec.operations` entry allowed at a time; apply the next manifest after the prior operation completes
 - Operator logs show operation reconciliation
 
@@ -153,11 +161,12 @@ kubectl -n aerospike get pod aerocluster-0-0 -o jsonpath='{.status.startTime}{"\
 |---------|-----|
 | Operation stuck / not starting | Confirm prior operation finished; CR has only one `operations` entry |
 | Apply rejected after Part 1 | Wait for phase `Completed` before applying cold-restart manifest |
-| Cluster spec drift | Manifests match post-2.3 cluster (`8.1.2.0`, in-memory namespace, `57Gi`) — re-run [Lab 2.3](03-upgrade-aerospike-db.md) prep if needed |
+| Webhook: cannot change Operations with image update | Operation manifest spec must match the running cluster — redeploy with `./scripts/labs/deploy-cluster.sh` (or Helm equivalent) so image and config align before applying operations |
+| Cluster spec drift | Manifests mirror `disk-cluster.yaml` (`8.1.0.0`, device namespace) — re-run `./scripts/labs/deploy-cluster.sh` if needed |
 
 ## Handoff
 
-Proceed to [Lab 2.5](05-k8s-node-maintenance.md).
+Proceed to [Lab 2.4](04-upgrade-aerospike-db.md).
 
 ## References
 

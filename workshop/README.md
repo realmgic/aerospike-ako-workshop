@@ -43,7 +43,7 @@ Pick **one** main-cluster node strategy at Section 0 (orthogonal to OLM/Helm):
 | Component | Workshop default | Config |
 |-----------|------------------|--------|
 | Aerospike Database (baseline) | **8.1.0** (`8.1.0.0` image tag) | `AEROSPIKE_VERSION` in [workshop.env.example](scripts/env/workshop.env.example) |
-| Aerospike Database (post Lab 2.3) | **8.1.2** (`8.1.2.0` image tag) | `AEROSPIKE_UPGRADE_IMAGE` |
+| Aerospike Database (post Lab 2.4) | **8.1.2** (`8.1.2.0` image tag) | `AEROSPIKE_UPGRADE_IMAGE` |
 | AKO (install) | 4.2.0 | `AKO_VERSION_START` |
 | AKO (post Lab 2.2) | 4.5.0 | `AKO_VERSION_TARGET` |
 | Kubernetes (main) | 1.33 (env-driven) | `K8S_VERSION` in [workshop.env.example](scripts/env/workshop.env.example) |
@@ -83,7 +83,7 @@ Machine-readable catalog: [LAB_REGISTRY.yaml](LAB_REGISTRY.yaml)
 → 2.3 → 2.4 → 2.5 → 2.6
 ```
 
-Note: Lab **1.4** (replication factor) requires AKO **4.4.0+** — run after **2.2** reaches 4.4.1 (or complete the full ladder to 4.5.0). Lab **2.3** (DB upgrade to 8.1.2.x) requires AKO **4.5.0+**.
+Note: Lab **1.4** (replication factor) requires AKO **4.4.0+** — run after **2.2** reaches 4.4.1 (or complete the full ladder to 4.5.0). Lab **2.3** (on-demand operations) requires AKO **4.4.0+**. Lab **2.4** (DB upgrade to 8.1.2.x) requires AKO **4.5.0+**.
 
 ### Lab map
 
@@ -97,8 +97,8 @@ Note: Lab **1.4** (replication factor) requires AKO **4.4.0+** — run after **2
 | 2.1 | akoctl (install, collectinfo) | `my-cluster` | — | 1.3 |
 | 2.2 | Upgrade AKO | `my-cluster` | 4.2.0→4.5.0 | 2.1 |
 | **1.4** | **Replication factor** | `my-cluster` | **4.4.0** | **2.2** |
-| 2.3 | Upgrade Aerospike DB | `my-cluster` | **4.5.0** | 2.2 |
-| 2.4 | On-demand operations | `my-cluster` | 4.4.0 | 2.3 |
+| 2.3 | On-demand operations | `my-cluster` | 4.4.0 | 2.2 |
+| 2.4 | Upgrade Aerospike DB | `my-cluster` | **4.5.0** | 2.3 |
 | 2.5 | K8s node maintenance | `my-cluster` | 4.4.0 | 2.4 |
 | 2.6 | K8s control plane upgrade | `my-cluster-k8s-upgrade` | — | 0.7 |
 

@@ -1,4 +1,4 @@
-# Lab 2.4: WarmRestart — mirrors manifests/pod-warm-restart-op.yaml
+# Lab 2.3: WarmRestart — mirrors manifests/pod-warm-restart-op.yaml
 replicas: 3
 enableDynamicConfigUpdate: true
 
@@ -8,7 +8,7 @@ operations:
 
 image:
   repository: aerospike/aerospike-server-enterprise
-  tag: "8.1.2.0"
+  tag: "8.1.0.0"
 
 podSpec:
   nodeSelector:

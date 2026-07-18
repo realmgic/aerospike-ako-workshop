@@ -1,4 +1,5 @@
-# Lab 2.4: on-demand WarmRestart operation
+# Lab 2.3: on-demand WarmRestart operation
+# Same config as manifests/dim-cluster.yaml plus spec.operations only
 apiVersion: asdb.aerospike.com/v1
 kind: AerospikeCluster
 metadata:
@@ -6,7 +7,7 @@ metadata:
   namespace: aerospike
 spec:
   size: 3
-  image: aerospike/aerospike-server-enterprise:8.1.2.0
+  image: aerospike/aerospike-server-enterprise:8.1.0.0
   enableDynamicConfigUpdate: true
   operations:
     - kind: WarmRestart

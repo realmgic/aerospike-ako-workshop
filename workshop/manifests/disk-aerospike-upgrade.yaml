@@ -1,4 +1,4 @@
-# Lab 2.3: Aerospike DB image upgrade (device storage)
+# Lab 2.4: Aerospike DB image upgrade (device storage)
 apiVersion: asdb.aerospike.com/v1
 kind: AerospikeCluster
 metadata:

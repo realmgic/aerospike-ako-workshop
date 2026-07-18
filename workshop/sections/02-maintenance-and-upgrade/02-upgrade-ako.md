@@ -52,7 +52,7 @@ Section 0 installs **4.2.0**. Lab 2.2 runs upgrade steps **4.3.0**, **4.4.1**, t
 
 **OperatorHub note:** the stable channel offers **4.4.1** (not 4.4.0) as the patch upgrade after 4.3.0. The training ladder uses 4.4.1 for the OLM path.
 
-**DB version note:** Aerospike stays at **8.1.0.x** throughout this lab. AKO 4.5.0 adds support for 8.1.2.x — the DB upgrade is [Lab 2.3](03-upgrade-aerospike-db.md).
+**DB version note:** Aerospike stays at **8.1.0.x** throughout this lab. AKO 4.5.0 adds support for 8.1.2.x — the DB upgrade is [Lab 2.4](04-upgrade-aerospike-db.md).
 
 ## Steps — Path A (OLM)
 
@@ -189,7 +189,7 @@ If time-limited: demo **4.2.0 → 4.3.0** live; pre-stage **4.4.1** and **4.5.0*
 
 ## Not covered here
 
-- DB upgrade → [Lab 2.3](03-upgrade-aerospike-db.md)
+- DB upgrade → [Lab 2.4](04-upgrade-aerospike-db.md)
 - Control plane → [Lab 2.6](06-k8s-control-plane-upgrade.md)
 
 
