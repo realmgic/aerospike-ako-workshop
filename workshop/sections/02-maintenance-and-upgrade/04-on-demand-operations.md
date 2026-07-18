@@ -32,47 +32,21 @@ kubectl -n aerospike get pods
 
 | Operation | `kind` | Effect |
 |-----------|--------|--------|
-| Cold restart | `PodRestart` | Pod deleted and recreated; process exits fully |
 | Warm restart | `WarmRestart` | Aerospike process reloads in place; **database node uptime resets**, **pod uptime does not** |
+| Cold restart | `PodRestart` | Pod deleted and recreated; process exits fully |
 
 Both manifests carry the full cluster spec (use `disk-pod-*-op.yaml` by default or `pod-*-op.yaml` with `--dim`) plus a single `operations` entry. Optional `podList` scopes the operation to named pods; omit it to affect all pods (workshop default).
 
 Reference manifests:
 
-- [manifests/disk-pod-restart-op.yaml](../../manifests/disk-pod-restart-op.yaml) — `PodRestart` / `pod-restart-1` (default)
-- [manifests/pod-restart-op.yaml](../../manifests/pod-restart-op.yaml) — in-memory variant (`--dim`)
 - [manifests/disk-pod-warm-restart-op.yaml](../../manifests/disk-pod-warm-restart-op.yaml) — `WarmRestart` / `warm-restart-1` (default)
 - [manifests/pod-warm-restart-op.yaml](../../manifests/pod-warm-restart-op.yaml) — in-memory variant (`--dim`)
+- [manifests/disk-pod-restart-op.yaml](../../manifests/disk-pod-restart-op.yaml) — `PodRestart` / `pod-restart-1` (default)
+- [manifests/pod-restart-op.yaml](../../manifests/pod-restart-op.yaml) — in-memory variant (`--dim`)
 
 ---
 
-## Part 1 — PodRestart (cold restart)
-
-### Path A — kubectl
-
-```bash
-kubectl apply -f manifests/disk-pod-restart-op.yaml
-kubectl -n aerospike get pods -w
-kubectl -n aerospike describe aerospikecluster aerocluster | grep -A10 Operations
-```
-
-**Expected:** Pods restart sequentially; operation status progresses to complete in the CR; cluster phase returns `Completed`.
-
-### Path B — Helm
-
-```bash
-helm upgrade aerocluster aerospike/aerospike-cluster \
-  -n aerospike -f helm/disk-pod-restart-op-values.yaml --version="${AKO_VERSION_START}"
-kubectl -n aerospike get pods -w
-```
-
----
-
-## Part 2 — WarmRestart
-
-Wait until Part 1 completes (`kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.status.phase}'` → `Completed`).
-
-Apply the warm-restart manifest (replaces the operation `kind` / `id` in the same CR):
+## Part 1 — WarmRestart
 
 ### Path A — kubectl
 
@@ -82,7 +56,7 @@ kubectl -n aerospike get pods -w
 kubectl -n aerospike describe aerospikecluster aerocluster | grep -A10 Operations
 ```
 
-**Expected:** Warm restart runs on all pods; pods are **not** deleted (contrast with Part 1); cluster stays available. **Database node uptime** (Aerospike) resets; **pod uptime** (`status.startTime`) does not — the clearest signal that the process reloaded inside the existing pod.
+**Expected:** Warm restart runs on all pods; pods are **not** deleted; cluster stays available. **Database node uptime** (Aerospike) resets; **pod uptime** (`status.startTime`) does not — the clearest signal that the process reloaded inside the existing pod.
 
 ### Path B — Helm
 
@@ -106,6 +80,32 @@ operations:
 
 ---
 
+## Part 2 — PodRestart (cold restart)
+
+Wait until Part 1 completes (`kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.status.phase}'` → `Completed`).
+
+Apply the cold-restart manifest (replaces the operation `kind` / `id` in the same CR):
+
+### Path A — kubectl
+
+```bash
+kubectl apply -f manifests/disk-pod-restart-op.yaml
+kubectl -n aerospike get pods -w
+kubectl -n aerospike describe aerospikecluster aerocluster | grep -A10 Operations
+```
+
+**Expected:** Pods restart sequentially; operation status progresses to complete in the CR; cluster phase returns `Completed`.
+
+### Path B — Helm
+
+```bash
+helm upgrade aerocluster aerospike/aerospike-cluster \
+  -n aerospike -f helm/disk-pod-restart-op-values.yaml --version="${AKO_VERSION_START}"
+kubectl -n aerospike get pods -w
+```
+
+---
+
 ## Verify (pass/fail)
 
 After each part:
@@ -117,16 +117,7 @@ kubectl -n aerospike get pods -o wide
 
 **Pass:** Phase `Completed`; 3/3 pods `Running`.
 
-Compare restart behavior:
-
-```bash
-# PodRestart: container start time resets (pod may have new UID)
-kubectl -n aerospike get pod aerocluster-0-0 -o jsonpath='{.status.startTime}{"\n"}{.status.containerStatuses[?(@.name=="aerospike-server")].restartCount}{"\n"}'
-```
-
-After **PodRestart**, expect recent `startTime` and/or elevated `restartCount`. After **WarmRestart**, the pod object is unchanged (`startTime` and UID the same) while Aerospike reloads in place.
-
-After Part 2, compare **pod uptime** vs **database node uptime** on one node:
+Compare restart behavior after Part 1 (**WarmRestart**):
 
 ```bash
 # Pod uptime — should be unchanged from before WarmRestart (same startTime)
@@ -139,9 +130,18 @@ kubectl exec -n aerospike aerocluster-0-0 -c aerospike-server -- \
 
 **Pass (WarmRestart):** `startTime` on the pod is old; `uptime` from `asinfo` is recently reset (near zero compared to pre-operation value).
 
+After Part 2 (**PodRestart**):
+
+```bash
+# PodRestart: container start time resets (pod may have new UID)
+kubectl -n aerospike get pod aerocluster-0-0 -o jsonpath='{.status.startTime}{"\n"}{.status.containerStatuses[?(@.name=="aerospike-server")].restartCount}{"\n"}'
+```
+
+**Pass (PodRestart):** Recent `startTime` and/or elevated `restartCount` — contrast with Part 1, where the pod object was unchanged while Aerospike reloaded in place.
+
 ## Observe
 
-- **PodRestart** vs **WarmRestart** — cold deletes the pod; warm keeps the pod running
+- **WarmRestart** vs **PodRestart** — warm keeps the pod running; cold deletes the pod
 - **WarmRestart:** Aerospike **node uptime** resets; Kubernetes **pod uptime** (`startTime`) does not — process reload inside the same pod
 - Difference from image upgrade ([Lab 2.3](03-upgrade-aerospike-db.md)) — operations do not change `spec.image`
 - Only one `spec.operations` entry allowed at a time; apply the next manifest after the prior operation completes
@@ -152,7 +152,7 @@ kubectl exec -n aerospike aerocluster-0-0 -c aerospike-server -- \
 | Symptom | Fix |
 |---------|-----|
 | Operation stuck / not starting | Confirm prior operation finished; CR has only one `operations` entry |
-| Apply rejected after Part 1 | Wait for phase `Completed` before applying warm-restart manifest |
+| Apply rejected after Part 1 | Wait for phase `Completed` before applying cold-restart manifest |
 | Cluster spec drift | Manifests match post-2.3 cluster (`8.1.2.0`, in-memory namespace, `57Gi`) — re-run [Lab 2.3](03-upgrade-aerospike-db.md) prep if needed |
 
 ## Handoff
@@ -161,6 +161,6 @@ Proceed to [Lab 2.5](05-k8s-node-maintenance.md).
 
 ## References
 
-- [manifests/pod-restart-op.yaml](../../manifests/pod-restart-op.yaml)
 - [manifests/pod-warm-restart-op.yaml](../../manifests/pod-warm-restart-op.yaml)
+- [manifests/pod-restart-op.yaml](../../manifests/pod-restart-op.yaml)
 - [On-demand operations](https://aerospike.com/docs/kubernetes/manage/configure/on-demand-operations)
