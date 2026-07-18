@@ -1,5 +1,5 @@
 # Lab 1.4: device-cluster baseline with replication-factor 3 only
-# Mirrors manifests/replication-factor-rf3.yaml / helm/dim-cluster-values.yaml
+# Mirrors manifests/disk-replication-factor-rf3.yaml / helm/disk-cluster-values.yaml
 replicas: 3
 enableDynamicConfigUpdate: true
 
@@ -107,6 +107,7 @@ aerospikeConfig:
     - name: test
       replication-factor: 3
       indexes-memory-budget: 49478021959  # 80% of 57.6 GiB (90% of 64 GiB) = 46.08 GiB
+      migrate-sleep: 0 # For demo purposes only
       storage-engine:
         type: device
         devices:

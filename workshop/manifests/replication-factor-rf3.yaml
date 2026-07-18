@@ -1,5 +1,5 @@
 # Lab 1.4: change ONLY replication-factor 2 → 3 (one namespace, one field)
-# Same sizing as manifests/dim-cluster.yaml
+# Same sizing as manifests/disk-cluster.yaml
 apiVersion: asdb.aerospike.com/v1
 kind: AerospikeCluster
 metadata:
@@ -48,6 +48,10 @@ spec:
     filesystemVolumePolicy:
       cascadeDelete: true
       initMethod: deleteFiles
+    blockVolumePolicy:
+      cascadeDelete: true
+      initMethod: blkdiscardWithHeaderCleanup
+      wipeMethod: blkdiscard
     volumes:
       - name: workdir
         source:
@@ -57,6 +61,15 @@ spec:
             size: 3Gi
         aerospike:
           path: /opt/aerospike
+      - name: ns
+        source:
+          persistentVolume:
+            storageClass: local-ssd
+            volumeMode: Block
+            accessModes: ["ReadWriteOnce"]
+            size: 250Gi
+        aerospike:
+          path: /dev/data/local1
       - name: aerospike-config-secret
         source:
           secret:
@@ -93,8 +106,10 @@ spec:
         port: 3002
     namespaces:
       - name: test
-        replication-factor: 3  # ONLY this field changed from dim-cluster baseline
-        indexes-memory-budget: 15461882265  # 25% of 57.6 GiB (90% of 64 GiB) = 14.4 GiB
+        replication-factor: 3  # ONLY this field changed from disk-cluster baseline
+        indexes-memory-budget: 49478021959  # 80% of 57.6 GiB (90% of 64 GiB) = 46.08 GiB
+        migrate-sleep: 0 # For demo purposes only
         storage-engine:
-          type: memory
-          data-size: 30923764531  # 50% of 57.6 GiB (90% of 64 GiB) = 28.8 GiB
+          type: device
+          devices:
+            - /dev/data/local1

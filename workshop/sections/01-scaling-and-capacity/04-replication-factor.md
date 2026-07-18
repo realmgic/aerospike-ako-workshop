@@ -1,18 +1,22 @@
 # Lab 1.4 — Change Replication Factor
 
-| Field | Value |
-|-------|-------|
-| Lab ID | `1.4` |
-| Section | Scaling & Capacity |
-| Run after | **[Lab 2.2](../02-maintenance-and-upgrade/02-upgrade-ako.md)** (AKO 4.4.0+) |
-| EKS cluster | `my-cluster` |
-| Aerospike cluster | `aerocluster` |
-| AKO min version | **4.4.0** |
-| Aerospike baseline | 3-node on per-AZ baseline pools (device storage default; same as Lab 1.1 / 2.2), RF=2 |
-| Deploy path | both |
-| Duration | ~15 min |
-| Validation status | `draft` |
-| Official docs | [Replication factor](https://aerospike.com/docs/kubernetes/manage/configure/replication-factor) |
+
+| Field              | Value                                                                                           |
+| ------------------ | ----------------------------------------------------------------------------------------------- |
+| Lab ID             | `1.4`                                                                                           |
+| Section            | Scaling & Capacity                                                                              |
+| Run after          | **[Lab 2.2](../02-maintenance-and-upgrade/02-upgrade-ako.md)** (AKO 4.4.0+)                     |
+| EKS cluster        | `my-cluster`                                                                                    |
+| Aerospike cluster  | `aerocluster`                                                                                   |
+| AKO min version    | **4.4.0**                                                                                       |
+| Aerospike baseline | 3-node on per-AZ baseline pools (device storage default; same as Lab 1.1 / 2.2), RF=2           |
+| Deploy path        | both                                                                                            |
+| Duration           | ~15 min                                                                                         |
+| Validation status  | `draft`                                                                                         |
+| Official docs      | [Replication factor](https://aerospike.com/docs/kubernetes/manage/configure/replication-factor) |
+
+
+
 
 ## Takeaway
 
@@ -24,12 +28,18 @@ For AP namespaces, AKO **4.4.0+** applies `replication-factor` changes dynamical
 - Aerospike Database 6.0+
 - AP namespace only (not SC)
 
+
+
 ## Node requirements
 
-| Item | Value |
-|------|-------|
+
+| Item     | Value                                                                                                                               |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | Instance | `i8g.2xlarge` × 4 on baseline pool (`${NODEGROUP_NAME}-<zone>` or `${KARPENTER_NODEPOOL_NAME}-<zone>`; ≥3 required for dim cluster) |
-| Reset | **Light** (database only — keeps baseline pool) |
+| Reset    | **Light** (database only — keeps baseline pool)                                                                                     |
+
+
+
 
 ## Phase 0 — Prepare lab
 
@@ -45,10 +55,12 @@ If continuing directly from **Lab 2.2** with the dim cluster still Running and R
 ./scripts/labs/prepare-lab.sh 1.4 --skip-reset
 ```
 
+
+
 ## Starting state
 
 ```bash
-kubectl get csv -n operators | grep -E '4\.4\.[01]'
+kubectl get csv -n operators
 # or
 helm list -n operators
 ```
@@ -72,22 +84,26 @@ Skip this section if you used `--skip-reset` and the cluster from Lab 2.2 is alr
 
 ## Steps
 
+
+
 ### Path A — kubectl
 
 1. Confirm RF=2 (CR and Aerospike runtime):
-   ```bash
+  ```bash
    kubectl -n aerospike describe aerospikecluster aerocluster | grep -i replication
    kubectl run -it --rm aerospike-tool-rf -n aerospike --restart=Never \
      --image=aerospike/aerospike-tools:latest -- \
      asadm -h aerocluster -U admin -P admin123 -e "show config like replication-factor"
-   ```
+  ```
    **Pass:** CR shows RF=2; all nodes report `replication-factor 2`.
 2. Apply **only** RF change:
-   ```bash
+  ```bash
    kubectl apply -f manifests/replication-factor-rf3.yaml
-   ```
+  ```
    **Expected:** No pod rolling restart; operator reconciles config.
 3. Verify RF=3 in CR status and on nodes.
+
+
 
 ### Path B — Helm
 
@@ -105,6 +121,8 @@ helm upgrade aerocluster aerospike/aerospike-cluster \
   -n aerospike -f helm/replication-factor-rf3-values.yaml --version=4.4.1
 ```
 
+
+
 ## Verify (pass/fail)
 
 ```bash
@@ -114,27 +132,33 @@ helm upgrade aerocluster aerospike/aerospike-cluster \
 1. CR status shows RF=3 for namespace `test`
 2. Pods remain `Running` (same pod names/ages as before apply)
 3. asadm:
-
-   ```bash
+  ```bash
    kubectl run -it --rm aerospike-tool -n aerospike --restart=Never \
      --image=aerospike/aerospike-tools:latest -- \
      asadm -h aerocluster -U admin -P admin123 -e "show config like replication-factor"
-   ```
-
+  ```
    **Pass:** All nodes report `replication-factor 3`.
+
+
 
 ## Constraints
 
-| Rule | Detail |
-|------|--------|
-| Change scope | Only `replication-factor` in one apply |
-| Namespaces | One namespace per update |
+
+| Rule          | Detail                                 |
+| ------------- | -------------------------------------- |
+| Change scope  | Only `replication-factor` in one apply |
+| Namespaces    | One namespace per update               |
 | Not supported | SC namespaces; combined config changes |
+
+
+
 
 ## Troubleshooting
 
 - Mixed RF during node restart → allow AKO to converge
 - Reconciler stuck → see [dynamic config docs](https://aerospike.com/docs/kubernetes/manage/configure/dynamic-config)
+
+
 
 ## Curriculum note
 
@@ -148,3 +172,4 @@ Continue to [Lab 2.3](../02-maintenance-and-upgrade/03-upgrade-aerospike-db.md).
 
 - [Replication factor](https://aerospike.com/docs/kubernetes/manage/configure/replication-factor)
 - [Release notes KO-485](https://aerospike.com/docs/kubernetes/release/release-notes/)
+
