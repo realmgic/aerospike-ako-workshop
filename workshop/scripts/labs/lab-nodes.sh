@@ -7,7 +7,7 @@
 # Options:
 #   --scale-up       Lab 1.1: scale workload pool to 5 nodes (eksctl) or trigger scale (karpenter)
 #   --vertical       Lab 1.2/1.3: add 4xl pool alongside existing 2xl (mid-lab vertical scale)
-#   --replace-zone   Lab 2.5: scale +1 in the maintenance target node's AZ (requires --node)
+#   --replace-zone   Lab 2.5 Phase 2 optional: scale +1 in the maintenance target node's AZ before drain (requires --node)
 #   --node=<name>    Kubernetes node name for --replace-zone (Lab 2.5)
 set -euo pipefail
 source "$(dirname "$0")/../lib/common.sh"

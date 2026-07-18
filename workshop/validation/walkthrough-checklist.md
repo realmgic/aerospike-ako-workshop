@@ -44,7 +44,7 @@ For **Karpenter path** runs, use [karpenter-walkthrough.md](karpenter-walkthroug
 - [ ] **2.3** On-demand operations — WarmRestart then PodRestart (cold) on 8.1.0.x cluster; optional `run-lab-workload.sh` in Terminal B during ops
 - [ ] **2.4** Upgrade Aerospike DB — 8.1.0.x→8.1.2.x, rolling restart; `run-lab-workload.sh` ~10k TPS through upgrade (Terminal B)
 - [ ] **2.5** K8s node maintenance — data loaded; webhook blocks drain during active migration; Phase 3 Path A (pinning) or Path B (AKO auto-delete); node termination + PVC cleanup; pod rescheduled
-- [ ] **2.5 (eksctl only)** — optional Phase 4 same-AZ nodegroup scale before terminate (`lab-nodes.sh 2.5 ensure --replace-zone`)
+- [ ] **2.5 (eksctl only)** — optional Phase 2 same-AZ nodegroup scale before drain (`lab-nodes.sh 2.5 ensure --replace-zone`)
 - [ ] **2.5 (eksctl only)** — blocklist path validated (same migration observation)
 - [ ] **2.5 (Karpenter only)** — drain + Phase 4 NodeClaim replacement; **no blocklist**
 - [ ] **2.5 (Karpenter only) add-on** — do-not-disrupt graduation + `terminationGracePeriod` (instructor-led)

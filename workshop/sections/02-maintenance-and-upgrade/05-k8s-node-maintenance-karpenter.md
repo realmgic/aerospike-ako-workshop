@@ -48,7 +48,9 @@ AKO safe eviction applies regardless of node provisioner. Follow [Phase 2 in the
 - asadm shows non-zero migrate stats
 - Pod on `$NODE` may be `Running` or `Terminating`
 
-Optional: [Force visible drain block](05-k8s-node-maintenance.md#2-optional--force-visible-drain-block-instructor--demo) if migration finishes too fast.
+Optional: [Force visible drain block](05-k8s-node-maintenance.md#2-optional-instructor--force-visible-drain-block) if migration finishes too fast.
+
+Skip the eksctl [Phase 2 optional same-AZ scale-up](05-k8s-node-maintenance.md#2-optional-eksctl--add-same-az-capacity-before-drain) on Karpenter — NodeClaim replacement provisions same-zone capacity automatically.
 
 ## Phase 3 — PVC pinning observe
 
@@ -56,7 +58,7 @@ Same as the [eksctl guide Phase 3](05-k8s-node-maintenance.md#phase-3--pvc-pinni
 
 ## Phase 4 — Node termination + PVC cleanup
 
-Replace the drained worker via Karpenter NodeClaim lifecycle. The eksctl [Phase 4 optional same-AZ scale-up](05-k8s-node-maintenance.md#4-optional--add-same-az-capacity-before-termination-eksctl) is not needed here — deleting the NodeClaim provisions replacement capacity in the same zone automatically.
+Replace the drained worker via Karpenter NodeClaim lifecycle:
 
 1. Delete the NodeClaim for `$NODE`:
 
@@ -268,7 +270,7 @@ Workshop EC2NodeClass tracks **`al2023@latest`** (`01-ec2nodeclass-i8g.yaml`). P
 
 | Symptom | Fix |
 |---------|-----|
-| Drain not blocked | Migration may have finished; use [Phase 2 optional](05-k8s-node-maintenance.md#2-optional--force-visible-drain-block-instructor--demo) |
+| Drain not blocked | Migration may have finished; use [Phase 2 optional (instructor)](05-k8s-node-maintenance.md#2-optional-instructor--force-visible-drain-block) |
 | Pod stuck on cordoned node | Expected with local PVC — proceed to Phase 4 |
 | PVC not cleaned up after node delete | Check cleanup controller logs; wait 60s |
 | Node not terminating after drain | Check PDB; verify terminationGracePeriod |
