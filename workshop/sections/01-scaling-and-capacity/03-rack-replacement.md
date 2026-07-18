@@ -106,6 +106,22 @@ kubectl -n aerospike get pods -w
 
 ## Verify (pass/fail)
 
+In a second terminal while pods are rolling, connect to asadm and run `watch info` until migration completes:
+
+```bash
+kubectl run -it --rm aerospike-tool -n aerospike --restart=Never \
+  --image=aerospike/aerospike-tools:latest -- \
+  asadm -h aerocluster -U admin -P admin123
+```
+
+At the `Admin>` prompt:
+
+```text
+watch info
+```
+
+Exit with `Ctrl+C` when migrate tx/rx reach zero and the CR phase is `Completed`.
+
 ```bash
 ./scripts/labs/lab-nodes.sh 1.3 validate --vertical
 kubectl -n aerospike get pods -o wide
@@ -118,6 +134,7 @@ kubectl -n aerospike get pvc -o wide
 ## Observe
 
 - Two rack sets running concurrently during migration
+- Migration progress via `watch info` in asadm (Verify)
 - Rack ID change (1+2 → 3+4) vs revision (Lab 1.2 keeps IDs 1+2) — instructor discussion point
 - Same end-state resources as Lab 1.2 v2, different AKO mechanism
 
