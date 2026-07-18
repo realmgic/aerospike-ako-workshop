@@ -7,7 +7,7 @@
 | Section            | Maintenance & Upgrade                                                                         |
 | EKS cluster        | `my-cluster`                                                                                  |
 | AKO ladder         | `4.2.0 → 4.3.0 → 4.4.1 → 4.5.0`                                                               |
-| Aerospike baseline | dim 3-node Running during upgrade (**8.1.0.x**)                                               |
+| Aerospike baseline | 3-node cluster Running during upgrade (**8.1.0.x**)                                           |
 | Deploy path        | both                                                                                          |
 | Duration           | ~30–40 min (full ladder); demo one step live                                                  |
 | Validation status  | `draft`                                                                                       |
@@ -21,7 +21,7 @@ AKO must be upgraded **one version at a time** — each release updates chart/bu
 ## Prerequisites
 
 - Section 0 installed AKO at **4.2.0**
-- 3-node dim cluster Running on **8.1.0.x** (from [Lab 2.1](01-akoctl.md) — `./scripts/labs/prepare-lab.sh 2.1` if coming from Section 1):
+- 3-node cluster Running on **8.1.0.x** (from [Lab 2.1](01-akoctl.md) — `./scripts/labs/prepare-lab.sh 2.1` if coming from Section 1):
 
 ```bash
 kubectl -n aerospike get pods

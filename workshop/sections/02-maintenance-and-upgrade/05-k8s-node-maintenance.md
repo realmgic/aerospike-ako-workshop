@@ -6,7 +6,7 @@
 | Section | Maintenance & Upgrade |
 | EKS cluster | `my-cluster` |
 | AKO min version | `4.5.0` |
-| Aerospike baseline | dim 3-node in-memory on **8.1.2.x** (from Lab 2.3/2.4) |
+| Aerospike baseline | 3-node device storage on local-ssd (**8.1.2.x**); in-memory with `--dim` |
 | Deploy path | both |
 | Node provisioning | both (blocklist **eksctl only**) |
 | Duration | ~25 min |
@@ -21,11 +21,11 @@ AKO's safe pod eviction webhook blocks `kubectl drain` while data migrates. The 
 
 - Lab 2.4 complete (on-demand operations; implies AKO **4.5.0** and DB on **8.1.2.x**)
 - `safePodEviction.enable=true` on operator (Helm values or OLM config)
-- 3-node dim cluster `Running`; phase `Completed`
+- 3-node cluster `Running`; phase `Completed` (device storage by default)
 
 ## Phase 0 — Prepare lab
 
-Re-apply the maintenance baseline (clears `spec.operations` from Lab 2.4):
+Tears down existing `aerocluster` if present and deploys fresh maintenance baseline (clears Lab 2.4 operations):
 
 ```bash
 ./scripts/labs/prepare-lab.sh 2.5
@@ -50,10 +50,10 @@ echo "Maintenance target node: ${NODE}"
 
 ## Phase 1 — Seed data (make migration visible)
 
-An empty dim cluster migrates too fast to observe. Load records first using the **`app`** user (`read` + `write` roles; secret `auth-app-secret` / password `app123`), defined in the maintenance baseline manifest:
+An empty cluster migrates too fast to observe (especially in-memory — use `--dim` or pre-load data). Load records first using the **`app`** user (`read` + `write` roles; secret `auth-app-secret` / password `app123`), defined in the maintenance baseline manifest:
 
 ```bash
-./scripts/labs/load-dim-migration-data.sh
+./scripts/labs/load-data.sh
 ```
 
 Tunable via env (increase if migration completes too quickly):
@@ -137,11 +137,11 @@ Same migration observation pattern, triggered via CR blocklist instead of drain 
 
 ### Path A — kubectl
 
-1. Edit `manifests/node-blocklist.yaml` — set `k8sNodeBlockList` to `$NODE`.
+1. Edit `manifests/disk-node-blocklist.yaml` (or `manifests/node-blocklist.yaml` with `--dim`) — set `k8sNodeBlockList` to `$NODE`.
 2. Apply and watch (pod stays on node until CR `Completed`):
 
    ```bash
-   kubectl apply -f manifests/node-blocklist.yaml
+   kubectl apply -f manifests/disk-node-blocklist.yaml
    kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.status.phase}{"\n"}'
    kubectl -n aerospike get pod -o wide --field-selector spec.nodeName="$NODE" -w
    ```
@@ -156,12 +156,12 @@ Same migration observation pattern, triggered via CR blocklist instead of drain 
 
 ### Path B — Helm
 
-1. Edit `helm/node-blocklist-values.yaml` — set `k8sNodeBlockList` to `$NODE`.
+1. Edit `helm/disk-node-blocklist-values.yaml` (or `helm/node-blocklist-values.yaml` with `--dim`) — set `k8sNodeBlockList` to `$NODE`.
 2. Apply and watch:
 
    ```bash
    helm upgrade aerocluster aerospike/aerospike-cluster \
-     -n aerospike -f helm/node-blocklist-values.yaml --version="${AKO_VERSION_START}"
+     -n aerospike -f helm/disk-node-blocklist-values.yaml --version="${AKO_VERSION_START}"
    kubectl -n aerospike get pod -o wide --field-selector spec.nodeName="$NODE" -w
    ```
 
@@ -247,7 +247,7 @@ kubectl -n aerospike wait --for=jsonpath='{.status.phase}'=Completed aerospikecl
 
 ```bash
 helm upgrade aerocluster aerospike/aerospike-cluster \
-  -n aerospike -f helm/dim-cluster-maintenance-values.yaml --version="${AKO_VERSION_START}" \
+  -n aerospike -f helm/disk-cluster-maintenance-values.yaml --version="${AKO_VERSION_START}" \
   --set k8sNodeBlockList=null
 kubectl -n aerospike wait --for=jsonpath='{.status.phase}'=Completed aerospikecluster/aerocluster --timeout=900s
 ```
@@ -261,10 +261,11 @@ Proceed to [Lab 2.6](06-k8s-control-plane-upgrade.md). Aerospike cluster should 
 | Symptom | Fix |
 |---------|-----|
 | Migration completes too fast to observe | Increase `MIGRATION_LOAD_RECORDS` (e.g. `8000000`) and re-run load script |
+| local-ssd PVC Pending | Re-run `./scripts/setup/08-validate-environment.sh`; confirm baseline local-ssd PVs |
 | No `eviction-blocked` annotation | Confirm `safePodEviction.enable=true`; check operator webhook Ready |
 | CR stays `InProgress` | Check operator logs; wait for migrate stats to reach zero |
 | Force delete bypasses webhook | Never use `--force` in production demo |
-| Blocklist changes cluster profile | Use updated `node-blocklist.yaml` (8.1.2.x / 57Gi) — not legacy 4xl manifest |
+| Blocklist changes cluster profile | Use updated blocklist manifest matching your storage (`disk-node-blocklist.yaml` default) |
 
 ## Not covered here
 
@@ -273,7 +274,7 @@ Proceed to [Lab 2.6](06-k8s-control-plane-upgrade.md). Aerospike cluster should 
 
 ## References
 
-- [manifests/dim-cluster-maintenance.yaml](../../manifests/dim-cluster-maintenance.yaml)
-- [manifests/node-blocklist.yaml](../../manifests/node-blocklist.yaml)
-- [scripts/labs/load-dim-migration-data.sh](../../scripts/labs/load-dim-migration-data.sh)
+- [manifests/disk-cluster-maintenance.yaml](../../manifests/disk-cluster-maintenance.yaml)
+- [manifests/disk-node-blocklist.yaml](../../manifests/disk-node-blocklist.yaml)
+- [scripts/labs/load-data.sh](../../scripts/labs/load-data.sh)
 - [Node maintenance](https://aerospike.com/docs/kubernetes/manage/node-maintenance)

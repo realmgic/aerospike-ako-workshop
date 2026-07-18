@@ -44,6 +44,9 @@ load_env() {
   : "${UPGRADE_LAB_NODE_COUNT:=3}"
   : "${UPGRADE_LAB_NODE_TYPE:=i8g.2xlarge}"
   : "${UPGRADE_LAB_AEROSPIKE_SIZE:=3}"
+  : "${CLUSTER_STORAGE:=disk}"
+  : "${CLUSTER_STORAGE_DIM_LABS:=}"
+  : "${CLUSTER_STORAGE_DISK_LABS:=}"
   : "${FEATURES_CONF_PATH:=secrets/features.conf}"
 
   IFS=',' read -r NODE_ZONE_A NODE_ZONE_B _ <<< "${AWS_ZONES},,"

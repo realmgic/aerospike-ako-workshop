@@ -4,7 +4,7 @@ set -euo pipefail
 source "$(dirname "$0")/../lib/common.sh"
 source "$(dirname "$0")/../lib/local-storage.sh"
 load_env
-ensure_main_kubecontext
+ensure_target_kubecontext
 
 require_cmd kubectl
 

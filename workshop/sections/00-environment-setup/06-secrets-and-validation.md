@@ -73,7 +73,7 @@ Secrets are deployed and the platform is validated — **no AerospikeCluster yet
 ## Observe
 
 - `aerospike-secret` contains feature-key file for Enterprise
-- Section 1/2 labs call `deploy-dim-cluster.sh` or rack deploy scripts
+- Section 1/2 labs call `deploy-cluster.sh` (default storage), `deploy-dim-cluster.sh`, or rack deploy scripts
 
 ## Teardown / handoff
 

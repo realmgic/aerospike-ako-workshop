@@ -1,23 +1,39 @@
 #!/usr/bin/env bash
-# Prepare a lab: reset (Section 1), dim cluster staging (Labs 2.1/2.3), or upgrade-lab (Lab 2.6).
+# Prepare a lab: reset (Section 1), cluster staging (Labs 2.1/2.3/2.5), or upgrade-lab (Lab 2.6).
 #
 # Usage:
-#   ./scripts/labs/prepare-lab.sh <lab-id> [--full|--light|--skip-reset] [--load-data]
+#   ./scripts/labs/prepare-lab.sh <lab-id> [--dim|--disk] [--full|--light|--skip-reset] [--load-data]
 set -euo pipefail
 source "$(dirname "$0")/../lib/common.sh"
+source "$(dirname "$0")/../lib/cluster-storage.sh"
 load_env
 
-LAB_ID="${1:?Usage: prepare-lab.sh <lab-id> [--full|--light|--skip-reset] [--load-data]}"
+LAB_ID="${1:?Usage: prepare-lab.sh <lab-id> [--dim|--disk] [--full|--light|--skip-reset] [--load-data]}"
 shift || true
 
 RESET_OVERRIDE=""
 LOAD_DATA=false
+CLI_CLUSTER_STORAGE=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --full) RESET_OVERRIDE=full ;;
     --light) RESET_OVERRIDE=light ;;
     --skip-reset) RESET_OVERRIDE=skip ;;
     --load-data) LOAD_DATA=true ;;
+    --dim)
+      if [[ -n "${CLI_CLUSTER_STORAGE}" && "${CLI_CLUSTER_STORAGE}" != dim ]]; then
+        echo "ERROR: --dim and --disk are mutually exclusive" >&2
+        exit 1
+      fi
+      CLI_CLUSTER_STORAGE=dim
+      ;;
+    --disk)
+      if [[ -n "${CLI_CLUSTER_STORAGE}" && "${CLI_CLUSTER_STORAGE}" != disk ]]; then
+        echo "ERROR: --dim and --disk are mutually exclusive" >&2
+        exit 1
+      fi
+      CLI_CLUSTER_STORAGE=disk
+      ;;
     *)
       echo "ERROR: unknown option: $1" >&2
       exit 1
@@ -25,6 +41,9 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
+
+export CLI_CLUSTER_STORAGE
+log_cluster_storage_choice "${LAB_ID}"
 
 SCRIPT_DIR="$(dirname "$0")"
 WORKSHOP_SCRIPTS="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -39,7 +58,7 @@ restore_main_kubecontext() {
 
 validate_lab_2_6_starting_state() {
   local fail=0
-  local version running phase
+  local version running phase expected_engine
 
   version="$(aws eks describe-cluster --name "${UPGRADE_LAB_CLUSTER_NAME}" --region "${AWS_REGION}" \
     --query 'cluster.version' --output text 2>/dev/null || echo unknown)"
@@ -61,6 +80,25 @@ validate_lab_2_6_starting_state() {
   phase="$(kubectl -n "${NAMESPACE}" get aerospikecluster aerocluster -o jsonpath='{.status.phase}' 2>/dev/null || echo unknown)"
   echo "    AerospikeCluster phase: ${phase}"
 
+  expected_engine="device"
+  [[ "${EFFECTIVE_CLUSTER_STORAGE}" == dim ]] && expected_engine="memory"
+  if validate_cluster_storage_engine "${expected_engine}"; then
+    :
+  else
+    fail=1
+  fi
+
+  if [[ "${EFFECTIVE_CLUSTER_STORAGE}" == disk ]]; then
+    local pvc_count
+    pvc_count="$(kubectl -n "${NAMESPACE}" get pvc -l aerospike.com/cr=aerocluster --no-headers 2>/dev/null \
+      | awk '$2 ~ /local-ssd/ || $6 ~ /local-ssd/ {c++} END{print c+0}')"
+    if [[ "${pvc_count:-0}" -ge "${UPGRADE_LAB_AEROSPIKE_SIZE}" ]]; then
+      echo "OK  ${pvc_count} local-ssd PVC(s) bound"
+    else
+      echo "WARN ${pvc_count}/${UPGRADE_LAB_AEROSPIKE_SIZE} local-ssd PVCs — check storage setup"
+    fi
+  fi
+
   if [[ "${fail}" -eq 0 ]]; then
     echo "Lab 2.6 starting state: PASS"
   else
@@ -72,7 +110,7 @@ validate_lab_2_6_starting_state() {
 prepare_lab_2_6() {
   trap restore_main_kubecontext EXIT
 
-  echo "=== Prepare lab 2.6 (upgrade-lab cluster) ==="
+  echo "=== Prepare lab 2.6 (upgrade-lab cluster, storage=${EFFECTIVE_CLUSTER_STORAGE}) ==="
 
   if ! cluster_exists "${UPGRADE_LAB_CLUSTER_NAME}"; then
     if [[ "${RESET_OVERRIDE}" == "skip" ]]; then
@@ -84,6 +122,19 @@ prepare_lab_2_6() {
   else
     ensure_upgrade_lab_kubecontext
     echo "Upgrade-lab cluster ${UPGRADE_LAB_CLUSTER_NAME} already exists"
+    if [[ "${RESET_OVERRIDE}" != "skip" ]]; then
+      expected_engine="device"
+      [[ "${EFFECTIVE_CLUSTER_STORAGE}" == dim ]] && expected_engine="memory"
+      if kubectl -n "${NAMESPACE}" get aerospikecluster aerocluster >/dev/null 2>&1; then
+        actual="$(cluster_storage_engine_type)"
+        if [[ "${actual}" != "${expected_engine}" ]]; then
+          echo "Storage mismatch (${actual} vs ${expected_engine}) — re-running post-bootstrap..."
+          "${WORKSHOP_SCRIPTS}/setup/upgrade-lab/setup-upgrade-lab-post-bootstrap.sh"
+        fi
+      else
+        "${WORKSHOP_SCRIPTS}/setup/upgrade-lab/setup-upgrade-lab-post-bootstrap.sh"
+      fi
+    fi
   fi
 
   ensure_upgrade_lab_kubecontext
@@ -91,73 +142,73 @@ prepare_lab_2_6() {
   echo "=== Lab 2.6 prepared ==="
 }
 
-deploy_dim_cluster() {
+deploy_cluster() {
   if [[ "${DEPLOY_PATH}" == "helm" ]]; then
-    "${SCRIPT_DIR}/deploy-dim-cluster-helm.sh"
+    "${SCRIPT_DIR}/deploy-cluster-helm.sh"
   else
-    "${SCRIPT_DIR}/deploy-dim-cluster.sh"
+    "${SCRIPT_DIR}/deploy-cluster.sh"
   fi
 }
 
-validate_dim_cluster() {
+validate_cluster() {
   local phase running expected=3
   phase="$(kubectl -n "${NAMESPACE}" get aerospikecluster aerocluster -o jsonpath='{.status.phase}' 2>/dev/null || echo missing)"
   running="$(kubectl -n "${NAMESPACE}" get pods -l aerospike.com/cr=aerocluster --field-selector=status.phase=Running --no-headers 2>/dev/null | wc -l | tr -d ' ')"
 
   if [[ "${phase}" == "Completed" ]] && [[ "${running:-0}" -ge "${expected}" ]]; then
-    echo "OK  dim cluster Ready (${running}/${expected} pods, phase ${phase})"
+    echo "OK  cluster Ready (${running}/${expected} pods, phase ${phase}, storage=${EFFECTIVE_CLUSTER_STORAGE})"
     return 0
   fi
 
-  echo "FAIL dim cluster not ready (phase=${phase}, ${running}/${expected} pods Running)" >&2
+  echo "FAIL cluster not ready (phase=${phase}, ${running}/${expected} pods Running)" >&2
   kubectl -n "${NAMESPACE}" get aerospikecluster,pods 2>/dev/null || true
   return 1
 }
 
-validate_dim_baseline_image() {
+validate_baseline_image() {
   local image
   : "${AEROSPIKE_IMAGE:=aerospike/aerospike-server-enterprise:8.1.0.0}"
   image="$(kubectl -n "${NAMESPACE}" get aerospikecluster aerocluster -o jsonpath='{.spec.image}' 2>/dev/null || echo missing)"
   if [[ "${image}" == "${AEROSPIKE_IMAGE}" ]] || [[ "${image}" == *"8.1.0"* ]]; then
-    echo "OK  dim baseline image (${image})"
+    echo "OK  baseline image (${image})"
     return 0
   fi
   echo "FAIL expected 8.1.0.x baseline image (got ${image}) — re-run without --skip-reset" >&2
   return 1
 }
 
-validate_dim_maintenance_image() {
+validate_maintenance_image() {
   local image
   image="$(kubectl -n "${NAMESPACE}" get aerospikecluster aerocluster -o jsonpath='{.spec.image}' 2>/dev/null || echo missing)"
   if [[ "${image}" == *"8.1.2"* ]]; then
-    echo "OK  dim maintenance image (${image})"
+    echo "OK  maintenance image (${image})"
     return 0
   fi
   echo "FAIL expected 8.1.2.x image (got ${image}) — complete Lab 2.3 first" >&2
   return 1
 }
 
-deploy_maintenance_dim_cluster() {
+deploy_maintenance_cluster() {
   if [[ "${DEPLOY_PATH}" == "helm" ]]; then
-    "${SCRIPT_DIR}/deploy-dim-cluster-maintenance-helm.sh"
+    "${SCRIPT_DIR}/deploy-cluster-maintenance-helm.sh"
   else
-    "${SCRIPT_DIR}/deploy-dim-cluster-maintenance.sh"
+    "${SCRIPT_DIR}/deploy-cluster-maintenance.sh"
   fi
 }
 
-wait_for_dim_cluster() {
+wait_for_cluster() {
   kubectl -n "${NAMESPACE}" wait --for=jsonpath='{.status.phase}'=Completed \
     aerospikecluster/aerocluster --timeout=600s
-  validate_dim_cluster
+  validate_cluster
 }
 
-prepare_dim_cluster_lab() {
+prepare_cluster_lab() {
   local lab_id="$1"
   local reason="$2"
   local check_baseline_image="${3:-false}"
   local reset_mode="${RESET_OVERRIDE:-light}"
 
-  echo "=== Prepare lab ${lab_id} (reset=${reset_mode}, DEPLOY_PATH=${DEPLOY_PATH}) ==="
+  echo "=== Prepare lab ${lab_id} (reset=${reset_mode}, storage=${EFFECTIVE_CLUSTER_STORAGE}, DEPLOY_PATH=${DEPLOY_PATH}) ==="
   echo "${reason}"
 
   ensure_main_kubecontext
@@ -172,71 +223,98 @@ prepare_dim_cluster_lab() {
       "${WORKSHOP_SCRIPTS}/labs/teardown-cluster.sh"
       ;;
     skip)
-      echo "Skipping teardown (validating existing dim cluster)"
-      validate_dim_cluster
+      echo "Skipping teardown (validating existing cluster)"
+      validate_cluster
+      expected_engine="device"
+      [[ "${EFFECTIVE_CLUSTER_STORAGE}" == dim ]] && expected_engine="memory"
+      validate_cluster_storage_engine "${expected_engine}"
       if [[ "${check_baseline_image}" == true ]]; then
-        validate_dim_baseline_image
+        validate_baseline_image
       fi
       echo "=== Lab ${lab_id} prepared ==="
       return 0
       ;;
   esac
 
-  deploy_dim_cluster
-  validate_dim_cluster
+  if [[ "${EFFECTIVE_CLUSTER_STORAGE}" == disk ]]; then
+    validate_baseline_local_ssd_pvs 3
+  fi
+
+  deploy_cluster
+  validate_cluster
+  expected_engine="device"
+  [[ "${EFFECTIVE_CLUSTER_STORAGE}" == dim ]] && expected_engine="memory"
+  validate_cluster_storage_engine "${expected_engine}"
   if [[ "${check_baseline_image}" == true ]]; then
-    validate_dim_baseline_image
+    validate_baseline_image
   fi
   echo "=== Lab ${lab_id} prepared ==="
 }
 
 prepare_lab_2_1() {
-  prepare_dim_cluster_lab "2.1" \
-    "Tearing down prior aerocluster (Section 1 rack/dim CR uses the same name) and deploying dim baseline." \
+  prepare_cluster_lab "2.1" \
+    "Tearing down prior aerocluster (Section 1 rack/cluster CR uses the same name) and deploying baseline cluster." \
     false
 }
 
 prepare_lab_2_3() {
-  prepare_dim_cluster_lab "2.3" \
-    "Resetting to dim baseline on 8.1.0.x (e.g. after Lab 1.5 RF=3 or a prior 2.3 attempt)." \
+  prepare_cluster_lab "2.3" \
+    "Resetting to baseline on 8.1.0.x (e.g. after Lab 1.5 RF=3 or a prior 2.3 attempt)." \
     true
 }
 
 prepare_lab_2_5() {
-  local reset_mode="${RESET_OVERRIDE:-skip}"
+  local reset_mode="${RESET_OVERRIDE:-}"
 
-  echo "=== Prepare lab 2.5 (reset=${reset_mode}, DEPLOY_PATH=${DEPLOY_PATH}, load_data=${LOAD_DATA}) ==="
-  echo "Clearing Lab 2.4 operations and aligning to maintenance dim baseline (8.1.2.x)."
+  echo "=== Prepare lab 2.5 (reset=${reset_mode:-deploy}, storage=${EFFECTIVE_CLUSTER_STORAGE}, DEPLOY_PATH=${DEPLOY_PATH}, load_data=${LOAD_DATA}) ==="
+  echo "Deploying maintenance baseline (8.1.2.x) for node maintenance lab."
 
   ensure_main_kubecontext
+
+  if [[ "${reset_mode}" == "skip" ]]; then
+    if ! kubectl -n "${NAMESPACE}" get aerospikecluster aerocluster >/dev/null 2>&1; then
+      echo "ERROR: aerocluster not found — run without --skip-reset first" >&2
+      exit 1
+    fi
+    validate_maintenance_image
+    expected_engine="device"
+    [[ "${EFFECTIVE_CLUSTER_STORAGE}" == dim ]] && expected_engine="memory"
+    validate_cluster_storage_engine "${expected_engine}"
+    validate_cluster
+    echo "=== Lab 2.5 prepared (validate-only) ==="
+    return 0
+  fi
 
   case "${reset_mode}" in
     full)
       echo "Running full reset (database + workload nodes)..."
       "${WORKSHOP_SCRIPTS}/reset-cluster.sh" --yes
-      echo "ERROR: Lab 2.5 requires post-2.3 dim cluster on 8.1.2.x — run Labs 2.1–2.4 first or use --skip-reset" >&2
+      echo "ERROR: Lab 2.5 full reset removes cluster state — complete Labs 2.1–2.4 first" >&2
       exit 1
       ;;
     light)
-      echo "Running light reset (delete AerospikeCluster aerocluster)..."
-      "${WORKSHOP_SCRIPTS}/labs/teardown-cluster.sh"
-      echo "ERROR: Lab 2.5 light reset removes cluster — use --skip-reset after Lab 2.4" >&2
-      exit 1
-      ;;
-    skip)
-      if ! kubectl -n "${NAMESPACE}" get aerospikecluster aerocluster >/dev/null 2>&1; then
-        echo "ERROR: aerocluster not found — complete Lab 2.4 first" >&2
-        exit 1
-      fi
-      validate_dim_maintenance_image
+      echo "NOTE: --light behaves like default for Lab 2.5 (teardown + redeploy)"
       ;;
   esac
 
-  deploy_maintenance_dim_cluster
-  wait_for_dim_cluster
+  if kubectl -n "${NAMESPACE}" get aerospikecluster aerocluster >/dev/null 2>&1; then
+    echo "Removing existing aerocluster..."
+    "${WORKSHOP_SCRIPTS}/labs/teardown-cluster.sh"
+    wait_for_cluster_gone 300
+  fi
+
+  if [[ "${EFFECTIVE_CLUSTER_STORAGE}" == disk ]]; then
+    validate_baseline_local_ssd_pvs 3
+  fi
+
+  deploy_maintenance_cluster
+  wait_for_cluster
+  expected_engine="device"
+  [[ "${EFFECTIVE_CLUSTER_STORAGE}" == dim ]] && expected_engine="memory"
+  validate_cluster_storage_engine "${expected_engine}"
 
   if [[ "${LOAD_DATA}" == true ]]; then
-    "${SCRIPT_DIR}/load-dim-migration-data.sh"
+    "${SCRIPT_DIR}/load-data.sh"
   fi
 
   echo "=== Lab 2.5 prepared ==="
@@ -277,7 +355,7 @@ default_reset_for_lab() {
 
 RESET_MODE="${RESET_OVERRIDE:-$(default_reset_for_lab "${LAB_ID}")}"
 
-echo "=== Prepare lab ${LAB_ID} (reset=${RESET_MODE}, NODE_PROVISIONING=${NODE_PROVISIONING}) ==="
+echo "=== Prepare lab ${LAB_ID} (reset=${RESET_MODE}, storage=${EFFECTIVE_CLUSTER_STORAGE}, NODE_PROVISIONING=${NODE_PROVISIONING}) ==="
 
 case "${RESET_MODE}" in
   full)

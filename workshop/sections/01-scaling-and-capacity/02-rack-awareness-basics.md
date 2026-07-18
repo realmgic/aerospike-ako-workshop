@@ -8,7 +8,7 @@
 | EKS cluster        | `my-cluster`                                                                            |
 | Aerospike cluster  | `aerocluster`                                                                           |
 | AKO min version    | `4.2.0`                                                                                 |
-| Aerospike baseline | dim cluster → add racks                                                                 |
+| Aerospike baseline | device storage cluster (default) → add racks                                          |
 | Deploy path        | both                                                                                    |
 | Duration           | ~20 min                                                                                 |
 | Validation status  | `draft`                                                                                 |
@@ -64,8 +64,8 @@ Rack awareness aligns Aerospike replica placement with Kubernetes topology (e.g.
 
 ```bash
 source scripts/env/workshop.env
-./scripts/labs/deploy-dim-cluster-with-racks.sh
-# or: envsubst '$NODE_ZONE_A $NODE_ZONE_B' < manifests/dim-cluster-with-racks.yaml | kubectl apply -f -
+./scripts/labs/deploy-cluster-with-racks.sh
+# or: envsubst '$NODE_ZONE_A $NODE_ZONE_B' < manifests/disk-cluster-with-racks.yaml | kubectl apply -f -
 kubectl -n aerospike get pods -o wide
 ```
 
@@ -77,8 +77,8 @@ Render zones from `workshop.env`, then upgrade:
 
 ```bash
 source scripts/env/workshop.env
-# values: helm/dim-cluster-with-racks-values.yaml
-envsubst '$NODE_ZONE_A $NODE_ZONE_B' < helm/dim-cluster-with-racks-values.yaml | \
+# values: helm/disk-cluster-with-racks-values.yaml
+envsubst '$NODE_ZONE_A $NODE_ZONE_B' < helm/disk-cluster-with-racks-values.yaml | \
   helm upgrade aerocluster aerospike/aerospike-cluster -n aerospike -f -
 ```
 

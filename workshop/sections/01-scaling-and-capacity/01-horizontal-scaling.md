@@ -8,7 +8,7 @@
 | EKS cluster        | `my-cluster`                                                              |
 | Aerospike cluster  | `aerocluster`                                                             |
 | AKO min version    | `4.2.0`                                                                   |
-| Aerospike baseline | dim 3-node in-memory                                                      |
+| Aerospike baseline | 3-node device storage on local-ssd (default; `--dim` for in-memory)     |
 | Deploy path        | both                                                                      |
 | Node provisioning  | both                                                                      |
 | Duration           | ~15 min                                                                   |
@@ -45,12 +45,12 @@
 ## Deploy baseline
 
 ```bash
-./scripts/labs/deploy-dim-cluster.sh          # Path A
-# applies manifests/dim-cluster.yaml
-# or: kubectl apply -f manifests/dim-cluster.yaml
+./scripts/labs/deploy-cluster.sh              # Path A (default storage from workshop.env)
+# or: ./scripts/labs/deploy-dim-cluster.sh     # explicit in-memory
+# or: kubectl apply -f manifests/disk-cluster.yaml
 
-./scripts/labs/deploy-dim-cluster-helm.sh     # Path B
-# applies helm/dim-cluster-values.yaml
+./scripts/labs/deploy-cluster-helm.sh         # Path B
+# or: ./scripts/labs/deploy-dim-cluster-helm.sh
 ```
 
 **Expected:** 3 pods Running; CR phase `Completed`.
@@ -59,7 +59,7 @@
 
 Horizontal scaling changes cluster capacity by adjusting the number of Aerospike pods. AKO updates the StatefulSet and manages rack distribution when racks are configured.
 
-The dim cluster uses `multiPodPerHost: false`, so each Aerospike pod requires its own Kubernetes node. Scaling Aerospike 3→5 needs 5 nodes. The workshop environment does not install Cluster Autoscaler — on the eksctl path you scale the node group before applying the scale-up manifest (Karpenter provisions nodes automatically; see **Observe** below).
+The cluster uses `multiPodPerHost: false`, so each Aerospike pod requires its own Kubernetes node. Scaling Aerospike 3→5 needs 5 nodes. The workshop environment does not install Cluster Autoscaler — on the eksctl path you scale the node group before applying the scale-up manifest (Karpenter provisions nodes automatically; see **Observe** below).
 
 ## Steps
 
@@ -88,13 +88,13 @@ Skip on Karpenter if you prefer to watch auto-provision on Pending pods (see **O
 
 1. Scale up Aerospike to 5 nodes:
    ```bash
-   kubectl apply -f manifests/dim-cluster-scale-5.yaml
+   kubectl apply -f manifests/disk-cluster-scale-5.yaml
    kubectl -n aerospike get pods -w
    ```
    **Expected:** 5 pods reach `Running`; CR `Completed`.
 2. Scale down to 3 — re-apply the baseline manifest:
    ```bash
-   kubectl apply -f manifests/dim-cluster.yaml
+   kubectl apply -f manifests/disk-cluster.yaml
    kubectl -n aerospike get pods -w
    ```
    **Expected:** Pods terminate until 3 remain; CR `Completed`.
@@ -105,7 +105,7 @@ Skip on Karpenter if you prefer to watch auto-provision on Pending pods (see **O
 
    ```bash
    helm upgrade aerocluster aerospike/aerospike-cluster \
-     -n aerospike -f helm/dim-cluster-scale-5-values.yaml --version=4.2.0
+     -n aerospike -f helm/disk-cluster-scale-5-values.yaml --version=4.2.0
    kubectl -n aerospike get pods -w
    ```
 
@@ -115,7 +115,7 @@ Skip on Karpenter if you prefer to watch auto-provision on Pending pods (see **O
 
    ```bash
    helm upgrade aerocluster aerospike/aerospike-cluster \
-     -n aerospike -f helm/dim-cluster-values.yaml --version=4.2.0
+     -n aerospike -f helm/disk-cluster-values.yaml --version=4.2.0
    kubectl -n aerospike get pods -w
    ```
 

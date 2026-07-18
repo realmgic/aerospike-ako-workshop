@@ -8,11 +8,17 @@
 | 1.2 | ~20m | Pod naming change is key observable |
 | 1.3 | ~45m | Longest — node resize + migration wait; use minimal data |
 | 1.4 | ~30m | Discuss revision vs replacement |
-| 1.5 | ~15m | **After Lab 2.2** — dynamic RF demo; reuses dim on baseline pool (light reset) |
+| 1.5 | ~15m | **After Lab 2.2** — dynamic RF demo; reuses baseline pool cluster (light reset) |
+
+## Cluster storage
+
+- **Default:** device storage on local-ssd (`CLUSTER_STORAGE=disk` in workshop.env)
+- **In-memory:** `./scripts/labs/prepare-lab.sh <lab> --dim`, `CLUSTER_STORAGE=dim`, or per-lab `CLUSTER_STORAGE_DIM_LABS`
+- Track A labs need baseline local-ssd PVs when using disk (post Lab 0.5)
 
 ## Tracks
 
-- **Track A** (dim): 1.1 → 1.2 → (optional) 1.3 → 1.4
+- **Track A** (device storage default): 1.1 → 1.2 → (optional) 1.3 → 1.4
 - **Track B** (rack + vertical scale): 1.3 → 1.4 (or continue from 1.2 on same baseline pool)
 - Use `prepare-lab.sh` for reset + nodes; `--full` only when a hard wipe is needed
 

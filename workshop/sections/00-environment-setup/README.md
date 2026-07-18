@@ -47,7 +47,7 @@ Set `NODE_PROVISIONING=eksctl` or `karpenter` in [workshop.env.example](../../sc
 - Does **not** deploy an Aerospike cluster on the main cluster — labs deploy their own baseline
 - Does **not** cover scaling, upgrades, or maintenance — Sections 1 and 2
 
-Step **0.7** creates the separate upgrade-lab EKS cluster for Lab 2.6 only. Skip it with `./scripts/setup/setup-all.sh --skip-upgrade-lab` to save cost, then run `./scripts/labs/prepare-lab.sh 2.6` before that lab.
+Step **0.7** creates the separate upgrade-lab EKS cluster for Lab 2.6 only (provisions local-ssd when `CLUSTER_STORAGE=disk`, the default). Skip it with `./scripts/setup/setup-all.sh --skip-upgrade-lab` to save cost, then run `./scripts/labs/prepare-lab.sh 2.6` before that lab.
 
 ## Step-by-step setup (teaching flow)
 

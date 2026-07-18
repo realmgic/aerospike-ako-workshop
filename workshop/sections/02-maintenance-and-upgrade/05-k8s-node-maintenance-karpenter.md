@@ -18,7 +18,7 @@ On Karpenter, use **drain + AKO safe eviction** for planned node maintenance. Pr
 ## Prerequisites
 
 - `NODE_PROVISIONING=karpenter`
-- Lab 2.4 complete — dim cluster on **8.1.2.x**
+- Lab 2.4 complete — cluster on **8.1.2.x** (device storage default)
 - `safePodEviction.enable=true` on operator
 - NodePool `terminationGracePeriod` ≥600s (configured in bootstrap)
 - Cluster Running; note pod→node mapping
@@ -167,7 +167,7 @@ kubectl get nodepool -l workshop.aerospike.com/workload=aerospike \
 |--------|----------|
 | **What it controls** | Maximum time Karpenter waits on a blocking eviction (including AKO-denied evictions) before **force-deleting** the pod |
 | **What it does *not* control** | AKO `safePodEviction.timeoutSeconds` — that is per-request webhook response time, not migration budget |
-| **Workshop default (600s)** | Reasonable starting point for a 3-node in-memory dim cluster; validate in **your** environment |
+| **Workshop default (600s)** | Reasonable starting point for a 3-node cluster; validate in **your** environment |
 | **Production rule of thumb** | Set ≥ measured P99 migration time under load + pod startup/index rebuild buffer; err high for local-storage / large-index clusters |
 | **Pair with `expireAfter`** | If pods carry `do-not-disrupt`, Karpenter docs require `terminationGracePeriod` when using `expireAfter` — otherwise nodes can stick indefinitely |
 

@@ -6,7 +6,7 @@
 | Section | Maintenance & Upgrade |
 | EKS cluster | `my-cluster` |
 | AKO min version | `4.5.0` |
-| Aerospike baseline | dim 3-node on **8.1.0.x** |
+| Aerospike baseline | 3-node on **8.1.0.x** (device storage default) |
 | Deploy path | both |
 | Duration | ~20 min |
 | Validation status | `draft` |
@@ -19,21 +19,21 @@ Aerospike DB upgrade = change `spec.image`; AKO performs a **rolling restart** o
 ## Prerequisites
 
 - Lab 2.2 complete (AKO **4.5.0+**)
-- dim cluster Running on **8.1.0.x**
+- cluster Running on **8.1.0.x**
 
 **Compatibility:** AKO 4.2.0–4.4.1 supports Aerospike up to **8.1.0.x** only. AKO **4.5.0** adds support for **8.1.2.x** — run this lab only after the 4.5.0 upgrade step in Lab 2.2.
 
 ## Phase 0 — Prepare lab
 
-If you ran **[Lab 1.5](../01-scaling-and-capacity/05-replication-factor.md)**, the cluster may be at RF=3. If Lab 2.3 was attempted before, the image may already be on **8.1.2.x**. Reset to a clean dim baseline (**8.1.0.x**, RF=2):
+If you ran **[Lab 1.5](../01-scaling-and-capacity/05-replication-factor.md)**, the cluster may be at RF=3. If Lab 2.3 was attempted before, the image may already be on **8.1.2.x**. Reset to a clean baseline (**8.1.0.x**, RF=2):
 
 ```bash
 ./scripts/labs/prepare-lab.sh 2.3
 ```
 
-**Expected:** Prior `aerocluster` deleted; fresh 3-node dim cluster on **8.1.0.x**; phase `Completed`.
+**Expected:** Prior `aerocluster` deleted; fresh 3-node cluster on **8.1.0.x**; phase `Completed`.
 
-Use `./scripts/labs/prepare-lab.sh 2.3 --skip-reset` only if the dim baseline is already on **8.1.0.x** and Running.
+Use `./scripts/labs/prepare-lab.sh 2.3 --skip-reset` only if the baseline is already on **8.1.0.x** and Running.
 
 Confirm starting state:
 
@@ -59,10 +59,10 @@ kubectl run -it --rm aerospike-tool-rf -n aerospike --restart=Never \
 
    **Expected:** `aerospike/aerospike-server-enterprise:8.1.0.0` (or current 8.1.0.x patch).
 
-2. Edit `manifests/aerospike-upgrade.yaml` — set image to **8.1.2.x** (e.g. `8.1.2.0`), apply:
+2. Edit `manifests/disk-aerospike-upgrade.yaml` (or `manifests/aerospike-upgrade.yaml` with `--dim`) — set image to **8.1.2.x** (e.g. `8.1.2.0`), apply:
 
    ```bash
-   kubectl apply -f manifests/aerospike-upgrade.yaml
+   kubectl apply -f manifests/disk-aerospike-upgrade.yaml
    kubectl -n aerospike get pods -w
    ```
 
@@ -70,7 +70,7 @@ kubectl run -it --rm aerospike-tool-rf -n aerospike --restart=Never \
 
 ### Path B — Helm
 
-Update `image.tag` in `helm/aerospike-upgrade-values.yaml` to `8.1.2.0` and upgrade.
+Update `image.tag` in `helm/disk-aerospike-upgrade-values.yaml` (or `helm/aerospike-upgrade-values.yaml` with `--dim`) to `8.1.2.0` and upgrade.
 
 ## Verify (pass/fail)
 

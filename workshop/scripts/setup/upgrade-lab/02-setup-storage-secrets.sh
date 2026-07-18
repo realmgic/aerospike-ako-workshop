@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Secrets only — no block/local storage needed for upgrade-lab dim cluster
+# Secrets + optional local storage for upgrade-lab device storage (Lab 2.6)
 set -euo pipefail
 source "$(dirname "$0")/../../lib/common.sh"
 load_env

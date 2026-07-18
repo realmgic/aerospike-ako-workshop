@@ -6,7 +6,7 @@
 | Section | Maintenance & Upgrade |
 | EKS cluster | `my-cluster` |
 | AKO min version | `4.4.0` |
-| Aerospike baseline | dim 3-node in-memory on **8.1.2.x** (from Lab 2.3) |
+| Aerospike baseline | 3-node on **8.1.2.x** (device storage default; from Lab 2.3) |
 | Deploy path | both |
 | Duration | ~10 min |
 | Validation status | `draft` |
@@ -18,8 +18,8 @@
 
 ## Prerequisites
 
-- Lab 2.3 complete — dim cluster Running on **8.1.2.x**
-- Cluster spec matches the operation manifests (3-node in-memory dim, `7` CPU / `57Gi`, EBS workdir):
+- Lab 2.3 complete — cluster Running on **8.1.2.x**
+- Cluster spec matches the operation manifests (3-node cluster, `7` CPU / `57Gi`, EBS workdir + local-ssd when using device storage):
 
 ```bash
 kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.spec.image}{"\n"}'
@@ -35,12 +35,14 @@ kubectl -n aerospike get pods
 | Cold restart | `PodRestart` | Pod deleted and recreated; process exits fully |
 | Warm restart | `WarmRestart` | Aerospike process reloads in place; **database node uptime resets**, **pod uptime does not** |
 
-Both manifests carry the full dim cluster spec plus a single `operations` entry. Optional `podList` scopes the operation to named pods; omit it to affect all pods (workshop default).
+Both manifests carry the full cluster spec (use `disk-pod-*-op.yaml` by default or `pod-*-op.yaml` with `--dim`) plus a single `operations` entry. Optional `podList` scopes the operation to named pods; omit it to affect all pods (workshop default).
 
 Reference manifests:
 
-- [manifests/pod-restart-op.yaml](../../manifests/pod-restart-op.yaml) — `PodRestart` / `pod-restart-1`
-- [manifests/pod-warm-restart-op.yaml](../../manifests/pod-warm-restart-op.yaml) — `WarmRestart` / `warm-restart-1`
+- [manifests/disk-pod-restart-op.yaml](../../manifests/disk-pod-restart-op.yaml) — `PodRestart` / `pod-restart-1` (default)
+- [manifests/pod-restart-op.yaml](../../manifests/pod-restart-op.yaml) — in-memory variant (`--dim`)
+- [manifests/disk-pod-warm-restart-op.yaml](../../manifests/disk-pod-warm-restart-op.yaml) — `WarmRestart` / `warm-restart-1` (default)
+- [manifests/pod-warm-restart-op.yaml](../../manifests/pod-warm-restart-op.yaml) — in-memory variant (`--dim`)
 
 ---
 
@@ -49,7 +51,7 @@ Reference manifests:
 ### Path A — kubectl
 
 ```bash
-kubectl apply -f manifests/pod-restart-op.yaml
+kubectl apply -f manifests/disk-pod-restart-op.yaml
 kubectl -n aerospike get pods -w
 kubectl -n aerospike describe aerospikecluster aerocluster | grep -A10 Operations
 ```
@@ -60,7 +62,7 @@ kubectl -n aerospike describe aerospikecluster aerocluster | grep -A10 Operation
 
 ```bash
 helm upgrade aerocluster aerospike/aerospike-cluster \
-  -n aerospike -f helm/pod-restart-op-values.yaml --version="${AKO_VERSION_START}"
+  -n aerospike -f helm/disk-pod-restart-op-values.yaml --version="${AKO_VERSION_START}"
 kubectl -n aerospike get pods -w
 ```
 
@@ -75,7 +77,7 @@ Apply the warm-restart manifest (replaces the operation `kind` / `id` in the sam
 ### Path A — kubectl
 
 ```bash
-kubectl apply -f manifests/pod-warm-restart-op.yaml
+kubectl apply -f manifests/disk-pod-warm-restart-op.yaml
 kubectl -n aerospike get pods -w
 kubectl -n aerospike describe aerospikecluster aerocluster | grep -A10 Operations
 ```
@@ -86,7 +88,7 @@ kubectl -n aerospike describe aerospikecluster aerocluster | grep -A10 Operation
 
 ```bash
 helm upgrade aerocluster aerospike/aerospike-cluster \
-  -n aerospike -f helm/pod-warm-restart-op-values.yaml --version="${AKO_VERSION_START}"
+  -n aerospike -f helm/disk-pod-warm-restart-op-values.yaml --version="${AKO_VERSION_START}"
 kubectl -n aerospike get pods -w
 ```
 
@@ -151,7 +153,7 @@ kubectl exec -n aerospike aerocluster-0-0 -c aerospike-server -- \
 |---------|-----|
 | Operation stuck / not starting | Confirm prior operation finished; CR has only one `operations` entry |
 | Apply rejected after Part 1 | Wait for phase `Completed` before applying warm-restart manifest |
-| Cluster spec drift | Manifests match post-2.3 dim cluster (`8.1.2.0`, in-memory namespace, `57Gi`) — re-run [Lab 2.3](03-upgrade-aerospike-db.md) prep if needed |
+| Cluster spec drift | Manifests match post-2.3 cluster (`8.1.2.0`, in-memory namespace, `57Gi`) — re-run [Lab 2.3](03-upgrade-aerospike-db.md) prep if needed |
 
 ## Handoff
 

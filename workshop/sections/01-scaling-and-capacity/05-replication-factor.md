@@ -8,7 +8,7 @@
 | EKS cluster | `my-cluster` |
 | Aerospike cluster | `aerocluster` |
 | AKO min version | **4.4.0** |
-| Aerospike baseline | dim 3-node on per-AZ baseline pools (same as Lab 1.1 / 2.2), RF=2 |
+| Aerospike baseline | 3-node on per-AZ baseline pools (device storage default; same as Lab 1.1 / 2.2), RF=2 |
 | Deploy path | both |
 | Duration | ~15 min |
 | Validation status | `draft` |
@@ -57,20 +57,18 @@ helm list -n operators
 
 ## Deploy baseline
 
-Same dim cluster as Lab 1.1 / 2.2 (RF=2 in namespace `test`):
+Same cluster baseline as Lab 1.1 / 2.2 (RF=2 in namespace `test`):
 
 ```bash
-./scripts/labs/deploy-dim-cluster.sh       # Path A
-# applies manifests/dim-cluster.yaml
-# or: kubectl apply -f manifests/dim-cluster.yaml
+./scripts/labs/deploy-cluster.sh           # Path A
+# or: ./scripts/labs/deploy-dim-cluster.sh   # in-memory
 
-./scripts/labs/deploy-dim-cluster-helm.sh  # Path B
-# applies helm/dim-cluster-values.yaml
+./scripts/labs/deploy-cluster-helm.sh      # Path B
 ```
 
 **Expected:** 3 pods Running on nodes with `node-pool=baseline`; RF=2 in CR status.
 
-Skip this section if you used `--skip-reset` and the dim cluster from Lab 2.2 is already Running with RF=2.
+Skip this section if you used `--skip-reset` and the cluster from Lab 2.2 is already Running with RF=2.
 
 ## Steps
 
@@ -97,7 +95,7 @@ Baseline (if not already deployed):
 
 ```bash
 helm upgrade --install aerocluster aerospike/aerospike-cluster \
-  -n aerospike -f helm/dim-cluster-values.yaml --version=4.4.1
+  -n aerospike -f helm/disk-cluster-values.yaml --version=4.4.1
 ```
 
 RF change:

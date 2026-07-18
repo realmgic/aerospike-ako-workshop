@@ -25,15 +25,16 @@
 ./scripts/labs/prepare-lab.sh 2.1
 ```
 
-**Expected:** Prior AerospikeCluster deleted; 3-node dim cluster `Running`; phase `Completed`.
+**Expected:** Prior AerospikeCluster deleted; 3-node cluster `Running`; phase `Completed`.
 
-Use `./scripts/labs/prepare-lab.sh 2.1 --skip-reset` only if the dim cluster is already deployed.
+Use `./scripts/labs/prepare-lab.sh 2.1 --skip-reset` only if the cluster is already deployed.
 
 Manual deploy (if needed):
 
 ```bash
-./scripts/labs/deploy-dim-cluster.sh       # Path A (kubectl)
-# or: ./scripts/labs/deploy-dim-cluster-helm.sh  # Path B (helm)
+./scripts/labs/deploy-cluster.sh           # Path A (kubectl; default storage)
+# or: ./scripts/labs/deploy-dim-cluster.sh       # explicit in-memory
+# or: ./scripts/labs/deploy-cluster-helm.sh      # Path B (helm)
 kubectl -n aerospike get pods
 ```
 
@@ -226,7 +227,7 @@ kubectl run -it --rm aerospike-tool -n aerospike --restart=Never \
 
 ## Teardown / handoff
 
-Leave dim cluster running for [Lab 2.2](02-upgrade-ako.md).
+Leave cluster running for [Lab 2.2](02-upgrade-ako.md).
 
 ## References
 

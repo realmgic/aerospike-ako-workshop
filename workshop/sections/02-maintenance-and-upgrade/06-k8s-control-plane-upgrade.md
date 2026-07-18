@@ -6,7 +6,7 @@
 | Section | Maintenance & Upgrade |
 | EKS cluster | **`my-cluster-k8s-upgrade` only** |
 | K8s upgrade | `1.31 → 1.32` |
-| Aerospike baseline | 3-node in-memory **Running before upgrade** |
+| Aerospike baseline | 3-node device storage on local-ssd **Running before upgrade** (`--dim` for in-memory) |
 | Duration | ~45 min (mostly waiting) |
 | Validation status | `draft` |
 | Official docs | [EKS cluster upgrade](https://docs.aws.amazon.com/eks/latest/userguide/update-cluster.html) |

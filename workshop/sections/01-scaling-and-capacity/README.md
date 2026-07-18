@@ -8,7 +8,7 @@ AKO scales Aerospike clusters horizontally, vertically, across racks, and adjust
 
 | Track | Profile | Labs |
 |-------|---------|------|
-| **A** | In-memory dim cluster | 1.1, 1.2 |
+| **A** | Device storage cluster (default; `--dim` for in-memory) | 1.1, 1.2 |
 | **B** | 2-rack block storage + vertical scale | 1.3, 1.4 |
 | **A′** | Replication factor (deferred) | 1.5 — **run after [Lab 2.2](../02-maintenance-and-upgrade/02-upgrade-ako.md)** |
 
