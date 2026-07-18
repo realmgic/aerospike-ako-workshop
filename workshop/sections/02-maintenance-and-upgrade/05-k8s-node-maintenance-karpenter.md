@@ -19,7 +19,7 @@ On Karpenter, use **drain + AKO safe eviction** for planned node maintenance. Pr
 
 - `NODE_PROVISIONING=karpenter`
 - Lab 2.4 complete — cluster on **8.1.2.x** (device storage default)
-- `safePodEviction.enable=true` on operator
+- [Safe pod eviction enabled](05-k8s-node-maintenance.md#enable-safe-pod-eviction-required) — **disabled by default**; OLM path must patch `ENABLE_SAFE_POD_EVICTION=true`
 - NodePool `terminationGracePeriod` ≥600s (configured in bootstrap)
 - Cluster Running; note pod→node mapping
 
@@ -55,7 +55,8 @@ kubectl drain "$NODE" --ignore-daemonsets --delete-emptydir-data
 ```bash
 kubectl -n aerospike get pod -o wide --field-selector spec.nodeName="$NODE"
 kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.status.phase}{"\n"}'
-kubectl get pod -n aerospike -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.metadata.annotations.aerospike\.com/eviction-blocked}{"\n"}{end}'
+kubectl -n aerospike get pod -l aerospike.com/cr=aerocluster --field-selector spec.nodeName="$NODE" \
+  -o custom-columns='NAME:.metadata.name,EVICTION-BLOCKED:.metadata.annotations.aerospike\.com/eviction-blocked'
 kubectl run -it --rm aerospike-tool-migrate -n aerospike --restart=Never \
   --image=aerospike/aerospike-tools:latest -- \
   asadm -h aerocluster -U admin -P admin123 -e "show stat like migrate"
@@ -214,7 +215,7 @@ EXPIRE:.spec.template.spec.expireAfter
 
 **Phase 3 — controlled rollout checklist (production, not live demo):**
 
-1. Confirm `safePodEviction.enable=true` and webhook Ready.
+1. Confirm `ENABLE_SAFE_POD_EVICTION=true` on operator (Helm: `safePodEviction.enable=true`; OLM: subscription env) and eviction webhook Ready — see [main guide](05-k8s-node-maintenance.md#enable-safe-pod-eviction-required).
 2. Measure worst-case migration time; set `terminationGracePeriod` accordingly.
 3. Enable `WhenEmpty` consolidation on one NodePool; keep `do-not-disrupt` on other pools until validated.
 4. Watch for `aerospike.com/eviction-blocked` and CR phase during first consolidation events.

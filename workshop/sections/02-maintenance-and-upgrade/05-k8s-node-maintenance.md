@@ -20,8 +20,67 @@ AKO's safe pod eviction webhook blocks `kubectl drain` while data migrates. The 
 ## Prerequisites
 
 - Lab 2.4 complete (DB upgrade to **8.1.2.x**; implies AKO **4.5.0**)
-- `safePodEviction.enable=true` on operator (Helm values or OLM config)
+- [Safe pod eviction enabled](#enable-safe-pod-eviction-required) on the operator — **disabled by default** in AKO ([docs](https://aerospike.com/docs/kubernetes/manage/node-maintenance/#safe-pod-eviction-webhook))
 - 3-node cluster `Running`; phase `Completed` (device storage by default)
+
+## Enable safe pod eviction (required)
+
+AKO's [safe pod eviction webhook](https://aerospike.com/docs/kubernetes/manage/node-maintenance/#safe-pod-eviction-webhook) intercepts pod eviction API calls from `kubectl drain`. When eviction is blocked, the webhook sets `aerospike.com/eviction-blocked` on the pod and AKO migrates data before drain can succeed.
+
+**This feature is disabled by default.** Without it, Phase 2 drain completes immediately — no blocked eviction, no annotation, no visible migration window.
+
+**Workshop defaults:**
+
+| Path | Enabled at install? | Action before Lab 2.5 |
+|------|---------------------|------------------------|
+| **B — Helm** | Yes — `safePodEviction.enable=true` in [helm/operator-values.yaml](../../helm/operator-values.yaml) (Lab 0.3) | Verify below; re-apply values if AKO was upgraded without `-f helm/operator-values.yaml` |
+| **A — OLM** | **No** — not set by `./scripts/setup/03-install-ako.sh` | Patch subscription with `ENABLE_SAFE_POD_EVICTION=true` (below) |
+
+### Path B — Helm
+
+Re-apply workshop operator values (safe after Lab 2.2 AKO upgrades):
+
+```bash
+source scripts/env/workshop.env
+helm upgrade "${HELM_OPERATOR_RELEASE}" aerospike/aerospike-kubernetes-operator \
+  -n "${OPERATOR_NAMESPACE}" \
+  --reuse-values \
+  -f helm/operator-values.yaml
+```
+
+Or set explicitly per [Aerospike docs](https://aerospike.com/docs/kubernetes/manage/node-maintenance/#enabling-safe-pod-eviction):
+
+```yaml
+safePodEviction:
+  enable: "true"
+  timeoutSeconds: "20"   # webhook response wait per eviction request, not migration budget
+```
+
+### Path A — OLM
+
+Patch the Subscription to set `ENABLE_SAFE_POD_EVICTION=true` ([Aerospike docs](https://aerospike.com/docs/kubernetes/manage/node-maintenance/#enabling-safe-pod-eviction)):
+
+```bash
+kubectl -n operators patch subscription aerospike-kubernetes-operator \
+  --type='merge' \
+  -p '{"spec":{"config":{"env":[{"name":"ENABLE_SAFE_POD_EVICTION","value":"true"}]}}}'
+```
+
+Wait for OLM to reconcile and the operator deployment to roll out.
+
+### Verify
+
+```bash
+kubectl -n operators get deployment aerospike-operator-controller-manager \
+  -o jsonpath='{range .spec.template.spec.containers[0].env[*]}{.name}{"="}{.value}{"\n"}{end}' \
+  | grep ENABLE_SAFE_POD_EVICTION
+
+kubectl get validatingwebhookconfiguration | grep aerospikeeviction
+
+kubectl -n operators rollout status deployment/aerospike-operator-controller-manager --timeout=120s
+```
+
+**Expected:** `ENABLE_SAFE_POD_EVICTION=true`; eviction validating webhook listed; controller Ready.
 
 ## Phase 0 — Prepare lab
 
@@ -99,8 +158,9 @@ kubectl -n aerospike get pod -o wide --field-selector spec.nodeName="$NODE"
 # CR unstable during migration
 kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.status.phase}{"\n"}'
 
-# Safe eviction annotation on blocked pod(s)
-kubectl get pod -n aerospike -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.metadata.annotations.aerospike\.com/eviction-blocked}{"\n"}{end}'
+# Safe eviction annotation on blocked pod(s) on the drained node
+kubectl -n aerospike get pod -l aerospike.com/cr=aerocluster --field-selector spec.nodeName="$NODE" \
+  -o custom-columns='NAME:.metadata.name,EVICTION-BLOCKED:.metadata.annotations.aerospike\.com/eviction-blocked'
 
 # Active migration in Aerospike
 kubectl run -it --rm aerospike-tool-migrate -n aerospike --restart=Never \
@@ -262,7 +322,7 @@ Proceed to [Lab 2.6](06-k8s-control-plane-upgrade.md). Aerospike cluster should 
 |---------|-----|
 | Migration completes too fast to observe | Increase `MIGRATION_LOAD_RECORDS` (e.g. `8000000`) and re-run load script |
 | local-ssd PVC Pending | Re-run `./scripts/setup/08-validate-environment.sh`; confirm baseline local-ssd PVs |
-| No `eviction-blocked` annotation | Confirm `safePodEviction.enable=true`; check operator webhook Ready |
+| No `eviction-blocked` annotation | Confirm `ENABLE_SAFE_POD_EVICTION=true` on operator deployment; Helm: re-apply `helm/operator-values.yaml`; OLM: patch subscription env; check eviction webhook Ready |
 | CR stays `InProgress` | Check operator logs; wait for migrate stats to reach zero |
 | Force delete bypasses webhook | Never use `--force` in production demo |
 | Blocklist changes cluster profile | Use updated blocklist manifest matching your storage (`disk-node-blocklist.yaml` default) |
