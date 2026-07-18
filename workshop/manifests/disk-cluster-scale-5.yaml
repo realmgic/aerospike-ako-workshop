@@ -42,6 +42,8 @@ spec:
             cpu: 100m
             memory: 128Mi
   storage:
+    localStorageClasses:
+      - local-ssd
     filesystemVolumePolicy:
       cascadeDelete: true
       initMethod: deleteFiles

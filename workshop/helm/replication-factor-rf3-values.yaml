@@ -43,6 +43,8 @@ podSpec:
 
 
 storage:
+  localStorageClasses:
+    - local-ssd
   filesystemVolumePolicy:
     cascadeDelete: true
     initMethod: deleteFiles

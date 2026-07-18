@@ -48,6 +48,8 @@ spec:
             memory: 128Mi
 
   storage:
+    localStorageClasses:
+      - local-ssd
     filesystemVolumePolicy:
       cascadeDelete: true
       initMethod: deleteFiles

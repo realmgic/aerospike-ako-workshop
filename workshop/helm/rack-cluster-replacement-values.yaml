@@ -97,6 +97,10 @@ rackConfig:
             aerospike:
               path: /etc/aerospike/secret
 
+storage:
+  localStorageClasses:
+    - local-ssd
+
 podSpec:
   nodeSelector:
     workshop.aerospike.com/node-pool: vertical
