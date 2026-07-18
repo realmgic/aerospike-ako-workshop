@@ -1,4 +1,4 @@
-# Lab 1.3: rack revision v1 → v2 (vertical node pool, 2× resources, dual local-ssd block devices)
+# Lab 1.2 Phase 3: rack revision v1 → v2 (vertical node pool, 2× resources, dual local-ssd block devices)
 apiVersion: asdb.aerospike.com/v1
 kind: AerospikeCluster
 metadata:

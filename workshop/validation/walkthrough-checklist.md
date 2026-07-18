@@ -28,18 +28,17 @@ For **Karpenter path** runs, use [karpenter-walkthrough.md](karpenter-walkthroug
 
 - [ ] **1.1** Horizontal scaling — size 3→5→3, phase Completed
 - [ ] **1.1 (Karpenter)** — observe `nodeclaims` during scale-up
-- [ ] **1.2** Rack awareness — pods include rack ID in name
-- [ ] **1.3** Vertical scale + rack revision — `nodeSelector` baseline→vertical; nodes i8g.4xlarge, memory 115Gi, pods on v2 revision, 2× local-ssd PVCs per pod
-- [ ] **1.4** Rack replacement (standalone) — racks 3+4 only on vertical 4xl; memory 115Gi; no rack 1/2 pods
+- [ ] **1.2** Rack awareness + vertical scale + revision — pods include rack ID; `nodeSelector` baseline→vertical; nodes i8g.4xlarge, memory 115Gi, pods on v2 revision, 2× local-ssd PVCs per pod
+- [ ] **1.3** Rack replacement (standalone) — racks 3+4 only on vertical 4xl; memory 115Gi; no rack 1/2 pods
 
 ## Section 2 — Maintenance & Upgrade
 
 - [ ] **2.1** akoctl — install, config flags, auth, collectinfo tarball created
 - [ ] **2.2** Upgrade AKO — ladder 4.2.0→4.5.0, Aerospike stays Running on 8.1.0.x
 
-## Lab 1.5 (after 2.2)
+## Lab 1.4 (after 2.2)
 
-- [ ] **1.5** Replication factor — RF 2→3 dynamic, no pod restart *(requires AKO 4.4.0+ from Lab 2.2)*
+- [ ] **1.4** Replication factor — RF 2→3 dynamic, no pod restart *(requires AKO 4.4.0+ from Lab 2.2)*
 
 ## Section 2 — Maintenance & Upgrade (continued)
 - [ ] **2.3** Upgrade Aerospike DB — 8.1.0.x→8.1.2.x, rolling restart

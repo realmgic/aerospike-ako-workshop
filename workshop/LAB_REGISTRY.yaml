@@ -164,27 +164,9 @@ labs:
     validated_with: { ako: null, k8s: null }
 
   - id: "1.2"
-    title: Rack awareness basics
+    title: Rack awareness, vertical scaling & rack revision
     section: "01-scaling-and-capacity"
-    guide: sections/01-scaling-and-capacity/02-rack-awareness-basics.md
-    eks_cluster: my-cluster
-    ako_min_version: "4.2.0"
-    deploy_paths: [kubectl, helm]
-    node_provisioning: [eksctl, karpenter]
-    artifacts:
-      kubectl: [manifests/disk-cluster.yaml, manifests/dim-cluster.yaml, manifests/disk-cluster-with-racks.yaml, manifests/dim-cluster-with-racks.yaml]
-      helm: [helm/disk-cluster-values.yaml, helm/dim-cluster-values.yaml, helm/disk-cluster-with-racks-values.yaml, helm/dim-cluster-with-racks-values.yaml]
-    scripts: [scripts/labs/prepare-lab.sh, scripts/labs/lab-nodes.sh]
-    doc_urls:
-      - https://aerospike.com/docs/kubernetes/manage/configure/rack-awareness
-    validation_status: draft
-    validated_on: null
-    validated_with: { ako: null, k8s: null }
-
-  - id: "1.3"
-    title: Vertical scaling & rack revision
-    section: "01-scaling-and-capacity"
-    guide: sections/01-scaling-and-capacity/03-rack-revision.md
+    guide: sections/01-scaling-and-capacity/02-rack-awareness-vertical-revision.md
     eks_cluster: my-cluster
     ako_min_version: "4.2.0"
     deploy_paths: [kubectl, helm]
@@ -193,7 +175,27 @@ labs:
     artifacts:
       kubectl: [manifests/rack-cluster-v1.yaml, manifests/rack-cluster-v2-revision.yaml]
       helm: [helm/rack-cluster-v1-values.yaml, helm/rack-cluster-v2-revision-values.yaml]
-    scripts: [scripts/labs/prepare-lab.sh, scripts/labs/lab-nodes.sh, scripts/labs/deploy-rack-cluster.sh, scripts/labs/deploy-rack-cluster-v2-revision.sh, scripts/labs/deploy-rack-cluster-v2-revision-helm.sh]
+    scripts: [scripts/labs/prepare-lab.sh, scripts/labs/lab-nodes.sh, scripts/labs/deploy-rack-cluster.sh, scripts/labs/deploy-rack-cluster-helm.sh, scripts/labs/deploy-rack-cluster-v2-revision.sh, scripts/labs/deploy-rack-cluster-v2-revision-helm.sh]
+    depends_on: ["1.1", "0.6"]
+    doc_urls:
+      - https://aerospike.com/docs/kubernetes/manage/configure/rack-awareness
+      - https://aerospike.com/docs/kubernetes/manage/configure/scaling
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
+  - id: "1.3"
+    title: Rack replacement
+    section: "01-scaling-and-capacity"
+    guide: sections/01-scaling-and-capacity/03-rack-replacement.md
+    eks_cluster: my-cluster
+    ako_min_version: "4.2.0"
+    deploy_paths: [kubectl, helm]
+    node_provisioning: [eksctl, karpenter]
+    artifacts:
+      kubectl: [manifests/rack-cluster-v1.yaml, manifests/rack-cluster-replacement.yaml]
+      helm: [helm/rack-cluster-v1-values.yaml, helm/rack-cluster-replacement-values.yaml]
+    scripts: [scripts/labs/prepare-lab.sh, scripts/labs/lab-nodes.sh, scripts/labs/deploy-rack-cluster.sh, scripts/labs/deploy-rack-cluster-helm.sh, scripts/labs/deploy-rack-cluster-replacement.sh, scripts/labs/deploy-rack-cluster-replacement-helm.sh]
     depends_on: ["0.6"]
     doc_urls:
       - https://aerospike.com/docs/kubernetes/manage/configure/scaling
@@ -202,29 +204,10 @@ labs:
     validated_with: { ako: null, k8s: null }
 
   - id: "1.4"
-    title: Rack replacement
-    section: "01-scaling-and-capacity"
-    guide: sections/01-scaling-and-capacity/04-rack-replacement.md
-    eks_cluster: my-cluster
-    ako_min_version: "4.2.0"
-    deploy_paths: [kubectl, helm]
-    node_provisioning: [eksctl, karpenter]
-    artifacts:
-      kubectl: [manifests/rack-cluster-v1.yaml, manifests/rack-cluster-replacement.yaml]
-      helm: [helm/rack-cluster-v1-values.yaml, helm/rack-cluster-replacement-values.yaml]
-    scripts: [scripts/labs/prepare-lab.sh, scripts/labs/lab-nodes.sh, scripts/labs/deploy-rack-cluster.sh, scripts/labs/deploy-rack-cluster-replacement.sh, scripts/labs/deploy-rack-cluster-replacement-helm.sh]
-    depends_on: ["0.6"]
-    doc_urls:
-      - https://aerospike.com/docs/kubernetes/manage/configure/scaling
-    validation_status: draft
-    validated_on: null
-    validated_with: { ako: null, k8s: null }
-
-  - id: "1.5"
     title: Replication factor change
     section: "01-scaling-and-capacity"
     run_after: ["2.2"]
-    guide: sections/01-scaling-and-capacity/05-replication-factor.md
+    guide: sections/01-scaling-and-capacity/04-replication-factor.md
     eks_cluster: my-cluster
     ako_min_version: "4.4.0"
     deploy_paths: [kubectl, helm]
@@ -399,10 +382,9 @@ curriculum_order:
   - "1.1"
   - "1.2"
   - "1.3"
-  - "1.4"
   - "2.1"
   - "2.2"
-  - "1.5"
+  - "1.4"
   - "2.3"
   - "2.4"
   - "2.5"

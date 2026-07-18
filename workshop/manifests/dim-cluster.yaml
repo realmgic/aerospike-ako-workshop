@@ -1,4 +1,4 @@
-# Training: 3-node in-memory dim cluster (Track A baseline)
+# Training: 3-node in-memory dim cluster (Lab 1.1 baseline)
 # Lab 1.1: edit spec.size (3 → 5 → 3)
 apiVersion: asdb.aerospike.com/v1
 kind: AerospikeCluster

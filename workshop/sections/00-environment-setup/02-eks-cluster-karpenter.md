@@ -11,14 +11,14 @@
 
 ## Takeaway
 
-A Karpenter-managed EKS cluster with a **system** managed nodegroup for the controller. **Per-AZ workload NodePools** `${KARPENTER_NODEPOOL_NAME}-<zone>` (4× `i8g.2xlarge` total) are created in step **0.2-nodes** before AKO install. Lab 1.3 Phase 2 adds **`${KARPENTER_NODEPOOL_VERTICAL_NAME}-<zone>`** (vertical pool) alongside the baseline pools.
+A Karpenter-managed EKS cluster with a **system** managed nodegroup for the controller. **Per-AZ workload NodePools** `${KARPENTER_NODEPOOL_NAME}-<zone>` (4× `i8g.2xlarge` total) are created in step **0.2-nodes** before AKO install. Lab 1.2 Phase 2 adds **`${KARPENTER_NODEPOOL_VERTICAL_NAME}-<zone>`** (vertical pool) alongside the baseline pools.
 
 ## Prerequisites
 
 - Lab 0.1 complete
 - EC2 key pair in target region
 - Quota for **4–8×** `i8g.2xlarge` plus 2× `t3.large` system nodes
-- Quota for **4–8×** `i8g.4xlarge` during Lab 1.3 Phase 2 (may run **8 nodes** total with idle baseline pool)
+- Quota for **4–8×** `i8g.4xlarge` during Lab 1.2 Phase 2 (may run **8 nodes** total with idle baseline pool)
 - Helm 3.12+ (controller install)
 
 ## Starting state

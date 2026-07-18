@@ -10,7 +10,7 @@ Update [LAB_REGISTRY.yaml](../LAB_REGISTRY.yaml) `karpenter_validation` when com
 - [ ] `KARPENTER_CONSOLIDATION=Off` for live run (optional: `WhenEmpty` for consolidation demo)
 - [ ] Helm 3.12+ installed
 - [ ] EC2 quota for 4–8× `i8g.2xlarge` + 2× `t3.large` (baseline)
-- [ ] EC2 quota for 4–8× `i8g.4xlarge` (Lab 1.3 Phase 2; up to 8 nodes with idle baseline pool)
+- [ ] EC2 quota for 4–8× `i8g.4xlarge` (Lab 1.2 Phase 2; up to 8 nodes with idle baseline pool)
 
 ## Section 0 — Environment Setup (Karpenter)
 
@@ -24,18 +24,17 @@ Update [LAB_REGISTRY.yaml](../LAB_REGISTRY.yaml) `karpenter_validation` when com
 ## Section 1 — Scaling & Capacity
 
 - [ ] **1.1** Horizontal scaling — scale 3→5; observe `kubectl get nodeclaims -w`; scale back to 3
-- [ ] **1.2** Rack awareness — pods include rack ID
-- [ ] **1.3** Vertical scale + rack revision — additive 4xl NodePool; `nodeSelector` baseline→vertical; pods on `i8g.4xlarge`; memory 115Gi; revision v2; 2× `local-ssd` PVCs per pod
-- [ ] **1.4** Rack replacement (standalone) — light reset; v1 on baseline pool; vertical pool; racks 3+4 replace 1+2; same 2× vertical profile as 1.3 v2
+- [ ] **1.2** Rack awareness + vertical scale + revision — additive 4xl NodePool; `nodeSelector` baseline→vertical; pods on `i8g.4xlarge`; memory 115Gi; revision v2; 2× `local-ssd` PVCs per pod
+- [ ] **1.3** Rack replacement (standalone) — light reset; v1 on baseline pool; vertical pool; racks 3+4 replace 1+2; same 2× vertical profile as 1.2 v2
 
 ## Section 2 — Maintenance & Upgrade
 
 - [ ] **2.1** akoctl — collectinfo tarball created
 - [ ] **2.2** Upgrade AKO — ladder 4.2.0→4.5.0
 
-## Lab 1.5 (after 2.2)
+## Lab 1.4 (after 2.2)
 
-- [ ] **1.5** Replication factor — RF 2→3 dynamic *(requires AKO 4.4.0+ from Lab 2.2)*
+- [ ] **1.4** Replication factor — RF 2→3 dynamic *(requires AKO 4.4.0+ from Lab 2.2)*
 
 ## Section 2 — Maintenance & Upgrade (continued)
 - [ ] **2.3** Upgrade Aerospike DB — 8.1.0.x→8.1.2.x rolling restart

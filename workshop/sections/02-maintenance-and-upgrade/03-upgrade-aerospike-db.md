@@ -25,7 +25,7 @@ Aerospike DB upgrade = change `spec.image`; AKO performs a **rolling restart** o
 
 ## Phase 0 — Prepare lab
 
-If you ran **[Lab 1.5](../01-scaling-and-capacity/05-replication-factor.md)**, the cluster may be at RF=3. If Lab 2.3 was attempted before, the image may already be on **8.1.2.x**. Reset to a clean baseline (**8.1.0.x**, RF=2):
+If you ran **[Lab 1.4](../01-scaling-and-capacity/04-replication-factor.md)**, the cluster may be at RF=3. If Lab 2.3 was attempted before, the image may already be on **8.1.2.x**. Reset to a clean baseline (**8.1.0.x**, RF=2):
 
 ```bash
 ./scripts/labs/prepare-lab.sh 2.3

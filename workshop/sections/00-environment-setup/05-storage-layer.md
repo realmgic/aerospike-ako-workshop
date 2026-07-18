@@ -13,7 +13,7 @@
 
 EBS block storage (`ssd` StorageClass) and local NVMe provisioning are ready for rack and device labs. NVMe disks are partitioned once per node; disk wiping is handled by the local provisioner and AKO init containers.
 
-**Section 1 rack labs (1.3, 1.4):** use hybrid storage — EBS `ssd` for the workdir filesystem volume; `local-ssd` block volumes (`/dev/data/local1`, `/dev/data/local2`) for namespace device storage. Vertical scale to `i8g.4xlarge` uses 2 block PVCs per pod (fits 6 partitions per node with `multiPodPerHost: false`).
+**Section 1 rack labs (1.2, 1.3):** use hybrid storage — EBS `ssd` for the workdir filesystem volume; `local-ssd` block volumes (`/dev/data/local1`, `/dev/data/local2`) for namespace device storage. Vertical scale to `i8g.4xlarge` uses 2 block PVCs per pod (fits 6 partitions per node with `multiPodPerHost: false`).
 
 ## Init responsibility split
 

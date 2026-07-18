@@ -78,12 +78,12 @@ Machine-readable catalog: [LAB_REGISTRY.yaml](LAB_REGISTRY.yaml)
 
 ```text
 0.1 → 0.2 → 0.3 → 0.4 → 0.5 → 0.6 → 0.7
-→ 1.1 → 1.2 → 1.3 → 1.4
-→ 2.1 → 2.2 (through AKO 4.5.0) → 1.5
+→ 1.1 → 1.2 → 1.3
+→ 2.1 → 2.2 (through AKO 4.5.0) → 1.4
 → 2.3 → 2.4 → 2.5 → 2.6
 ```
 
-Note: Lab **1.5** (replication factor) requires AKO **4.4.0+** — run after **2.2** reaches 4.4.1 (or complete the full ladder to 4.5.0). Lab **2.3** (DB upgrade to 8.1.2.x) requires AKO **4.5.0+**.
+Note: Lab **1.4** (replication factor) requires AKO **4.4.0+** — run after **2.2** reaches 4.4.1 (or complete the full ladder to 4.5.0). Lab **2.3** (DB upgrade to 8.1.2.x) requires AKO **4.5.0+**.
 
 ### Lab map
 
@@ -92,12 +92,11 @@ Note: Lab **1.5** (replication factor) requires AKO **4.4.0+** — run after **2
 | 0.1–0.6 | Environment setup (main cluster) | `my-cluster` | 4.2.0 (install) | — |
 | 0.7 | Upgrade-lab cluster (Lab 2.6) | `my-cluster-k8s-upgrade` | — | 0.6 |
 | 1.1 | Horizontal scaling | `my-cluster` | 4.2.0 | 0.6 |
-| 1.2 | Rack awareness | `my-cluster` | 4.2.0 | 1.1 |
-| 1.3 | Vertical scaling & rack revision | `my-cluster` | 4.2.0 | 1.2 |
-| 1.4 | Rack replacement | `my-cluster` | 4.2.0 | — (standalone) |
-| 2.1 | akoctl (install, config, collectinfo) | `my-cluster` | — | 1.4 |
+| 1.2 | Rack awareness, vertical scale & revision | `my-cluster` | 4.2.0 | 1.1 |
+| 1.3 | Rack replacement | `my-cluster` | 4.2.0 | — (standalone) |
+| 2.1 | akoctl (install, config, collectinfo) | `my-cluster` | — | 1.3 |
 | 2.2 | Upgrade AKO | `my-cluster` | 4.2.0→4.5.0 | 2.1 |
-| **1.5** | **Replication factor** | `my-cluster` | **4.4.0** | **2.2** |
+| **1.4** | **Replication factor** | `my-cluster` | **4.4.0** | **2.2** |
 | 2.3 | Upgrade Aerospike DB | `my-cluster` | **4.5.0** | 2.2 |
 | 2.4 | On-demand operations | `my-cluster` | 4.4.0 | 2.3 |
 | 2.5 | K8s node maintenance | `my-cluster` | 4.4.0 | 2.4 |

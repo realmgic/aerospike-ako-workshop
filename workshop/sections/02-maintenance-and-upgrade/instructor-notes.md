@@ -48,7 +48,7 @@
 | Issue | Mitigation |
 |-------|------------|
 | Section 1 cluster blocks deploy | Run `./scripts/labs/prepare-lab.sh 2.1` — tears down `aerocluster` and deploys baseline (device default) |
-| Lab 1.5 / prior 2.3 wrong starting state | Run `./scripts/labs/prepare-lab.sh 2.3` — resets to **8.1.0.x** baseline before DB upgrade |
+| Lab 1.4 / prior 2.3 wrong starting state | Run `./scripts/labs/prepare-lab.sh 2.3` — resets to **8.1.0.x** baseline before DB upgrade |
 | CRD delete during Helm upgrade | Never delete CRDs — use replace |
 | Force drain | Never demo `--force` |
 | Wrong cluster context | `./scripts/lib/kubecontext.sh show`; main labs use `./scripts/labs/prepare-lab.sh <lab>` |
@@ -58,7 +58,7 @@
 
 ## Curriculum order
 
-Emphasize: **2.2 → 1.5 → 2.3–2.6**
+Emphasize: **2.2 → 1.4 → 2.3–2.6**
 
 ## Skip paths
 

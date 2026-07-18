@@ -153,7 +153,7 @@ kubectl get nodeclaims,nodes -w
 
 ## Not covered here
 
-Vertical scaling + rack revision → [Lab 1.3](03-rack-revision.md)
+Vertical scaling + rack revision → [Lab 1.2](02-rack-awareness-vertical-revision.md)
 
 ## Teardown / handoff
 

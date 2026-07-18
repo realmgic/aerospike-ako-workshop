@@ -1,8 +1,8 @@
-# Lab 1.4 — Rack Replacement
+# Lab 1.3 — Rack Replacement
 
 | Field | Value |
 |-------|-------|
-| Lab ID | `1.4` |
+| Lab ID | `1.3` |
 | Section | Scaling & Capacity |
 | EKS cluster | `my-cluster` |
 | Aerospike cluster | `aerocluster` |
@@ -16,14 +16,14 @@
 
 ## Takeaway
 
-Replacing rack IDs (remove racks 1+2, add racks 3+4) scales vertically to the same **2× profile as Lab 1.3 v2** — but via **rack replacement** instead of revision. During migration, old and new racks run concurrently.
+Replacing rack IDs (remove racks 1+2, add racks 3+4) scales vertically to the same **2× profile as Lab 1.2 v2** — but via **rack replacement** instead of revision. During migration, old and new racks run concurrently.
 
-**Contrast with Lab 1.3:** revision keeps rack IDs 1+2; replacement introduces new rack IDs 3+4 (stronger illustration of rack-ID change + client impact).
+**Contrast with Lab 1.2:** revision keeps rack IDs 1+2; replacement introduces new rack IDs 3+4 (stronger illustration of rack-ID change + client impact).
 
 ## Prerequisites
 
 - Section 0 storage layer complete
-- **Does not require Lab 1.3 v2** — this lab is standalone
+- **Does not require Lab 1.2 v2** — this lab is standalone
 
 ## Node requirements
 
@@ -34,25 +34,23 @@ Replacing rack IDs (remove racks 1+2, add racks 3+4) scales vertically to the sa
 | Phase 3 | Pods on vertical pool only |
 | Reset | **Light** at lab start (database only; provisions baseline pool) |
 
-During Phase 2, both pools may coexist (8 nodes total) — same quota note as Lab 1.3.
+During Phase 2, both pools may coexist (8 nodes total) — same quota note as Lab 1.2.
 
 ## Phase 0 — Prepare lab
 
 ```bash
-./scripts/labs/prepare-lab.sh 1.4
+./scripts/labs/prepare-lab.sh 1.3
 ```
 
 **Expected:** Light reset tears down database; 4× `i8g.2xlarge` Ready with `node-pool=baseline`.
 
 ## Phase 1 — Deploy v1 baseline (racks 1+2 on baseline pool)
 
+Same as [Lab 1.2 Phase 1](02-rack-awareness-vertical-revision.md#phase-1--deploy-rack-v1-baseline):
+
 ```bash
 ./scripts/labs/deploy-rack-cluster.sh       # Path A
-# manual Path A: source scripts/lib/common.sh && source scripts/lib/render-yaml.sh && load_env && \
-#   render_workshop_yaml manifests/rack-cluster-v1.yaml | kubectl apply -f -
-
 ./scripts/labs/deploy-rack-cluster-helm.sh  # Path B
-# applies helm/rack-cluster-v1-values.yaml (zones from AWS_ZONES via load_env)
 ```
 
 **Expected:** `aerocluster-1-v1-*`, `aerocluster-2-v1-*` on `baseline` / `i8g.2xlarge`; memory `57Gi`; CR `Completed`.
@@ -60,7 +58,7 @@ During Phase 2, both pools may coexist (8 nodes total) — same quota note as La
 Verify:
 
 ```bash
-./scripts/labs/lab-nodes.sh 1.4 validate
+./scripts/labs/lab-nodes.sh 1.3 validate
 kubectl -n aerospike get pods -o wide
 kubectl -n aerospike get pod aerocluster-1-v1-0 -o jsonpath='{.spec.nodeSelector}{"\n"}'
 ```
@@ -70,8 +68,8 @@ kubectl -n aerospike get pod aerocluster-1-v1-0 -o jsonpath='{.spec.nodeSelector
 ## Phase 2 — Add vertical node pool (2× instance size)
 
 ```bash
-./scripts/labs/lab-nodes.sh 1.4 ensure --vertical
-./scripts/labs/lab-nodes.sh 1.4 validate --vertical
+./scripts/labs/lab-nodes.sh 1.3 ensure --vertical
+./scripts/labs/lab-nodes.sh 1.3 validate --vertical
 kubectl get nodes -L workshop.aerospike.com/node-pool,node.kubernetes.io/instance-type
 ```
 
@@ -79,7 +77,7 @@ kubectl get nodes -L workshop.aerospike.com/node-pool,node.kubernetes.io/instanc
 
 ## Phase 3 — Rack replacement + vertical scale (racks 3+4 replace 1+2)
 
-The replacement manifest removes racks 1+2 and defines racks 3+4 only, with the same vertical profile as Lab 1.3 v2 (`15` CPU / `115Gi`, dual `local-ssd` block devices, `nodeSelector: vertical`).
+The replacement manifest removes racks 1+2 and defines racks 3+4 only, with the same vertical profile as Lab 1.2 v2 (`15` CPU / `115Gi`, dual `local-ssd` block devices, `nodeSelector: vertical`).
 
 ### Path A — kubectl
 
@@ -109,7 +107,7 @@ kubectl -n aerospike get pods -w
 ## Verify (pass/fail)
 
 ```bash
-./scripts/labs/lab-nodes.sh 1.4 validate --vertical
+./scripts/labs/lab-nodes.sh 1.3 validate --vertical
 kubectl -n aerospike get pods -o wide
 kubectl -n aerospike get pod aerocluster-3-v1-0 -o jsonpath='{.spec.nodeSelector}{"\n"}{.spec.containers[?(@.name=="aerospike-server")].resources.limits.memory}{"\n"}'
 kubectl -n aerospike get pvc -o wide
@@ -120,21 +118,21 @@ kubectl -n aerospike get pvc -o wide
 ## Observe
 
 - Two rack sets running concurrently during migration
-- Rack ID change (1+2 → 3+4) vs revision (Lab 1.3 keeps IDs 1+2) — instructor discussion point
-- Same end-state resources as Lab 1.3 v2, different AKO mechanism
+- Rack ID change (1+2 → 3+4) vs revision (Lab 1.2 keeps IDs 1+2) — instructor discussion point
+- Same end-state resources as Lab 1.2 v2, different AKO mechanism
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---------|-----|
-| Replacement pods Pending | Verify vertical pool: `lab-nodes.sh 1.4 validate --vertical` |
+| Replacement pods Pending | Verify vertical pool: `lab-nodes.sh 1.3 validate --vertical` |
 | Missing node-pool labels | Re-run `ensure` / `ensure --vertical` |
 | local-ssd PVC exhaustion on 4xl | 2 PVCs per pod; check PV count per node |
 | Webhook: RackConfig Zone cannot be updated / `zone: null` | Rack zones were not rendered — use `./scripts/labs/deploy-rack-cluster-replacement.sh` or run `load_env` before `envsubst` (see Phase 3 manual command). Verify rendered YAML has `zone: us-east-1c` (not blank) |
 
 ## Not covered here
 
-Rack revision → [Lab 1.3](03-rack-revision.md)
+Rack revision → [Lab 1.2](02-rack-awareness-vertical-revision.md)
 
 ## Teardown / handoff
 

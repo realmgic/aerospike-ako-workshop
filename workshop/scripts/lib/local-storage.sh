@@ -205,10 +205,10 @@ ensure_baseline_local_ssd_pvs_for_setup() {
   fi
 }
 
-validate_lab_1_3_baseline_local_storage() {
+validate_lab_1_2_baseline_local_storage() {
   ensure_local_ssd_pvs_for_pool "${NODE_TYPE}" "$(count_2xl_nodes_ready)" "baseline (${NODE_TYPE})"
 }
 
-validate_lab_1_3_vertical_local_storage() {
+validate_lab_1_2_vertical_local_storage() {
   ensure_local_ssd_pvs_for_pool "${NODE_TYPE_VERTICAL}" "$(count_4xl_nodes_ready)" "vertical (${NODE_TYPE_VERTICAL})"
 }

@@ -1,4 +1,4 @@
-# Track B baseline: 2-rack block storage, revision v1 (Labs 1.3, 1.4)
+# Lab 1.2 Phase 1 / Lab 1.3 Phase 1: 2-rack block storage, revision v1
 apiVersion: asdb.aerospike.com/v1
 kind: AerospikeCluster
 metadata:
@@ -14,7 +14,7 @@ spec:
     racks:
       - id: 1
         zone: ${NODE_ZONE_A}
-        revision: "v1"  # TRAINEE EDIT in Lab 1.3 → v2
+        revision: "v1"  # TRAINEE EDIT in Lab 1.2 Phase 3 → v2
         storage:
           filesystemVolumePolicy:
             cascadeDelete: true

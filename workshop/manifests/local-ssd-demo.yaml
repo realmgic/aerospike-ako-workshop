@@ -1,6 +1,6 @@
 # Instructor demo: 3-node cluster with local NVMe block storage.
 # Uses local-ssd PVCs (250 GiB claims on ~1 TB partitions) for node-failure cleanup demo.
-# Lab 0.5 instructor demo — not used in standard Track A/B labs.
+# Lab 0.5 instructor demo — not used in standard rack labs.
 apiVersion: asdb.aerospike.com/v1
 kind: AerospikeCluster
 metadata:

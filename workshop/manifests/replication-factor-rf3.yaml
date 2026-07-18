@@ -1,4 +1,4 @@
-# Lab 1.5: change ONLY replication-factor 2 → 3 (one namespace, one field)
+# Lab 1.4: change ONLY replication-factor 2 → 3 (one namespace, one field)
 # Same sizing as manifests/dim-cluster.yaml
 apiVersion: asdb.aerospike.com/v1
 kind: AerospikeCluster

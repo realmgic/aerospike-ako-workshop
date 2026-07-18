@@ -20,7 +20,7 @@ Print and check before class.
 - [ ] Region: `us-east-1` (or configured in workshop.env)
 - [ ] EC2 key pair exists
 - [ ] Quota for main cluster (4× i8g.2xlarge baseline)
-- [ ] Quota for Lab 1.3 vertical scale (4× i8g.4xlarge)
+- [ ] Quota for Lab 1.2 vertical scale (4× i8g.4xlarge)
 - [ ] Quota for upgrade-lab (3× i8g.2xlarge)
 
 ## Files

@@ -23,7 +23,7 @@
 | **Steps** | Numbered procedural actions | Path A step 1, kubectl apply, verify |
 | **baseline pool** / **vertical pool** | Node pool by label | Prefer over “2xl pool” / “4xl pool” |
 | **Full reset** | Database + all workload pools | `reset-cluster.sh --yes` or `prepare-lab.sh <lab> --full` |
-| **Light reset** | Database only (default 1.2–1.5) | `prepare-lab.sh <lab>` (no flag) |
+| **Light reset** | Database only (default 1.2–1.4) | `prepare-lab.sh <lab>` (no flag) |
 
 Do not use “lab phase” for Section 0 setup. When describing nodes, use per-AZ pool names (`${NODEGROUP_NAME}-<zone>` or `${KARPENTER_NODEPOOL_NAME}-<zone>`), not bare `${NODEGROUP_NAME}`.
 

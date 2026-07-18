@@ -187,7 +187,7 @@ If time-limited: demo **4.2.0 → 4.3.0** live; pre-stage **4.4.1** and **4.5.0*
 
 ## Teardown / handoff
 
-**Required before Lab 1.5** (needs AKO 4.4.0+ — satisfied after the 4.4.1 step). Proceed to [Lab 1.5](../01-scaling-and-capacity/05-replication-factor.md) or continue 2.3–2.6.
+**Required before Lab 1.4** (needs AKO 4.4.0+ — satisfied after the 4.4.1 step). Proceed to [Lab 1.4](../01-scaling-and-capacity/04-replication-factor.md) or continue 2.3–2.6.
 
 ## References
 

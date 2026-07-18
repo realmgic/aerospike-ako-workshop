@@ -6,7 +6,7 @@
 #
 # Options:
 #   --scale-up     Lab 1.1: scale workload pool to 5 nodes (eksctl) or trigger scale (karpenter)
-#   --vertical     Lab 1.3/1.4: add 4xl pool alongside existing 2xl (mid-lab vertical scale)
+#   --vertical     Lab 1.2/1.3: add 4xl pool alongside existing 2xl (mid-lab vertical scale)
 set -euo pipefail
 source "$(dirname "$0")/../lib/common.sh"
 source "$(dirname "$0")/../lib/zone-check.sh"
@@ -535,7 +535,7 @@ ensure_2xl_pool() {
   fi
 
   maybe_wait_nvme_bootstrap "${nodes_before}" "${count}"
-  if [[ "${LAB_ID}" == "1.3" ]]; then
+  if [[ "${LAB_ID}" == "1.2" ]]; then
     ensure_local_ssd_pvs_for_pool "${NODE_TYPE}" "$(count_2xl_nodes_ready)" "baseline (${NODE_TYPE})"
   fi
 }
@@ -567,7 +567,7 @@ ensure_vertical_4xl() {
   print_zone_distribution "${NODE_TYPE_VERTICAL}"
   validate_4xl_pool
   maybe_wait_nvme_bootstrap "${nodes_before}" "${NODE_COUNT}"
-  if [[ "${LAB_ID}" == "1.3" ]]; then
+  if [[ "${LAB_ID}" == "1.2" ]]; then
     ensure_local_ssd_pvs_for_pool "${NODE_TYPE_VERTICAL}" "${NODE_COUNT}" "vertical (${NODE_TYPE_VERTICAL})"
   fi
 }
@@ -627,7 +627,7 @@ validate_min_nodes() {
 case "${LAB_ID}:${ACTION}" in
   1.1:ensure)
     if [[ "${VERTICAL}" == true ]]; then
-      echo "ERROR: --vertical is for labs 1.3 and 1.4 only" >&2
+      echo "ERROR: --vertical is for labs 1.2 and 1.3 only" >&2
       exit 1
     fi
     if [[ "${SCALE_UP}" == true ]]; then
@@ -645,10 +645,20 @@ case "${LAB_ID}:${ACTION}" in
     fi
     ;;
   1.2:ensure)
-    ensure_2xl_pool
+    if [[ "${VERTICAL}" == true ]]; then
+      ensure_vertical_4xl
+    else
+      ensure_2xl_pool
+    fi
     ;;
   1.2:validate)
-    validate_2xl_pool "${NODE_COUNT}" true
+    if [[ "${VERTICAL}" == true ]]; then
+      validate_4xl_pool
+      validate_lab_1_2_vertical_local_storage
+    else
+      validate_2xl_pool "${NODE_COUNT}" true
+      validate_lab_1_2_baseline_local_storage
+    fi
     ;;
   1.3:ensure)
     if [[ "${VERTICAL}" == true ]]; then
@@ -660,30 +670,14 @@ case "${LAB_ID}:${ACTION}" in
   1.3:validate)
     if [[ "${VERTICAL}" == true ]]; then
       validate_4xl_pool
-      validate_lab_1_3_vertical_local_storage
     else
       validate_2xl_pool "${NODE_COUNT}" true
-      validate_lab_1_3_baseline_local_storage
     fi
     ;;
   1.4:ensure)
-    if [[ "${VERTICAL}" == true ]]; then
-      ensure_vertical_4xl
-    else
-      ensure_2xl_pool
-    fi
-    ;;
-  1.4:validate)
-    if [[ "${VERTICAL}" == true ]]; then
-      validate_4xl_pool
-    else
-      validate_2xl_pool "${NODE_COUNT}" true
-    fi
-    ;;
-  1.5:ensure)
     ensure_2xl_pool
     ;;
-  1.5:validate)
+  1.4:validate)
     validate_min_nodes 3
     ;;
   *)

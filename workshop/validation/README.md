@@ -13,8 +13,8 @@ Run a full end-to-end walkthrough of every lab on a real EKS environment before 
 ## Prerequisites for validation
 
 - Main cluster `my-cluster`:
-  - **eksctl path:** baseline per-AZ pools from step 0.2-nodes; vertical pool in Lab 1.3 Phase 2; K8s version from `K8S_VERSION` (default 1.33)
-  - **Karpenter path:** system MNG; per-AZ baseline NodePools from step 0.2-nodes; vertical pool `${KARPENTER_NODEPOOL_VERTICAL_NAME}-<zone>` in Lab 1.3 Phase 2 — see [karpenter-walkthrough.md](karpenter-walkthrough.md)
+  - **eksctl path:** baseline per-AZ pools from step 0.2-nodes; vertical pool in Lab 1.2 Phase 2; K8s version from `K8S_VERSION` (default 1.33)
+  - **Karpenter path:** system MNG; per-AZ baseline NodePools from step 0.2-nodes; vertical pool `${KARPENTER_NODEPOOL_VERTICAL_NAME}-<zone>` in Lab 1.2 Phase 2 — see [karpenter-walkthrough.md](karpenter-walkthrough.md)
 - Upgrade-lab cluster `my-cluster-k8s-upgrade` (3× i8g.2xlarge; K8s versions from `UPGRADE_LAB_K8S_VERSION_*`) for Lab 2.6 only — **always eksctl MNG**
 - Valid `features.conf` at path referenced in `scripts/setup/07-deploy-secrets.sh`
 - Both deploy paths (OLM/Helm) validated separately (or document N/A)

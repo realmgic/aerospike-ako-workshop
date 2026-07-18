@@ -279,7 +279,7 @@ prepare_lab_2_1() {
 
 prepare_lab_2_3() {
   prepare_cluster_lab "2.3" \
-    "Resetting to baseline on 8.1.0.x (e.g. after Lab 1.5 RF=3 or a prior 2.3 attempt)." \
+    "Resetting to baseline on 8.1.0.x (e.g. after Lab 1.4 RF=3 or a prior 2.3 attempt)." \
     true
 }
 
@@ -365,9 +365,9 @@ ensure_main_kubecontext
 
 default_reset_for_lab() {
   case "$1" in
-    1.1|1.2|1.3|1.4|1.5) echo "light" ;;
+    1.1|1.2|1.3|1.4) echo "light" ;;
     *)
-      echo "ERROR: unknown lab id: $1 (expected 1.1–1.5, 2.1, 2.3, 2.5, or 2.6)" >&2
+      echo "ERROR: unknown lab id: $1 (expected 1.1–1.4, 2.1, 2.3, 2.5, or 2.6)" >&2
       exit 1
       ;;
   esac
@@ -392,7 +392,7 @@ case "${RESET_MODE}" in
 esac
 
 case "${LAB_ID}" in
-  1.1|1.2|1.3|1.4|1.5)
+  1.1|1.2|1.3|1.4)
     "${SCRIPT_DIR}/lab-nodes.sh" "${LAB_ID}" ensure
     "${SCRIPT_DIR}/lab-nodes.sh" "${LAB_ID}" validate
     ;;

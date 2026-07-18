@@ -34,7 +34,7 @@
 ## Skip paths
 
 - Pre-stage entire Section 0; start training at Section 1 Lab 1.1
-- Skip local storage (0.5 Part B) if only running Track A dim labs — **required for Track B rack labs**
+- Skip local storage (0.5 Part B) if only running Lab 1.1 dim — **required for rack labs (1.2–1.3)**
 
 ## Discussion prompts
 

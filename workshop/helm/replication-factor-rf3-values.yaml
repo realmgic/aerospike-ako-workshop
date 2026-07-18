@@ -1,4 +1,4 @@
-# Lab 1.5: dim-cluster baseline with replication-factor 3 only
+# Lab 1.4: dim-cluster baseline with replication-factor 3 only
 # Mirrors manifests/replication-factor-rf3.yaml / helm/dim-cluster-values.yaml
 replicas: 3
 enableDynamicConfigUpdate: true

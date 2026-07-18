@@ -1,8 +1,8 @@
-# Lab 1.5 — Change Replication Factor
+# Lab 1.4 — Change Replication Factor
 
 | Field | Value |
 |-------|-------|
-| Lab ID | `1.5` |
+| Lab ID | `1.4` |
 | Section | Scaling & Capacity |
 | Run after | **[Lab 2.2](../02-maintenance-and-upgrade/02-upgrade-ako.md)** (AKO 4.4.0+) |
 | EKS cluster | `my-cluster` |
@@ -34,7 +34,7 @@ For AP namespaces, AKO **4.4.0+** applies `replication-factor` changes dynamical
 ## Phase 0 — Prepare lab
 
 ```bash
-./scripts/labs/prepare-lab.sh 1.5
+./scripts/labs/prepare-lab.sh 1.4
 ```
 
 **Expected:** Light reset tears down any existing Aerospike cluster; baseline pool remains; 4× `i8g.2xlarge` Ready with `node-pool=baseline`.
@@ -42,7 +42,7 @@ For AP namespaces, AKO **4.4.0+** applies `replication-factor` changes dynamical
 If continuing directly from **Lab 2.2** with the dim cluster still Running and RF=2, skip the reset:
 
 ```bash
-./scripts/labs/prepare-lab.sh 1.5 --skip-reset
+./scripts/labs/prepare-lab.sh 1.4 --skip-reset
 ```
 
 ## Starting state
@@ -108,7 +108,7 @@ helm upgrade aerocluster aerospike/aerospike-cluster \
 ## Verify (pass/fail)
 
 ```bash
-./scripts/labs/lab-nodes.sh 1.5 validate
+./scripts/labs/lab-nodes.sh 1.4 validate
 ```
 
 1. CR status shows RF=3 for namespace `test`

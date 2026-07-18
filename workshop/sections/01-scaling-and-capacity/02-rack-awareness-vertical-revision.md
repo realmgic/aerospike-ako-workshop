@@ -1,31 +1,31 @@
-# Lab 1.3 — Vertical Scaling & Rack Revision
+# Lab 1.2 — Rack Awareness, Vertical Scaling & Rack Revision
 
 
 | Field              | Value                                                                                     |
 | ------------------ | ----------------------------------------------------------------------------------------- |
-| Lab ID             | `1.3`                                                                                     |
+| Lab ID             | `1.2`                                                                                     |
 | Section            | Scaling & Capacity                                                                        |
 | EKS cluster        | `my-cluster`                                                                              |
 | Aerospike cluster  | `aerocluster`                                                                             |
 | AKO min version    | `4.2.0`                                                                                   |
-| Aerospike baseline | rack v1 block storage on i8g.2xlarge (`baseline` node pool)                               |
+| Aerospike baseline | rack v1 hybrid block storage on i8g.2xlarge (`baseline` node pool)                          |
 | Deploy path        | both                                                                                      |
 | Node provisioning  | both                                                                                      |
-| Duration           | ~45 min                                                                                   |
+| Duration           | ~60 min                                                                                   |
 | Validation status  | `draft`                                                                                   |
-| Official docs      | [Scaling — rack revision](https://aerospike.com/docs/kubernetes/manage/configure/scaling) |
+| Official docs      | [Rack awareness](https://aerospike.com/docs/kubernetes/manage/configure/rack-awareness), [Scaling — rack revision](https://aerospike.com/docs/kubernetes/manage/configure/scaling) |
 
 
 
 
 ## Takeaway
 
-Vertical scaling combines **node pool locator** (`podSpec.nodeSelector`), larger pod resources, and rack storage revision — AKO migrates data to new local-ssd PVCs on the vertical pool via `revision: v2` **without changing rack IDs**.
+Racks map to failure domains (zones); AKO schedules pods per rack with rack ID in pod names. Vertical scaling combines **node pool locator** (`podSpec.nodeSelector`), larger pod resources, and rack storage revision — AKO migrates data to new local-ssd PVCs on the vertical pool via `revision: v2` **without changing rack IDs**.
 
 ## Prerequisites
 
-- Section 0 storage layer complete
-- Lab 1.2 complete (Track A → B), or `./scripts/labs/prepare-lab.sh 1.3 --full` for a cold start
+- Lab 1.1 complete, or run full prepare from scratch
+- Section 0 storage layer complete (hybrid EBS workdir + `local-ssd` block devices)
 
 
 
@@ -36,7 +36,7 @@ Vertical scaling combines **node pool locator** (`podSpec.nodeSelector`), larger
 | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase 1 | `i8g.2xlarge` × 4 — `${NODEGROUP_NAME}-<zone>` (eksctl) or `${KARPENTER_NODEPOOL_NAME}-<zone>` (Karpenter) — label `workshop.aerospike.com/node-pool=baseline` |
 | Phase 2 | `i8g.4xlarge` × 4 — `${NODEGROUP_NAME_VERTICAL}-<zone>` or `${KARPENTER_NODEPOOL_VERTICAL_NAME}-<zone>` — label `workshop.aerospike.com/node-pool=vertical` **added alongside baseline** |
-| Reset   | **Light** at lab start (database only; reuses baseline pool)                                                                                                                 |
+| Reset   | **Light** at lab start (database only; keeps nodes from 1.1; **scales baseline pool 5 → 4**)                                                                                 |
 
 
 During Phase 2, both pools coexist (8 nodes total until `./scripts/reset-cluster.sh` before Section 2 or end of day):
@@ -53,14 +53,18 @@ During Phase 2, both pools coexist (8 nodes total until `./scripts/reset-cluster
 ## Phase 0 — Prepare lab
 
 ```bash
-./scripts/labs/prepare-lab.sh 1.3
+./scripts/labs/prepare-lab.sh 1.2
 ```
 
 **Expected:** 4× `i8g.2xlarge` Ready across `${AWS_ZONES}` with `workshop.aerospike.com/node-pool=baseline`. Prep also validates baseline local-ssd PVs (~3 per node, e.g. `OK baseline (i8g.2xlarge): 12 local-ssd PVs`); restarts the provisioner only if PV count is short.
 
-Use `./scripts/labs/prepare-lab.sh 1.3 --full` only for a hard wipe (database + all workload pools).
+## Background
 
-## Phase 1 — Deploy baseline (rack v1 on baseline / i8g.2xlarge)
+Rack awareness aligns Aerospike replica placement with Kubernetes topology (e.g. AWS AZs). AKO schedules pods per rack and enables namespace-level rack configuration.
+
+**Scheduling model:** Per-AZ workload pools pin nodes to each zone (`topology.kubernetes.io/zone`). AKO maps each rack ID to a zone via `rackConfig`; `podSpec.nodeSelector` (`workshop.aerospike.com/node-pool`) picks baseline vs vertical instance pools.
+
+## Phase 1 — Deploy rack v1 baseline
 
 ```bash
 ./scripts/labs/deploy-rack-cluster.sh       # Path A
@@ -71,23 +75,34 @@ Use `./scripts/labs/prepare-lab.sh 1.3 --full` only for a hard wipe (database + 
 # applies helm/rack-cluster-v1-values.yaml (zones from AWS_ZONES via load_env)
 ```
 
-**Expected:** 4 pods on revision `v1`; CR `Completed`; pods pinned to `baseline` pool.
+**Expected:** 4 pods on revision `v1`; CR `Completed`; pods pinned to `baseline` pool; pod names include rack ID (e.g. `aerocluster-1-v1-0`, `aerocluster-2-v1-0`).
 
 Verify baseline:
 
 ```bash
+./scripts/labs/lab-nodes.sh 1.2 validate
+kubectl -n aerospike get pods -o custom-columns=NAME:.metadata.name,NODE:.spec.nodeName
+kubectl get nodes -L topology.kubernetes.io/zone
 kubectl -n aerospike get pod aerocluster-1-v1-0 -o jsonpath='{.spec.nodeSelector}{"\n"}'
 kubectl -n aerospike get pod aerocluster-1-v1-0 -o jsonpath='{.spec.containers[?(@.name=="aerospike-server")].resources.limits.memory}{"\n"}'
 kubectl get nodes -l workshop.aerospike.com/node-pool=baseline -o custom-columns=NAME:.metadata.name,INSTANCE:.metadata.labels.node\\.kubernetes\\.io/instance-type
 ```
 
-**Pass:** `nodeSelector` shows `baseline`; memory limit `57Gi`; nodes show `i8g.2xlarge` only.
+**Pass:** Pods spread across racks/zones; `nodeSelector` shows `baseline`; memory limit `57Gi`; nodes show `i8g.2xlarge` only.
+
+Optional asadm check:
+
+```bash
+kubectl run -it --rm aerospike-tool -n aerospike --restart=Never \
+  --image=aerospike/aerospike-tools:latest -- \
+  asadm -h aerocluster -U admin -P admin123 -e "show config like rack-id"
+```
 
 ## Phase 2 — Add vertical node pool (i8g.4xlarge)
 
 ```bash
-./scripts/labs/lab-nodes.sh 1.3 ensure --vertical
-./scripts/labs/lab-nodes.sh 1.3 validate --vertical
+./scripts/labs/lab-nodes.sh 1.2 ensure --vertical
+./scripts/labs/lab-nodes.sh 1.2 validate --vertical
 kubectl get nodes -L workshop.aerospike.com/node-pool,node.kubernetes.io/instance-type
 ```
 
@@ -145,7 +160,7 @@ kubectl -n aerospike get pods -w
 ## Verify (pass/fail)
 
 ```bash
-./scripts/labs/lab-nodes.sh 1.3 validate --vertical
+./scripts/labs/lab-nodes.sh 1.2 validate --vertical
 kubectl get nodes -L workshop.aerospike.com/node-pool,node.kubernetes.io/instance-type
 kubectl -n aerospike get pods -o wide
 kubectl -n aerospike get pod aerocluster-1-v2-0 -o jsonpath='{.spec.nodeSelector}{"\n"}{.spec.containers[?(@.name=="aerospike-server")].resources.limits.memory}{"\n"}'
@@ -156,6 +171,8 @@ kubectl -n aerospike get pvc -o wide
 
 ## Observe
 
+- Pod naming includes rack ID and revision (`aerocluster-1-v1-0` → `aerocluster-1-v2-0`)
+- Namespace `test` listed under `rackConfig.namespaces`
 - Node pool label change (`baseline` → `vertical`) drives pod rescheduling to 4xl nodes
 - Pod resource bump triggers rolling restart alongside revision migration
 - Second block device (`ns2` at `/dev/data/local2`) appears in namespace config
@@ -168,24 +185,29 @@ kubectl -n aerospike get pvc -o wide
 
 | Symptom                                                   | Fix                                                                                                                                                                                                                  |
 | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FailedScheduling`: node affinity                         | `./scripts/reset-cluster.sh --yes && ./scripts/labs/prepare-lab.sh 1.2`                                                                                                                                              |
+| Pods stuck Pending (Phase 1)                              | Confirm rendered `rackConfig` zones match `AWS_ZONES` in `workshop.env`                                                                                                                                              |
+| Multi-AZ validation fails at prepare                      | `./scripts/reset-cluster.sh --yes && ./scripts/labs/prepare-lab.sh 1.2`                                                                                                                                              |
 | Pods Pending after vertical pool add                      | Expected until Phase 3 apply; verify `nodeSelector: baseline` still pins Phase 1 pods                                                                                                                                |
-| Pods Pending after revision apply                         | Re-run `lab-nodes.sh 1.3 validate --vertical`; check `kubectl describe pod` for node affinity / PVC binding                                                                                                          |
-| Missing `workshop.aerospike.com/node-pool` labels         | Re-run `lab-nodes.sh 1.3 ensure` (baseline) or `ensure --vertical`; for eksctl, labels are patched after scale                                                                                                       |
-| local-ssd PVC Pending (4xl)                               | Re-run `./scripts/labs/lab-nodes.sh 1.3 ensure --vertical` (waits for nvme-bootstrap, restarts provisioner only if PV count is short, validates PVs). Verify `kubectl get pv -o custom-columns=NAME:.metadata.name,CLASS:.spec.storageClassName --no-headers \| awk '$2 == "local-ssd"'` — expect ~6×512Gi per i8g.4xlarge node |
+| Pods Pending after revision apply                         | Re-run `lab-nodes.sh 1.2 validate --vertical`; check `kubectl describe pod` for node affinity / PVC binding                                                                                                          |
+| Missing `workshop.aerospike.com/node-pool` labels         | Re-run `lab-nodes.sh 1.2 ensure` (baseline) or `ensure --vertical`; for eksctl, labels are patched after scale                                                                                                       |
+| local-ssd PVC Pending (4xl)                               | Re-run `./scripts/labs/lab-nodes.sh 1.2 ensure --vertical` (waits for nvme-bootstrap, restarts provisioner only if PV count is short, validates PVs). Verify `kubectl get pv -o custom-columns=NAME:.metadata.name,CLASS:.spec.storageClassName --no-headers \| awk '$2 == "local-ssd"'` — expect ~6×512Gi per i8g.4xlarge node |
 | Drain stuck on local-storage pods                         | Expected during migration; wait for AKO                                                                                                                                                                              |
 | EC2 quota exceeded during Phase 2                         | Request quota for 8× i8g (4× baseline idle + 4× vertical)                                                                                                                                                            |
-| Multi-AZ validation fails on vertical pool                | Re-run `./scripts/labs/lab-nodes.sh 1.3 ensure --vertical` — per-AZ vertical pools guarantee `${MIN_NODES_PER_ZONE}` nodes per zone                                                                                  |
+| Multi-AZ validation fails on vertical pool                | Re-run `./scripts/labs/lab-nodes.sh 1.2 ensure --vertical` — per-AZ vertical pools guarantee `${MIN_NODES_PER_ZONE}` nodes per zone                                                                                  |
 | Webhook: RackConfig Zone cannot be updated / `zone: null` | Rack zones were not rendered — use `./scripts/labs/deploy-rack-cluster-v2-revision.sh` or run `load_env` before `envsubst` (see Phase 3 manual command). Verify rendered YAML has `zone: us-east-1c` (not blank) |
 
 ## Not covered here
 
-Rack replacement → [Lab 1.4](04-rack-replacement.md) (standalone — does not require completing this lab's v2 state)
+Rack replacement → [Lab 1.3](03-rack-replacement.md) (standalone — does not require completing this lab's v2 state)
 
 ## Teardown / handoff
 
-Lab 1.4 is **standalone** — it light-resets and redeploys v1 baseline independently. You may continue to 1.4 without preserving this cluster state.
+Lab 1.3 is **standalone** — it light-resets and redeploys v1 baseline independently. You may continue to 1.3 without preserving this cluster state.
+
+Or `./scripts/reset-cluster.sh --yes` if done for the day.
 
 ## References
 
+- [Rack awareness](https://aerospike.com/docs/kubernetes/manage/configure/rack-awareness)
 - [Scaling](https://aerospike.com/docs/kubernetes/manage/configure/scaling)
-

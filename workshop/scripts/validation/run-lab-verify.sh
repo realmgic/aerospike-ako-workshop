@@ -9,12 +9,10 @@ LAB_ID="${1:?Usage: run-lab-verify.sh <lab-id> e.g. 1.1}"
 case "${LAB_ID}" in
   0.1) "$(dirname "$0")/../setup/01-validate-client.sh" ;;
   0.6) "$(dirname "$0")/../setup/08-validate-environment.sh" ;;
-  1.1|1.2|1.3|1.4|1.5)
+  1.1|1.2|1.3|1.4)
     echo "=== Node validation (lab ${LAB_ID}) ==="
     "$(dirname "$0")/../labs/lab-nodes.sh" "${LAB_ID}" validate
-    if [[ "${LAB_ID}" != "1.2" ]]; then
-      "$(dirname "$0")/../verify-cluster.sh"
-    fi
+    "$(dirname "$0")/../verify-cluster.sh"
     ;;
   1.*|2.*) "$(dirname "$0")/../verify-cluster.sh" ;;
   *)

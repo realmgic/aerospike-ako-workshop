@@ -68,7 +68,7 @@ Reference config: [clusters/main-cluster.yaml](../../clusters/main-cluster.yaml)
 ## Observe
 
 - Per-AZ workload nodegroups `${NODEGROUP_NAME}-<zone>` are created in step **0.2-nodes**; Lab 1.1 re-ensures after full reset via `prepare-lab.sh 1.1`
-- Vertical scale to `i8g.4xlarge` happens in Lab 1.3
+- Vertical scale to `i8g.4xlarge` happens in Lab 1.2
 
 ## Troubleshooting
 

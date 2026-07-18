@@ -1,4 +1,4 @@
-# Lab 1.5: change ONLY replication-factor 2 → 3 (device storage baseline)
+# Lab 1.4: change ONLY replication-factor 2 → 3 (device storage baseline)
 # Same sizing as manifests/dim-cluster.yaml
 apiVersion: asdb.aerospike.com/v1
 kind: AerospikeCluster
