@@ -83,14 +83,14 @@ kubectl run -it --rm aerospike-tool -n aerospike --restart=Never \
 
 **Expected:** All nodes report `cluster_size` **3**.
 
-### Scale nodes before Aerospike scale-up
+### Manual scale nodes before Aerospike scale-up
+
+Skip on Karpenter if you prefer to watch auto-provision on Pending pods (see **Observe**).
 
 ```bash
 ./scripts/labs/lab-nodes.sh 1.1 ensure --scale-up
 ./scripts/labs/lab-nodes.sh 1.1 validate --scale-up
 ```
-
-Skip on Karpenter if you prefer to watch auto-provision on Pending pods (see **Observe**).
 
 **Expected:** 5 nodes `Ready` before applying the scale-up manifest.
 
