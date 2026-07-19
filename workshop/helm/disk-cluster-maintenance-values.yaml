@@ -20,7 +20,7 @@ podSpec:
         memory: 57Gi
   sidecars:
     - name: aerospike-prometheus-exporter
-      image: aerospike/aerospike-prometheus-exporter:1.32.0
+      image: aerospike/aerospike-prometheus-exporter:1.33.0
       ports:
         - containerPort: 9145
           name: exporter
@@ -102,6 +102,8 @@ aerospikeConfig:
       port: 3001
     heartbeat:
       port: 3002
+    admin:
+      port: 3003
   namespaces:
     - name: test
       replication-factor: 2
