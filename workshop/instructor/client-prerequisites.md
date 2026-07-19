@@ -39,6 +39,7 @@ This document applies to the **machine running the training** (instructor laptop
 | Quota: 4–8× i8g.2xlarge (main Karpenter min/max) | Service Quotas console |
 | Quota: 4–8× i8g.4xlarge (Lab 1.2 Karpenter vertical scale) | Service Quotas console |
 | Quota: 3× i8g.2xlarge (upgrade-lab) | Service Quotas console |
+| EC2 AZ capacity: `i8g.2xlarge` + `i8g.4xlarge` in each `AWS_ZONES` entry | `./scripts/setup/01b-check-ec2-capacity.sh` (also runs from `01-validate-client.sh`) |
 | Karpenter IAM (controller + node roles) | Created by `scripts/setup/karpenter/00-install-controller.sh` |
 | feature-key file (`features.conf`) | File at `secrets/features.conf` |
 | kubeconfig for both clusters (Lab 2.6) | `./scripts/lib/kubecontext.sh show` |

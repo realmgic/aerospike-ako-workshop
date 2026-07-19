@@ -14,7 +14,7 @@ helm repo update
 | `aerospike-kubernetes-operator` | `aerospike/aerospike-kubernetes-operator` | `operators` |
 | `aerocluster` | `aerospike/aerospike-cluster` | `aerospike` |
 
-Pin chart version to match AKO version (e.g. `--version=4.2.0`).
+Pin chart version to match the installed AKO operator. Lab scripts call `resolve_cluster_helm_chart_version()` (see `scripts/lib/common.sh`); for manual commands after Lab 2.2, use that helper instead of hardcoding `4.2.0`.
 
 ## Values ↔ CR mapping
 
@@ -32,4 +32,9 @@ Pin chart version to match AKO version (e.g. `--version=4.2.0`).
 
 ## Lab artifacts
 
-Each lab manifest under `manifests/` has a paired file under `helm/` with equivalent values.
+Each lab AerospikeCluster manifest under `manifests/` has a paired file under `helm/` with equivalent values.
+
+**Exceptions (setup/demo only — no Helm pair):**
+
+- `manifests/aerospike_local_volume_provisioner.yaml`
+- `manifests/local-ssd-demo.yaml`

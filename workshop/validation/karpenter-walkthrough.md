@@ -2,9 +2,11 @@
 
 Run the **full main-cluster curriculum** with `NODE_PROVISIONING=karpenter` before signing off the Karpenter path. Lab 2.6 still uses the separate upgrade-lab cluster on eksctl MNG.
 
-Update [LAB_REGISTRY.yaml](../LAB_REGISTRY.yaml) `karpenter_validation` when complete.
+Use [walkthrough-checklist.md](walkthrough-checklist.md) for the shared eksctl/Karpenter checklist (Section 0–2.6). This file lists **Karpenter-specific deltas only**.
 
-## Pre-flight
+Update [LAB_REGISTRY.yaml](../LAB_REGISTRY.yaml) `karpenter_validation` when complete (instructor sign-off workflow — do not change per-lab `validation_status` here).
+
+## Pre-flight (Karpenter)
 
 - [ ] `NODE_PROVISIONING=karpenter` in `workshop.env`
 - [ ] `KARPENTER_CONSOLIDATION=Off` for live run (optional: `WhenEmpty` for consolidation demo)
@@ -12,36 +14,20 @@ Update [LAB_REGISTRY.yaml](../LAB_REGISTRY.yaml) `karpenter_validation` when com
 - [ ] EC2 quota for 4–8× `i8g.2xlarge` + 2× `t3.large` (baseline)
 - [ ] EC2 quota for 4–8× `i8g.4xlarge` (Lab 1.2 Phase 2; up to 8 nodes with idle baseline pool)
 
-## Section 0 — Environment Setup (Karpenter)
+## Section 0 deltas
 
-- [ ] **0.1** Prerequisites — `01-validate-client.sh` exits 0 (Helm required)
-- [ ] **0.2** Karpenter bootstrap — controller Ready; ≥4 i8g workload nodes; [02-eks-cluster-karpenter.md](../sections/00-environment-setup/02-eks-cluster-karpenter.md)
-- [ ] **0.3** Install AKO — CSV/Helm release at 4.2.0
-- [ ] **0.4** Install akoctl — auth create succeeds
-- [ ] **0.5** Storage — `ssd` SC + local provisioner + **nvme-bootstrap** DS + cleanup controller Ready
+- [ ] **0.2** Karpenter bootstrap — controller Ready; ≥4 i8g workload nodes ([02-eks-cluster-karpenter.md](../sections/00-environment-setup/02-eks-cluster-karpenter.md))
 - [ ] **0.6** Secrets + validate — `08-validate-environment.sh` passes Karpenter gates
 
-## Section 1 — Scaling & Capacity
+## Section 1 deltas
 
-- [ ] **1.1** Horizontal scaling — `load-data.sh` (5M records); scale 3→5; observe `kubectl get nodeclaims -w`; scale back to 3; migration wait on scale-down
-- [ ] **1.2** Rack awareness + vertical scale + revision — additive 4xl NodePool; `nodeSelector` baseline→vertical; pods on `i8g.4xlarge`; memory 115Gi; revision v2; 2× `local-ssd` PVCs per pod
-- [ ] **1.3** Rack replacement (standalone) — light reset; v1 on baseline pool; vertical pool; racks 3+4 replace 1+2; same 2× vertical profile as 1.2 v2
+- [ ] **1.1** Observe `kubectl get nodeclaims -w` during scale 3→5→3
+- [ ] **1.2** Additive 4xl NodePool; pods on `i8g.4xlarge`; revision v2; 2× `local-ssd` PVCs per pod
 
-## Section 2 — Maintenance & Upgrade
+## Section 2 deltas
 
-- [ ] **2.1** akoctl — collectinfo tarball created
-- [ ] **2.2** Upgrade AKO — ladder 4.2.0→4.5.0
-
-## Lab 1.4 (after 2.2)
-
-- [ ] **1.4** Replication factor — RF 2→3 then 3→2 dynamic *(requires AKO 4.4.0+ from Lab 2.2)*
-
-## Section 2 — Maintenance & Upgrade (continued)
-- [ ] **2.3** On-demand operations — WarmRestart then PodRestart (cold) on 8.1.0.x cluster; optional `run-lab-workload.sh` in Terminal B
-- [ ] **2.4** Upgrade Aerospike DB — 8.1.0.x→8.1.2.x rolling restart; `run-lab-workload.sh` ~10k TPS through upgrade
-- [ ] **2.5** Karpenter maintenance — data loaded; webhook blocks during active migration; Phase 3 Path A (pinning) or Path B (AKO auto-delete); Phase 4 NodeClaim replacement + PVC cleanup; **no blocklist**
+- [ ] **2.5** Karpenter maintenance — drain + Phase 4 NodeClaim replacement + PVC cleanup; **no blocklist**
 - [ ] **2.5 add-on** — do-not-disrupt graduation discussion; three protection layers; `terminationGracePeriod` sizing (instructor-led)
-- [ ] **2.6** Control plane upgrade — Phase 1 seed + Terminal B workload; CP upgrade no pod restarts; nodegroup rolling replace + migration/PVC observe; `validate-post-upgrade.sh` PASS (**upgrade-lab eksctl cluster**)
 
 ## Path coverage (Karpenter + deploy path)
 

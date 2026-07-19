@@ -100,6 +100,7 @@ If NodePool apply failed (e.g. `consolidationPolicy: Off`) or bootstrap pods sho
 
 | Symptom | Fix |
 |---------|-----|
+| Bootstrap stuck at `0/N` nodes; bootstrap pods `Pending`; NodeClaim events `InsufficientCapacityError` / `InsufficientInstanceCapacity` in one AZ | AWS on-demand capacity for `${NODE_TYPE}` is exhausted in that AZ — wait/retry (script waits up to 15 min), or `./scripts/setup/karpenter/01-reset-workload-nodepools.sh` then re-run `02-ensure-workload-nodepool.sh`. If persistent, set `AWS_ZONES` in `workshop.env` to a pair where `./scripts/setup/01b-check-ec2-capacity.sh` passes for **both** `${NODE_TYPE}` and `${NODE_TYPE_VERTICAL}`, then rebuild the cluster |
 | Bootstrap appears stuck; terminal shows JSON in a pager (`less`) | AWS CLI pager blocked the script — workshop scripts disable it via `AWS_PAGER=""` in `load_env()`; or run `export AWS_PAGER=""` before bootstrap |
 | Controller Pending | Ensure system MNG exists; Karpenter Helm values use `nodeSelector: role=system` + `CriticalAddonsOnly` toleration |
 | No NodeClaims in Lab 1.1 | Check controller logs; verify subnet/SG discovery tags |

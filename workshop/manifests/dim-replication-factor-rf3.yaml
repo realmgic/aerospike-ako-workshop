@@ -1,0 +1,101 @@
+# Lab 1.4: change ONLY replication-factor 2 → 3 (in-memory baseline)
+# Same sizing as manifests/dim-cluster.yaml
+apiVersion: asdb.aerospike.com/v1
+kind: AerospikeCluster
+metadata:
+  name: aerocluster
+  namespace: aerospike
+spec:
+  size: 3
+  image: aerospike/aerospike-server-enterprise:8.1.0.0
+  enableDynamicConfigUpdate: true
+
+  podSpec:
+    nodeSelector:
+      workshop.aerospike.com/node-pool: baseline
+    multiPodPerHost: false
+    aerospikeContainer:
+      resources:
+        requests:
+          cpu: "7"
+          memory: 57Gi
+        limits:
+          cpu: "7"
+          memory: 57Gi
+    sidecars:
+      - name: aerospike-prometheus-exporter
+        image: aerospike/aerospike-prometheus-exporter:1.32.0
+        ports:
+          - containerPort: 9145
+            name: exporter
+        env:
+          - name: AS_AUTH_USER
+            value: exporter
+          - name: AS_AUTH_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: password
+                name: auth-exporter-secret
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+
+  storage:
+    filesystemVolumePolicy:
+      cascadeDelete: true
+      initMethod: deleteFiles
+    volumes:
+      - name: workdir
+        source:
+          persistentVolume:
+            storageClass: ssd
+            volumeMode: Filesystem
+            size: 3Gi
+        aerospike:
+          path: /opt/aerospike
+      - name: aerospike-config-secret
+        source:
+          secret:
+            secretName: aerospike-secret
+        aerospike:
+          path: /etc/aerospike/secret
+
+  aerospikeAccessControl:
+    users:
+      - name: admin
+        secretName: auth-secret
+        roles:
+          - sys-admin
+          - user-admin
+      - name: app
+        secretName: auth-app-secret
+        roles:
+          - read
+          - write
+      - name: exporter
+        secretName: auth-exporter-secret
+        roles: []
+
+  aerospikeConfig:
+    service:
+      feature-key-file: /etc/aerospike/secret/features.conf
+    security: {}
+    network:
+      service:
+        port: 3000
+      fabric:
+        port: 3001
+      heartbeat:
+        port: 3002
+    namespaces:
+      - name: test
+        replication-factor: 3  # ONLY this field changed from dim-cluster baseline
+        migrate-sleep: 0 # For demo purposes only
+        indexes-memory-budget: 15461882265  # 25% of 57.6 GiB (90% of 64 GiB) = 14.4 GiB
+        storage-engine:
+          type: memory
+          data-size: 30923764531  # 50% of 57.6 GiB (90% of 64 GiB) = 28.8 GiB

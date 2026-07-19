@@ -86,7 +86,12 @@ disk_helm_basename() {
 resolve_cluster_manifest() {
   local base="$1" storage="${2:-${EFFECTIVE_CLUSTER_STORAGE:-${CLUSTER_STORAGE}}}"
   if [[ "${storage}" == dim ]]; then
-    echo "${WORKSHOP_ROOT}/manifests/${base}.yaml"
+    case "${base}" in
+      replication-factor-rf3) echo "${WORKSHOP_ROOT}/manifests/dim-replication-factor-rf3.yaml" ;;
+      dim-cluster*) echo "${WORKSHOP_ROOT}/manifests/${base}.yaml" ;;
+      upgrade-lab-dim-cluster) echo "${WORKSHOP_ROOT}/manifests/upgrade-lab-dim-cluster.yaml" ;;
+      *) echo "${WORKSHOP_ROOT}/manifests/${base}.yaml" ;;
+    esac
   else
     echo "${WORKSHOP_ROOT}/manifests/$(disk_manifest_basename "${base}").yaml"
   fi
@@ -102,7 +107,7 @@ resolve_cluster_helm_values() {
       pod-restart-op) echo "${WORKSHOP_ROOT}/helm/pod-restart-op-values.yaml" ;;
       pod-warm-restart-op) echo "${WORKSHOP_ROOT}/helm/pod-warm-restart-op-values.yaml" ;;
       node-blocklist) echo "${WORKSHOP_ROOT}/helm/node-blocklist-values.yaml" ;;
-      replication-factor-rf3) echo "${WORKSHOP_ROOT}/helm/replication-factor-rf3-values.yaml" ;;
+      replication-factor-rf3) echo "${WORKSHOP_ROOT}/helm/dim-replication-factor-rf3-values.yaml" ;;
       *) echo "${WORKSHOP_ROOT}/helm/${base}-values.yaml" ;;
     esac
   else

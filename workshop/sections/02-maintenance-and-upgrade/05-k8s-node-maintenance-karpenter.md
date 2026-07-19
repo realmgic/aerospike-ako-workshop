@@ -24,7 +24,7 @@ For **Karpenter-initiated** disruption (consolidation, drift/AMI rollouts), pair
 ## Prerequisites
 
 - `NODE_PROVISIONING=karpenter`
-- Lab 2.4 complete — cluster on **8.1.2.x** (device storage default)
+- Lab 2.4 complete — cluster on **8.1.2.x** (device storage default; in-memory with `--dim`)
 - Safe pod eviction enabled on the operator (complete [Enable safe pod eviction](#enable-safe-pod-eviction-required) below) — **disabled by default** in AKO
 - NodePool `terminationGracePeriod` ≥600s (configured in bootstrap)
 - Cluster `Running`; phase `Completed`
@@ -629,7 +629,8 @@ Proceed to [Lab 2.6](06-k8s-control-plane-upgrade.md). Aerospike cluster should 
 
 ## References
 
-- [manifests/disk-cluster-maintenance.yaml](../../manifests/disk-cluster-maintenance.yaml)
+- [manifests/disk-cluster-maintenance.yaml](../../manifests/disk-cluster-maintenance.yaml) — device storage (default)
+- [manifests/dim-cluster-maintenance.yaml](../../manifests/dim-cluster-maintenance.yaml) — in-memory (`--dim`)
 - [scripts/labs/load-data.sh](../../scripts/labs/load-data.sh)
 - [scripts/labs/verify-safe-pod-eviction.sh](../../scripts/labs/verify-safe-pod-eviction.sh)
 - [Node maintenance](https://aerospike.com/docs/kubernetes/manage/node-maintenance)

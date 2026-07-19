@@ -75,6 +75,8 @@ Lab tables use the actual EKS cluster name (`my-cluster`), not the role label "M
 
 Machine-readable catalog: [LAB_REGISTRY.yaml](LAB_REGISTRY.yaml)
 
+In the registry, `deploy_paths: [kubectl]` means **Path A** (OLM + `kubectl apply`); `[helm]` means **Path B** (Helm values).
+
 ### Recommended order
 
 ```text
@@ -100,7 +102,7 @@ Note: Lab **1.4** (replication factor) requires AKO **4.4.0+** — run after **2
 | **1.4** | **Replication factor** | `my-cluster` | **4.4.0** | **2.2** |
 | 2.3 | On-demand operations | `my-cluster` | 4.4.0 | 2.2 |
 | 2.4 | Upgrade Aerospike DB | `my-cluster` | **4.5.0** | 2.3 |
-| 2.5 | K8s node maintenance | `my-cluster` | 4.4.0 | 2.4 |
+| 2.5 | K8s node maintenance | `my-cluster` | **4.5.0** | 2.4 |
 | 2.6 | K8s control plane upgrade | `my-cluster-k8s-upgrade` | — | 0.7 |
 
 ## Quick start (instructor)

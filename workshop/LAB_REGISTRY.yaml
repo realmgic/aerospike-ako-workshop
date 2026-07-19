@@ -3,6 +3,7 @@
 # Add new labs by copying _templates/lab-walkthrough.md and appending here.
 #
 # node_provisioning: orthogonal to deploy_paths — [eksctl] | [eksctl, karpenter]
+# deploy_paths: [kubectl] = Path A (OLM + kubectl apply); [helm] = Path B (Helm values)
 # Main-cluster labs support both unless noted. Lab 2.6 upgrade-lab is eksctl-only.
 # Lab 2.5 k8sNodeBlockList is eksctl-only (see eksctl_only_features).
 
@@ -143,6 +144,26 @@ labs:
     validated_on: null
     validated_with: { ako: null, k8s: null }
 
+  - id: "0.7"
+    title: Upgrade-lab cluster (Lab 2.6)
+    section: "00-environment-setup"
+    eks_cluster: my-cluster-k8s-upgrade
+    ako_min_version: null
+    deploy_paths: [kubectl, helm]
+    node_provisioning: [eksctl]
+    node_provisioning_note: "Upgrade-lab cluster always uses eksctl MNG — independent of main cluster NODE_PROVISIONING"
+    artifacts:
+      kubectl: [clusters/upgrade-lab-cluster.yaml, manifests/upgrade-lab-disk-cluster.yaml, manifests/upgrade-lab-dim-cluster.yaml]
+    scripts:
+      - scripts/setup/upgrade-lab/00-bootstrap-eks.sh
+      - scripts/setup/upgrade-lab/setup-upgrade-lab-post-bootstrap.sh
+    depends_on: ["0.6"]
+    doc_urls:
+      - https://docs.aws.amazon.com/eks/latest/userguide/update-cluster.html
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
   - id: "1.1"
     title: Horizontal scaling
     section: "01-scaling-and-capacity"
@@ -213,8 +234,8 @@ labs:
     deploy_paths: [kubectl, helm]
     node_provisioning: [eksctl, karpenter]
     artifacts:
-      kubectl: [manifests/disk-cluster.yaml, manifests/dim-cluster.yaml, manifests/disk-replication-factor-rf3.yaml, manifests/replication-factor-rf3.yaml]
-      helm: [helm/disk-cluster-values.yaml, helm/dim-cluster-values.yaml, helm/disk-replication-factor-rf3-values.yaml, helm/replication-factor-rf3-values.yaml]
+      kubectl: [manifests/disk-cluster.yaml, manifests/dim-cluster.yaml, manifests/disk-replication-factor-rf3.yaml, manifests/dim-replication-factor-rf3.yaml]
+      helm: [helm/disk-cluster-values.yaml, helm/dim-cluster-values.yaml, helm/disk-replication-factor-rf3-values.yaml, helm/dim-replication-factor-rf3-values.yaml]
     scripts: [scripts/labs/prepare-lab.sh, scripts/labs/lab-nodes.sh, scripts/labs/deploy-cluster.sh, scripts/labs/deploy-cluster-helm.sh, scripts/labs/deploy-dim-cluster.sh, scripts/labs/deploy-dim-cluster-helm.sh]
     depends_on: ["2.2"]
     doc_urls:
@@ -323,7 +344,7 @@ labs:
     guide: sections/02-maintenance-and-upgrade/05-k8s-node-maintenance.md
     guide_karpenter: sections/02-maintenance-and-upgrade/05-k8s-node-maintenance-karpenter.md
     eks_cluster: my-cluster
-    ako_min_version: "4.4.0"
+    ako_min_version: "4.5.0"
     deploy_paths: [kubectl, helm]
     node_provisioning: [eksctl, karpenter]
     eksctl_only_features: [k8sNodeBlockList]
@@ -342,12 +363,8 @@ labs:
       - scripts/labs/prepare-lab.sh
       - scripts/labs/verify-safe-pod-eviction.sh
       - scripts/labs/load-data.sh
-      - scripts/labs/load-migration-data.sh
-      - scripts/labs/load-dim-migration-data.sh
       - scripts/labs/deploy-cluster-maintenance.sh
       - scripts/labs/deploy-cluster-maintenance-helm.sh
-      - scripts/labs/deploy-dim-cluster-maintenance.sh
-      - scripts/labs/deploy-dim-cluster-maintenance-helm.sh
     depends_on: ["2.4"]
     doc_urls:
       - https://aerospike.com/docs/kubernetes/manage/node-maintenance
@@ -389,6 +406,7 @@ curriculum_order:
   - "0.4"
   - "0.5"
   - "0.6"
+  - "0.7"
   - "1.1"
   - "1.2"
   - "1.3"

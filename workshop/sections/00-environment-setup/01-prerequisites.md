@@ -35,13 +35,13 @@ The instructor client has all required tools, AWS access, and licensing files be
    cp /path/to/your/features.conf secrets/features.conf
    ```
 
-4. Run client validation:
+4. Run client validation (includes EC2 AZ capacity pre-flight for `i8g.2xlarge` and `i8g.4xlarge`):
 
    ```bash
    ./scripts/setup/01-validate-client.sh
    ```
 
-   **Expected:** All checks print `OK`; exit code 0.
+   **Expected:** All checks print `OK`; exit code 0. Capacity pre-flight verifies `${MIN_NODES_PER_ZONE}` on-demand dry-runs per zone for both `${NODE_TYPE}` and `${NODE_TYPE_VERTICAL}`.
 
    **Sample output:**
 
@@ -50,8 +50,15 @@ The instructor client has all required tools, AWS access, and licensing files be
    OK  kubectl
    OK  eksctl
    ...
+   === EC2 capacity pre-flight (us-east-1, zones: us-east-1c,us-east-1d) ===
+   OK  us-east-1c i8g.2xlarge: 2/2 on-demand dry-runs
+   OK  us-east-1c i8g.4xlarge: 2/2 on-demand dry-runs
+   ...
+   EC2 capacity pre-flight passed.
    Client validation passed.
    ```
+
+   Re-run capacity only: `./scripts/setup/01b-check-ec2-capacity.sh`
 
 ## Verify (pass/fail)
 
@@ -66,6 +73,7 @@ The instructor client has all required tools, AWS access, and licensing files be
 | AWS identity fails | `aws configure` or refresh SSO |
 | krew not found | https://krew.sigs.k8s.io/docs/user-guide/setup/install/ |
 | features.conf missing | Obtain from Aerospike licensing portal |
+| EC2 capacity pre-flight fails (`InsufficientInstanceCapacity`) | Change `AWS_ZONES` in `workshop.env` to an AZ pair where both `i8g.2xlarge` and `i8g.4xlarge` pass `./scripts/setup/01b-check-ec2-capacity.sh`, then create the cluster |
 
 ## References
 

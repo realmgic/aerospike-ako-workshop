@@ -114,8 +114,12 @@ Skip on Karpenter if you prefer to watch auto-provision on Pending pods (see **O
 1. Scale up Aerospike to 5 nodes:
 
    ```bash
+   source scripts/env/workshop.env
+   source scripts/lib/common.sh
+   load_env
    helm upgrade aerocluster aerospike/aerospike-cluster \
-     -n aerospike -f helm/disk-cluster-scale-5-values.yaml --version=4.2.0
+     -n aerospike -f helm/disk-cluster-scale-5-values.yaml \
+     --version="$(resolve_cluster_helm_chart_version)"
    kubectl -n aerospike get pods -w
    ```
 
@@ -125,7 +129,8 @@ Skip on Karpenter if you prefer to watch auto-provision on Pending pods (see **O
 
    ```bash
    helm upgrade aerocluster aerospike/aerospike-cluster \
-     -n aerospike -f helm/disk-cluster-values.yaml --version=4.2.0
+     -n aerospike -f helm/disk-cluster-values.yaml \
+     --version="$(resolve_cluster_helm_chart_version)"
    kubectl -n aerospike get pods -w
    ```
 

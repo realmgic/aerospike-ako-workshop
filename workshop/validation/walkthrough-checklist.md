@@ -23,6 +23,7 @@ For **Karpenter path** runs, use [karpenter-walkthrough.md](karpenter-walkthroug
 - [ ] **0.3** Install AKO — CSV/Helm release at 4.2.0, operator Running
 - [ ] **0.4** Install akoctl — auth create succeeds
 - [ ] **0.6** Secrets + validate — secrets exist, no AerospikeCluster CR
+- [ ] **0.7** Upgrade-lab cluster — `my-cluster-k8s-upgrade` Ready; AKO + storage + secrets staged for Lab 2.6 (skip with `--skip-upgrade-lab` if deferring)
 
 ## Section 1 — Scaling & Capacity
 

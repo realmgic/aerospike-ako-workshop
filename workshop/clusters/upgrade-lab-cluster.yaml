@@ -1,5 +1,5 @@
 # eksctl ClusterConfig reference for upgrade-lab (Lab 2.6) — NOT applied directly.
-# Bootstrap uses CLI flags in scripts/setup/upgrade-lab/00-bootstrap-eks.sh:
+# Bootstrap uses UPGRADE_LAB_K8S_VERSION_* from scripts/env/workshop.env via 00-bootstrap-eks.sh (CLI flags):
 #
 #   UPGRADE_LAB_CLUSTER_NAME   (default my-cluster-k8s-upgrade)
 #   UPGRADE_LAB_NODEGROUP_NAME (default ng-upgrade-lab)

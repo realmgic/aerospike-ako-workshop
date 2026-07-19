@@ -551,8 +551,10 @@ Proceed to [Lab 2.6](06-k8s-control-plane-upgrade.md). Aerospike cluster should 
 
 ## References
 
-- [manifests/disk-cluster-maintenance.yaml](../../manifests/disk-cluster-maintenance.yaml)
-- [manifests/disk-node-blocklist.yaml](../../manifests/disk-node-blocklist.yaml)
+- [manifests/disk-cluster-maintenance.yaml](../../manifests/disk-cluster-maintenance.yaml) — device storage (default)
+- [manifests/dim-cluster-maintenance.yaml](../../manifests/dim-cluster-maintenance.yaml) — in-memory (`--dim`)
+- [manifests/disk-node-blocklist.yaml](../../manifests/disk-node-blocklist.yaml) — blocklist path (device)
+- [manifests/node-blocklist.yaml](../../manifests/node-blocklist.yaml) — blocklist path (in-memory)
 - [scripts/labs/load-data.sh](../../scripts/labs/load-data.sh)
 - [scripts/labs/lab-nodes.sh](../../scripts/labs/lab-nodes.sh) — Phase 2 optional `--replace-zone` (Lab 2.5)
 - [Node maintenance](https://aerospike.com/docs/kubernetes/manage/node-maintenance)

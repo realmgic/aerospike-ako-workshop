@@ -96,9 +96,16 @@ Skip this section if you used `--skip-reset` and the cluster from Lab 2.2 is alr
      asadm -h aerocluster -U admin -P admin123 -e "show config like replication-factor"
   ```
    **Pass:** CR shows RF=2; all nodes report `replication-factor 2`.
-2. Apply **only** RF change (2 → 3):
+2. Apply **only** RF change (2 → 3) — device storage (default) or in-memory (`--dim`):
+
+  **Device storage (default):**
   ```bash
-   kubectl apply -f manifests/replication-factor-rf3.yaml
+   kubectl apply -f manifests/disk-replication-factor-rf3.yaml
+  ```
+
+  **In-memory (`CLUSTER_STORAGE=dim` or after `prepare-lab.sh 1.4 --dim`):**
+  ```bash
+   kubectl apply -f manifests/dim-replication-factor-rf3.yaml
   ```
    **Expected:** No pod rolling restart; operator reconciles config.
 3. Verify RF=3 in CR status and on nodes.
@@ -121,12 +128,23 @@ Baseline (if not already deployed):
 
 RF change (2 → 3) — chart `--version` matches installed AKO (see [Lab 2.3 Helm chart version](../02-maintenance-and-upgrade/03-on-demand-operations.md#helm-chart-version-path-b)):
 
+**Device storage (default):**
 ```bash
 source scripts/env/workshop.env
 source scripts/lib/common.sh
 load_env
 helm upgrade aerocluster aerospike/aerospike-cluster \
-  -n aerospike -f helm/replication-factor-rf3-values.yaml \
+  -n aerospike -f helm/disk-replication-factor-rf3-values.yaml \
+  --version="$(resolve_cluster_helm_chart_version)"
+```
+
+**In-memory:**
+```bash
+source scripts/env/workshop.env
+source scripts/lib/common.sh
+load_env
+helm upgrade aerocluster aerospike/aerospike-cluster \
+  -n aerospike -f helm/dim-replication-factor-rf3-values.yaml \
   --version="$(resolve_cluster_helm_chart_version)"
 ```
 

@@ -65,6 +65,13 @@ else
 fi
 
 if [[ "${fail}" -eq 0 ]]; then
+  echo ""
+  if ! "$(dirname "$0")/01b-check-ec2-capacity.sh"; then
+    fail=1
+  fi
+fi
+
+if [[ "${fail}" -eq 0 ]]; then
   echo "Client validation passed."
 else
   echo "Client validation failed. See instructor/client-prerequisites.md"

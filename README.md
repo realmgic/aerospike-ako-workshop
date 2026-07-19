@@ -25,7 +25,8 @@ Full walkthrough guide: [workshop/README.md](workshop/README.md)
 ```text
 aerospike-ako-workshop/
 ├── README.md          # this file
+├── testing/           # automated lab test harness (labs 1.1–2.5; see testing/run-lab.sh)
 └── workshop/          # all lab guides, manifests, scripts
 ```
 
-Everything needed to run the workshop lives under `workshop/`.
+Everything needed to run the workshop lives under `workshop/`. The `testing/` directory runs scripted end-to-end checks against a live cluster (Section 0 and Lab 2.6 are manual).

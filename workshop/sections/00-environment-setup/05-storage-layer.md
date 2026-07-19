@@ -30,8 +30,8 @@ EBS-backed clusters (`storageClass: ssd`) use AKO defaults for block volumes and
 ## Prerequisites
 
 - Lab 0.4 complete
-- Operator repo cloned at `aerospike-kubernetes-operator/` (script clones if missing)
-- `local_volume_provisioner_cleanup*.yaml` at repo root
+- Vendored cleanup manifests under [`vendor/storage/`](../../vendor/storage/) (`local_volume_provisioner_cleanup*.yaml`) — checked by `01-validate-client.sh`
+- AKO operator repo is cloned automatically by setup scripts when needed (not a manual prerequisite)
 
 ## Steps — EBS (Part A)
 
@@ -186,6 +186,6 @@ Proceed to [Lab 0.6 — Secrets and validation](06-secrets-and-validation.md).
 
 ## References
 
-- Operator storage samples in `aerospike-kubernetes-operator/config/samples/storage/`
+- Vendored storage manifests: [`vendor/storage/`](../../vendor/storage/) (provenance in [`vendor/storage/README.md`](../../vendor/storage/README.md))
 - Training-local provisioner: [`manifests/aerospike_local_volume_provisioner.yaml`](../../manifests/aerospike_local_volume_provisioner.yaml)
 - [SIG local volume node cleanup controller](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner/blob/master/docs/node-cleanup-controller.md)
