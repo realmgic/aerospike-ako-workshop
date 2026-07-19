@@ -106,11 +106,13 @@ start_workload() {
       -w "RU,50" \
       -g "${WORKLOAD_TPS}" \
       -z "${WORKLOAD_THREADS}" \
-      -T "${WORKLOAD_DURATION}" \
+      -t "${WORKLOAD_DURATION}" \
       --debug
 
   echo "Job ${WORKLOAD_JOB_NAME} created. Watch from this terminal:"
-  echo "  ./scripts/labs/run-lab-workload.sh${UPGRADE_LAB:+ --upgrade-lab} status"
+  upgrade_lab_flag=""
+  [[ "${UPGRADE_LAB}" == true ]] && upgrade_lab_flag=" --upgrade-lab"
+  echo "  ./scripts/labs/run-lab-workload.sh${upgrade_lab_flag} status"
 }
 
 stop_workload() {
