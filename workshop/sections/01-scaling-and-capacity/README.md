@@ -50,7 +50,8 @@ Continuing 1.1 → 1.2 in one session: light reset only — no nodepool delete/r
 When `NODE_PROVISIONING=karpenter`, watch node provisioning during scale-up labs:
 
 ```bash
-kubectl get nodeclaims,nodes -w
+kubectl get nodeclaims,nodes          # snapshot (both types)
+kubectl get nodeclaims -w             # live watch — `-w` accepts one resource type only
 kubectl get nodes -l workshop.aerospike.com/node-pool=baseline -w
 ```
 

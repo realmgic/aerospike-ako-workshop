@@ -153,7 +153,8 @@ kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.status.phas
 ### Karpenter path (`NODE_PROVISIONING=karpenter`)
 
 ```bash
-kubectl get nodeclaims,nodes -w
+kubectl get nodeclaims,nodes          # snapshot (both types)
+kubectl get nodeclaims -w             # live watch — `-w` accepts one resource type only
 ```
 
 **Expected:** Pending pods trigger new NodeClaims; nodes join with label `workshop.aerospike.com/node-pool=baseline` (also `workshop.aerospike.com/workload=aerospike` on Karpenter NodePools).

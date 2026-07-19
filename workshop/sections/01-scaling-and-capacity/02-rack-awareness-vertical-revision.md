@@ -103,7 +103,8 @@ kubectl get nodes -L workshop.aerospike.com/node-pool,node.kubernetes.io/instanc
 The `--vertical` flag applies per-AZ NodePools `${KARPENTER_NODEPOOL_VERTICAL_NAME}-<zone>` for `${NODE_TYPE_VERTICAL}` (baseline per-AZ NodePools unchanged). Watch:
 
 ```bash
-kubectl get nodeclaims,nodes -w
+kubectl get nodeclaims,nodes          # snapshot (both types)
+kubectl get nodeclaims -w             # live watch — `-w` accepts one resource type only
 ```
 
 ## Phase 3 — Apply rack revision + vertical locator + 2× resources

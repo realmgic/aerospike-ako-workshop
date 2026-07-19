@@ -360,7 +360,8 @@ Replace the drained worker via Karpenter NodeClaim lifecycle:
 2. Watch NodeClaim termination and replacement:
 
    ```bash
-   kubectl get nodeclaims,nodes -w
+   kubectl get nodeclaims,nodes          # snapshot (both types)
+   kubectl get nodeclaims -w             # live watch — `-w` accepts one resource type only
    ```
 
 3. Watch PVC cleanup and pod reschedule:
@@ -416,7 +417,8 @@ After Phase 4, optionally show broader Karpenter node lifecycle:
 1. Watch NodeClaim termination:
 
    ```bash
-   kubectl get nodeclaims,nodes -w
+   kubectl get nodeclaims,nodes          # snapshot (both types)
+   kubectl get nodeclaims -w             # live watch — `-w` accepts one resource type only
    ```
 
 2. Optionally delete a NodeClaim to trigger replacement:
