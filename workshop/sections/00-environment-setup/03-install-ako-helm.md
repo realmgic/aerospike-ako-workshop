@@ -69,6 +69,10 @@ OLM install → [03-install-ako-olm.md](03-install-ako-olm.md)
 
 Proceed to [Lab 0.4 — akoctl](04-install-akoctl.md).
 
+## Workshop artifacts
+
+- Path B: [helm/operator-values.yaml](../../helm/operator-values.yaml)
+
 ## References
 
 - [Install AKO via Helm](https://aerospike.com/docs/kubernetes/install/helm/)

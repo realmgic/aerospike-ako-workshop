@@ -167,6 +167,14 @@ State what to leave running for the next lab, or run:
 
 - Related topic → [Lab X.Y](link)
 
+## Workshop artifacts
+
+Workshop YAML used in this lab (Path A = `kubectl apply`; Path B = `helm upgrade -f`):
+
+- **Baseline (3 nodes):**
+  - Path A: [manifests/disk-cluster.yaml](../manifests/disk-cluster.yaml) (default) · [manifests/dim-cluster.yaml](../manifests/dim-cluster.yaml) (`--dim`)
+  - Path B: [helm/disk-cluster-values.yaml](../helm/disk-cluster-values.yaml) · [helm/dim-cluster-values.yaml](../helm/dim-cluster-values.yaml)
+
 ## References
 
 - [Official doc](https://aerospike.com/docs/kubernetes/)

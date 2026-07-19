@@ -1,6 +1,5 @@
 # Lab 1.2 — Rack Awareness, Vertical Scaling & Rack Revision
 
-
 | Field              | Value                                                                                     |
 | ------------------ | ----------------------------------------------------------------------------------------- |
 | Lab ID             | `1.2`                                                                                     |
@@ -15,9 +14,6 @@
 | Validation status  | `draft`                                                                                   |
 | Official docs      | [Rack awareness](https://aerospike.com/docs/kubernetes/manage/configure/rack-awareness), [Scaling — rack revision](https://aerospike.com/docs/kubernetes/manage/configure/scaling) |
 
-
-
-
 ## Takeaway
 
 Racks map to failure domains (zones); AKO schedules pods per rack with rack ID in pod names. Vertical scaling combines **node pool locator** (`podSpec.nodeSelector`), larger pod resources, and rack storage revision — AKO migrates data to new local-ssd PVCs on the vertical pool via `revision: v2` **without changing rack IDs**.
@@ -27,10 +23,7 @@ Racks map to failure domains (zones); AKO schedules pods per rack with rack ID i
 - Lab 1.1 complete, or run full prepare from scratch
 - Section 0 storage layer complete (hybrid EBS workdir + `local-ssd` block devices)
 
-
-
 ## Node requirements
-
 
 | Item    | Value                                                                                                                                                                   |
 | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -38,17 +31,12 @@ Racks map to failure domains (zones); AKO schedules pods per rack with rack ID i
 | Phase 2 | `i8g.4xlarge` × 4 — `${NODEGROUP_NAME_VERTICAL}-<zone>` or `${KARPENTER_NODEPOOL_VERTICAL_NAME}-<zone>` — label `workshop.aerospike.com/node-pool=vertical` **added alongside baseline** |
 | Reset   | **Light** at lab start (database only; keeps nodes from 1.1; **scales baseline pool 5 → 4**)                                                                                 |
 
-
 During Phase 2, both pools coexist (8 nodes total until `./scripts/reset-cluster.sh` before Section 2 or end of day):
-
 
 | Pool                                                                 | Instance    | Label      | When                                  |
 | -------------------------------------------------------------------- | ----------- | ---------- | ------------------------------------- |
 | `${NODEGROUP_NAME}-*` / `${KARPENTER_NODEPOOL_NAME}-*` (per zone)     | i8g.2xlarge | `baseline` | Phase 1 — **kept idle** after Phase 2 |
 | `${NODEGROUP_NAME_VERTICAL}-*` / `${KARPENTER_NODEPOOL_VERTICAL_NAME}-*` | i8g.4xlarge | `vertical` | Created Phase 2 (one pool per zone)   |
-
-
-
 
 ## Phase 0 — Prepare lab
 
@@ -118,8 +106,6 @@ The `--vertical` flag applies per-AZ NodePools `${KARPENTER_NODEPOOL_VERTICAL_NA
 kubectl get nodeclaims,nodes -w
 ```
 
-
-
 ## Phase 3 — Apply rack revision + vertical locator + 2× resources
 
 Change three things together in `rack-cluster-v2-revision.yaml`:
@@ -127,8 +113,6 @@ Change three things together in `rack-cluster-v2-revision.yaml`:
 1. **Node pool locator:** `nodeSelector` `baseline` → `vertical`
 2. **Rack revision:** `v1` → `v2` (adds `ns2` local-ssd block device)
 3. **Pod resources:** `7` CPU / `57Gi` → `15` CPU / `115Gi`
-
-
 
 ### Path A — kubectl
 
@@ -155,8 +139,6 @@ render_workshop_yaml manifests/rack-cluster-v2-revision.yaml | kubectl apply -f 
 kubectl -n aerospike get pods -w
 ```
 
-
-
 ## Verify (pass/fail)
 
 ```bash
@@ -178,10 +160,7 @@ kubectl -n aerospike get pvc -o wide
 - Second block device (`ns2` at `/dev/data/local2`) appears in namespace config
 - Data migration progress in asadm
 
-
-
 ## Troubleshooting
-
 
 | Symptom                                                   | Fix                                                                                                                                                                                                                  |
 | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -206,6 +185,17 @@ Rack replacement → [Lab 1.3](03-rack-replacement.md) (standalone — does not 
 Lab 1.3 is **standalone** — it light-resets and redeploys v1 baseline independently. You may continue to 1.3 without preserving this cluster state.
 
 Or `./scripts/reset-cluster.sh --yes` if done for the day.
+
+## Workshop artifacts
+
+Workshop YAML used in this lab (Path A = `kubectl apply`; Path B = `helm upgrade -f`):
+
+- **Baseline rack v1 (3 nodes):**
+  - Path A: [manifests/rack-cluster-v1.yaml](../../manifests/rack-cluster-v1.yaml)
+  - Path B: [helm/rack-cluster-v1-values.yaml](../../helm/rack-cluster-v1-values.yaml)
+- **Rack revision v2 (vertical scale):**
+  - Path A: [manifests/rack-cluster-v2-revision.yaml](../../manifests/rack-cluster-v2-revision.yaml)
+  - Path B: [helm/rack-cluster-v2-revision-values.yaml](../../helm/rack-cluster-v2-revision-values.yaml)
 
 ## References
 

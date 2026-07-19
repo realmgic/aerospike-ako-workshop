@@ -79,6 +79,13 @@ Secrets are deployed and the platform is validated — **no AerospikeCluster yet
 
 **Environment ready.** Proceed to [Section 1 — Scaling & Capacity](../01-scaling-and-capacity/README.md).
 
+## Workshop artifacts
+
+- No AerospikeCluster manifest in this step — secrets via [`scripts/setup/07-deploy-secrets.sh`](../../scripts/setup/07-deploy-secrets.sh)
+- Baseline cluster files used in Section 1 (for reference):
+  - Path A: [manifests/disk-cluster.yaml](../../manifests/disk-cluster.yaml) (default) · [manifests/dim-cluster.yaml](../../manifests/dim-cluster.yaml) (`--dim`)
+  - Path B: [helm/disk-cluster-values.yaml](../../helm/disk-cluster-values.yaml) · [helm/dim-cluster-values.yaml](../../helm/dim-cluster-values.yaml)
+
 ## References
 
 - [`scripts/setup/07-deploy-secrets.sh`](../../scripts/setup/07-deploy-secrets.sh)

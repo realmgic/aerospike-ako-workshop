@@ -83,6 +83,10 @@ Cluster remains running. Proceed to AKO install (0.3). Workload nodes: step 0.2-
 
 **Karpenter path:** see [02-eks-cluster-karpenter.md](02-eks-cluster-karpenter.md) when `NODE_PROVISIONING=karpenter`.
 
+## Workshop artifacts
+
+- EKS reference config: [clusters/main-cluster.yaml](../../clusters/main-cluster.yaml) (documentation; bootstrap uses script CLI flags via [`scripts/setup/02-bootstrap-eks.sh`](../../scripts/setup/02-bootstrap-eks.sh))
+
 ## References
 
 - [`scripts/setup/02-bootstrap-eks.sh`](../../scripts/setup/02-bootstrap-eks.sh)

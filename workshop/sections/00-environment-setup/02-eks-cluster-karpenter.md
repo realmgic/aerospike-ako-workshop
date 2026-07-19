@@ -123,6 +123,11 @@ If NodePool apply failed (e.g. `consolidationPolicy: Off`) or bootstrap pods sho
 
 eksctl managed nodegroup path → [02-eks-cluster.md](02-eks-cluster.md)
 
+## Workshop artifacts
+
+- EKS cluster config: [clusters/main-cluster-karpenter.yaml](../../clusters/main-cluster-karpenter.yaml) (applied via `envsubst` in bootstrap)
+- Karpenter manifests: [scripts/setup/karpenter/01-ec2nodeclass-i8g.yaml](../../scripts/setup/karpenter/01-ec2nodeclass-i8g.yaml), [scripts/setup/karpenter/02-nodepool-aerospike-zone.yaml](../../scripts/setup/karpenter/02-nodepool-aerospike-zone.yaml), [scripts/setup/karpenter/02-nodepool-aerospike-vertical-zone.yaml](../../scripts/setup/karpenter/02-nodepool-aerospike-vertical-zone.yaml)
+
 ## References
 
 - [Karpenter on AWS](https://karpenter.sh/docs/getting-started/getting-started-with-karpenter/)

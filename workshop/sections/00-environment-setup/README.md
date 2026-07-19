@@ -106,3 +106,11 @@ Skip the upgrade-lab cluster (defer to Lab 2.6):
 ## Instructor notes
 
 See [instructor-notes.md](instructor-notes.md).
+
+## Workshop artifacts
+
+- EKS reference config: [clusters/upgrade-lab-cluster.yaml](../../clusters/upgrade-lab-cluster.yaml)
+- **Baseline Aerospike cluster (3 nodes):**
+  - Path A: [manifests/upgrade-lab-disk-cluster.yaml](../../manifests/upgrade-lab-disk-cluster.yaml) (default) · [manifests/upgrade-lab-dim-cluster.yaml](../../manifests/upgrade-lab-dim-cluster.yaml) (`--dim`)
+  - Path B: [helm/upgrade-lab-disk-cluster-values.yaml](../../helm/upgrade-lab-disk-cluster-values.yaml) · [helm/upgrade-lab-dim-cluster-values.yaml](../../helm/upgrade-lab-dim-cluster-values.yaml)
+

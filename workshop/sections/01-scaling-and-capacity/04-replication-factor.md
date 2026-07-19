@@ -1,6 +1,5 @@
 # Lab 1.4 — Change Replication Factor
 
-
 | Field              | Value                                                                                           |
 | ------------------ | ----------------------------------------------------------------------------------------------- |
 | Lab ID             | `1.4`                                                                                           |
@@ -15,9 +14,6 @@
 | Validation status  | `draft`                                                                                         |
 | Official docs      | [Replication factor](https://aerospike.com/docs/kubernetes/manage/configure/replication-factor) |
 
-
-
-
 ## Takeaway
 
 For AP namespaces, AKO **4.4.0+** applies `replication-factor` changes dynamically — **no rolling restart** — when `enableDynamicConfigUpdate: true`. Scale **up and down** by changing **only** RF for **one** namespace per apply.
@@ -28,18 +24,12 @@ For AP namespaces, AKO **4.4.0+** applies `replication-factor` changes dynamical
 - Aerospike Database 6.0+
 - AP namespace only (not SC)
 
-
-
 ## Node requirements
-
 
 | Item     | Value                                                                                                                               |
 | -------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | Instance | `i8g.2xlarge` × 4 on baseline pool (`${NODEGROUP_NAME}-<zone>` or `${KARPENTER_NODEPOOL_NAME}-<zone>`; ≥3 required for dim cluster) |
 | Reset    | **Light** (database only — keeps baseline pool)                                                                                     |
-
-
-
 
 ## Phase 0 — Prepare lab
 
@@ -54,8 +44,6 @@ If continuing directly from **Lab 2.2** with the dim cluster still Running and R
 ```bash
 ./scripts/labs/prepare-lab.sh 1.4 --skip-reset
 ```
-
-
 
 ## Starting state
 
@@ -83,8 +71,6 @@ Same cluster baseline as Lab 1.1 / 2.2 (RF=2 in namespace `test`):
 Skip this section if you used `--skip-reset` and the cluster from Lab 2.2 is already Running with RF=2.
 
 ## Steps
-
-
 
 ### Path A — kubectl
 
@@ -115,8 +101,6 @@ Skip this section if you used `--skip-reset` and the cluster from Lab 2.2 is alr
   ```
    **Expected:** RF drops to 2 immediately; no pod rolling restart.
 5. Verify RF=2 in CR status and on nodes (same pods as before step 2).
-
-
 
 ### Path B — Helm
 
@@ -156,8 +140,6 @@ Scale down — reapply baseline (RF 3 → 2):
 
 **Expected:** RF drops to 2 immediately; no pod rolling restart.
 
-
-
 ## Verify (pass/fail)
 
 ```bash
@@ -175,10 +157,7 @@ Scale down — reapply baseline (RF 3 → 2):
   ```
    **Pass:** All nodes report `replication-factor 2`.
 
-
-
 ## Constraints
-
 
 | Rule          | Detail                                 |
 | ------------- | -------------------------------------- |
@@ -186,15 +165,10 @@ Scale down — reapply baseline (RF 3 → 2):
 | Namespaces    | One namespace per update               |
 | Not supported | SC namespaces; combined config changes |
 
-
-
-
 ## Troubleshooting
 
 - Mixed RF during node restart → allow AKO to converge
 - Reconciler stuck → see [dynamic config docs](https://aerospike.com/docs/kubernetes/manage/configure/dynamic-config)
-
-
 
 ## Curriculum note
 
@@ -203,6 +177,17 @@ Listed in Section 1 but **run after Lab 2.2** despite section number.
 ## Teardown / handoff
 
 Continue to [Lab 2.3](../02-maintenance-and-upgrade/03-on-demand-operations.md). Run `./scripts/reset-cluster.sh --yes` only when done for the day or before a hard wipe.
+
+## Workshop artifacts
+
+Workshop YAML used in this lab (Path A = `kubectl apply`; Path B = `helm upgrade -f`):
+
+- **Baseline (3 nodes, RF=2):**
+  - Path A: [manifests/disk-cluster.yaml](../../manifests/disk-cluster.yaml) (default) · [manifests/dim-cluster.yaml](../../manifests/dim-cluster.yaml) (`--dim`)
+  - Path B: [helm/disk-cluster-values.yaml](../../helm/disk-cluster-values.yaml) · [helm/dim-cluster-values.yaml](../../helm/dim-cluster-values.yaml)
+- **Change RF to 3:**
+  - Path A: [manifests/disk-replication-factor-rf3.yaml](../../manifests/disk-replication-factor-rf3.yaml) (default) · [manifests/dim-replication-factor-rf3.yaml](../../manifests/dim-replication-factor-rf3.yaml) (`--dim`)
+  - Path B: [helm/disk-replication-factor-rf3-values.yaml](../../helm/disk-replication-factor-rf3-values.yaml) · [helm/dim-replication-factor-rf3-values.yaml](../../helm/dim-replication-factor-rf3-values.yaml)
 
 ## References
 

@@ -1,6 +1,5 @@
 # Lab 2.1 — akoctl: Install and Log Collection
 
-
 | Field             | Value                                                          |
 | ----------------- | -------------------------------------------------------------- |
 | Lab ID            | `2.1`                                                          |
@@ -10,7 +9,6 @@
 | Duration          | ~15 min (~25 min with optional sections)                       |
 | Validation status | `draft`                                                        |
 | Official docs     | [akoctl](https://aerospike.com/docs/kubernetes/manage/akoctl/) |
-
 
 ## Takeaway
 
@@ -38,22 +36,16 @@ Manual deploy (if needed):
 kubectl -n aerospike get pods
 ```
 
-
-
 ## Background
-
 
 | Subcommand                    | Purpose                                                                              |
 | ----------------------------- | ------------------------------------------------------------------------------------ |
 | `auth create` / `auth delete` | Create or remove RBAC for Aerospike cluster deploy in a namespace                    |
 | `collectinfo`                 | Tar archive of K8s object YAML, events, container logs, CRDs, webhooks, node configs |
 
-
 `collectinfo` is **Kubernetes-focused** — unlike `asadm collectinfo`, which captures OS/network detail from individual Aerospike nodes.
 
 ---
-
-
 
 ## Part 1 — Install and verify
 
@@ -68,8 +60,6 @@ kubectl akoctl --help
 **Expected:** Help lists subcommands `auth` and `collectinfo`.
 
 ---
-
-
 
 ## Part 2 — Log collection (`collectinfo`)
 
@@ -96,8 +86,6 @@ kubectl akoctl collectinfo \
 - AerospikeCluster CRs, pods, StatefulSets, PVCs, services
 - Operator deployment logs in `operators`
 - Cluster-scoped: nodes, StorageClasses, CRDs, admission webhooks (when `--cluster-scope=true`)
-
-
 
 ### Inspect output
 
@@ -131,8 +119,6 @@ kubectl cp aerospike/aerocluster-0-0:/tmp /tmp/asadm-collectinfo -c aerospike-se
 
 ---
 
-
-
 ## Optional — Configuration (global flags)
 
 Skip if time is short — the script in Part 2 uses sensible defaults.
@@ -144,14 +130,12 @@ kubectl akoctl collectinfo --help
 kubectl akoctl auth --help
 ```
 
-
 | Flag               | Shorthand | Use                                               |
 | ------------------ | --------- | ------------------------------------------------- |
 | `--namespaces`     | `-n`      | Comma-separated namespaces (required unless `-A`) |
 | `--all-namespaces` | `-A`      | Collect from all namespaces                       |
 | `--kubeconfig`     |           | Non-default kubeconfig path                       |
 | `--cluster-scope`  |           | Include cluster-scoped resources (default `true`) |
-
 
 **Demo — explicit kubeconfig** (optional if using default context):
 
@@ -177,8 +161,6 @@ kubectl get rolebinding,clusterrolebinding -n aerospike | grep aerospike
 
 ---
 
-
-
 ## Optional — Auth workflow
 
 Skip if time is short — `auth create` was covered in [Lab 0.4](../00-environment-setup/04-install-akoctl.md).
@@ -200,8 +182,6 @@ Skip if time is short — `auth create` was covered in [Lab 0.4](../00-environme
 
 ---
 
-
-
 ## Verify (pass/fail)
 
 1. `kubectl krew list | grep akoctl` — plugin installed
@@ -209,10 +189,7 @@ Skip if time is short — `auth create` was covered in [Lab 0.4](../00-environme
 3. Aerospike cluster phase `Completed`
 4. *(Optional)* `kubectl akoctl auth create -n aerospike` — succeeds
 
-
-
 ## Troubleshooting
-
 
 | Symptom                               | Fix                                                                                        |
 | ------------------------------------- | ------------------------------------------------------------------------------------------ |
@@ -222,26 +199,27 @@ Skip if time is short — `auth create` was covered in [Lab 0.4](../00-environme
 | `--path` error                        | Path must exist and be **absolute** — script creates it for you                            |
 | auth create fails                     | Re-run `./scripts/setup/04-install-akoctl.sh`; check krew in PATH                          |
 
-
-
-
 ## Observe
 
 - Tarball size grows with pod log volume
 - Operator controller-manager logs included when `operators` namespace specified
-
-
 
 ## Not covered here
 
 - asadm deep node diagnostics
 - AKO upgrade → [Lab 2.2](02-upgrade-ako.md)
 
-
-
 ## Teardown / handoff
 
 Leave cluster running for [Lab 2.2](02-upgrade-ako.md).
+
+## Workshop artifacts
+
+Workshop YAML used in this lab (Path A = `kubectl apply`; Path B = `helm upgrade -f`):
+
+- **Baseline (3 nodes):**
+  - Path A: [manifests/disk-cluster.yaml](../../manifests/disk-cluster.yaml) (default) · [manifests/dim-cluster.yaml](../../manifests/dim-cluster.yaml) (`--dim`)
+  - Path B: [helm/disk-cluster-values.yaml](../../helm/disk-cluster-values.yaml) · [helm/dim-cluster-values.yaml](../../helm/dim-cluster-values.yaml)
 
 ## References
 

@@ -73,13 +73,6 @@ Run Part 1 and Part 2 in Terminal A while watching throughput in Terminal B (`st
 
 Both manifests carry the full cluster spec (use `disk-pod-*-op.yaml` by default or `pod-*-op.yaml` with `--dim`) plus a single `operations` entry. Optional `podList` scopes the operation to named pods; omit it to affect all pods (workshop default).
 
-Reference manifests:
-
-- [manifests/disk-pod-warm-restart-op.yaml](../../manifests/disk-pod-warm-restart-op.yaml) — `WarmRestart` / `warm-restart-1` (default)
-- [manifests/pod-warm-restart-op.yaml](../../manifests/pod-warm-restart-op.yaml) — in-memory variant (`--dim`)
-- [manifests/disk-pod-restart-op.yaml](../../manifests/disk-pod-restart-op.yaml) — `PodRestart` / `pod-restart-1` (default)
-- [manifests/pod-restart-op.yaml](../../manifests/pod-restart-op.yaml) — in-memory variant (`--dim`)
-
 ---
 
 ## Part 1 — WarmRestart
@@ -248,9 +241,21 @@ kubectl -n aerospike get pod aerocluster-0-0 -o jsonpath='{.status.startTime}{"\
 
 Proceed to [Lab 2.4](04-upgrade-aerospike-db.md).
 
+## Workshop artifacts
+
+Workshop YAML used in this lab (Path A = `kubectl apply`; Path B = `helm upgrade -f`):
+
+- **Baseline (3 nodes, 8.1.0.x):**
+  - Path A: [manifests/disk-cluster.yaml](../../manifests/disk-cluster.yaml) (default) · [manifests/dim-cluster.yaml](../../manifests/dim-cluster.yaml) (`--dim`)
+  - Path B: [helm/disk-cluster-values.yaml](../../helm/disk-cluster-values.yaml) · [helm/dim-cluster-values.yaml](../../helm/dim-cluster-values.yaml)
+- **WarmRestart operation:**
+  - Path A: [manifests/disk-pod-warm-restart-op.yaml](../../manifests/disk-pod-warm-restart-op.yaml) (default) · [manifests/pod-warm-restart-op.yaml](../../manifests/pod-warm-restart-op.yaml) (`--dim`)
+  - Path B: [helm/disk-pod-warm-restart-op-values.yaml](../../helm/disk-pod-warm-restart-op-values.yaml) · [helm/pod-warm-restart-op-values.yaml](../../helm/pod-warm-restart-op-values.yaml)
+- **PodRestart operation:**
+  - Path A: [manifests/disk-pod-restart-op.yaml](../../manifests/disk-pod-restart-op.yaml) (default) · [manifests/pod-restart-op.yaml](../../manifests/pod-restart-op.yaml) (`--dim`)
+  - Path B: [helm/disk-pod-restart-op-values.yaml](../../helm/disk-pod-restart-op-values.yaml) · [helm/pod-restart-op-values.yaml](../../helm/pod-restart-op-values.yaml)
+
 ## References
 
-- [manifests/pod-warm-restart-op.yaml](../../manifests/pod-warm-restart-op.yaml)
-- [manifests/pod-restart-op.yaml](../../manifests/pod-restart-op.yaml)
 - [On-demand operations](https://aerospike.com/docs/kubernetes/manage/configure/on-demand-operations)
 - [scripts/labs/run-lab-workload.sh](../../scripts/labs/run-lab-workload.sh)

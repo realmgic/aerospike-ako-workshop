@@ -73,6 +73,11 @@ Helm install → [03-install-ako-helm.md](03-install-ako-helm.md)
 
 Proceed to [Lab 0.4 — akoctl](04-install-akoctl.md).
 
+## Workshop artifacts
+
+- Path A (this guide): OLM install via OperatorHub — no workshop manifest
+- Path B equivalent: [helm/operator-values.yaml](../../helm/operator-values.yaml) — see [03-install-ako-helm.md](03-install-ako-helm.md)
+
 ## References
 
 - [Install AKO via OLM](https://aerospike.com/docs/kubernetes/install/olm/)

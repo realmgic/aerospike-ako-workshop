@@ -60,6 +60,10 @@ Proceed to [Lab 0.5 — Storage layer](05-storage-layer.md).
 
 For a full akoctl walkthrough (`collectinfo` log collection; optional configuration flags and auth), see [Lab 2.1](../02-maintenance-and-upgrade/01-akoctl.md) after a cluster is deployed.
 
+## Workshop artifacts
+
+- No workshop manifest or Helm YAML — RBAC via [`scripts/setup/04-install-akoctl.sh`](../../scripts/setup/04-install-akoctl.sh) only.
+
 ## References
 
 - [akoctl](https://aerospike.com/docs/kubernetes/manage/akoctl/)

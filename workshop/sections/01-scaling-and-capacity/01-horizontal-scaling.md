@@ -1,6 +1,5 @@
 # Lab 1.1 — Horizontal Scaling
 
-
 | Field              | Value                                                                     |
 | ------------------ | ------------------------------------------------------------------------- |
 | Lab ID             | `1.1`                                                                     |
@@ -14,7 +13,6 @@
 | Duration           | ~30–45 min (includes data load)                                           |
 | Validation status  | `draft`                                                                   |
 | Official docs      | [Scaling](https://aerospike.com/docs/kubernetes/manage/configure/scaling) |
-
 
 ## Takeaway
 
@@ -176,6 +174,17 @@ Vertical scaling + rack revision → [Lab 1.2](02-rack-awareness-vertical-revisi
 Next lab: `./scripts/labs/prepare-lab.sh 1.2` (light reset — keeps nodes; **scales pool back to 4**).
 
 Or `./scripts/reset-cluster.sh --yes` if done for the day.
+
+## Workshop artifacts
+
+Workshop YAML used in this lab (Path A = `kubectl apply`; Path B = `helm upgrade -f`):
+
+- **Baseline (3 nodes):**
+  - Path A: [manifests/disk-cluster.yaml](../../manifests/disk-cluster.yaml) (default) · [manifests/dim-cluster.yaml](../../manifests/dim-cluster.yaml) (`--dim`)
+  - Path B: [helm/disk-cluster-values.yaml](../../helm/disk-cluster-values.yaml) · [helm/dim-cluster-values.yaml](../../helm/dim-cluster-values.yaml)
+- **Scale to 5 nodes:**
+  - Path A: [manifests/disk-cluster-scale-5.yaml](../../manifests/disk-cluster-scale-5.yaml) (default) · [manifests/dim-cluster-scale-5.yaml](../../manifests/dim-cluster-scale-5.yaml) (`--dim`)
+  - Path B: [helm/disk-cluster-scale-5-values.yaml](../../helm/disk-cluster-scale-5-values.yaml) · [helm/dim-cluster-scale-5-values.yaml](../../helm/dim-cluster-scale-5-values.yaml)
 
 ## References
 

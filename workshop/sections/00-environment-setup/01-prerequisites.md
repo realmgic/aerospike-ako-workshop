@@ -75,6 +75,11 @@ The instructor client has all required tools, AWS access, and licensing files be
 | features.conf missing | Obtain from Aerospike licensing portal |
 | EC2 capacity pre-flight fails (`InsufficientInstanceCapacity`) | Change `AWS_ZONES` in `workshop.env` to an AZ pair where both `i8g.2xlarge` and `i8g.4xlarge` pass `./scripts/setup/01b-check-ec2-capacity.sh`, then create the cluster |
 
+## Workshop artifacts
+
+- Environment template: [scripts/env/workshop.env.example](../../scripts/env/workshop.env.example)
+- No manifest or Helm YAML in this step — client validation only.
+
 ## References
 
 - [Instructor client prerequisites](../../instructor/client-prerequisites.md)

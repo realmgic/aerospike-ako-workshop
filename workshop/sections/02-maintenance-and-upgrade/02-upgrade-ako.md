@@ -1,6 +1,5 @@
 # Lab 2.2 — Upgrade AKO (Sequential)
 
-
 | Field              | Value                                                                                         |
 | ------------------ | --------------------------------------------------------------------------------------------- |
 | Lab ID             | `2.2`                                                                                         |
@@ -12,7 +11,6 @@
 | Duration           | ~30–40 min (full ladder); demo one step live                                                  |
 | Validation status  | `draft`                                                                                       |
 | Official docs      | [Upgrading operator](https://aerospike.com/docs/kubernetes/manage/upgrade/upgrading-operator) |
-
 
 ## Takeaway
 
@@ -30,17 +28,13 @@ kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.status.phas
 
 **Expected:** 3/3 pods `Running`; phase `Completed`.
 
-
-
 ## Background
-
 
 | What changes each version | Risk if skipped                  |
 | ------------------------- | -------------------------------- |
 | Helm chart / OLM bundle   | Deployment, webhooks, RBAC drift |
 | CRD definitions           | Validation failures              |
 | Controller logic          | Reconcile errors                 |
-
 
 Training ladder (no versions before 4.2.0):
 
@@ -172,8 +166,6 @@ kubectl -n aerospike get pods
 - Operator pod rolling restart each step
 - Aerospike pods unchanged throughout AKO upgrade
 
-
-
 ## Short demo path
 
 If time-limited: demo **4.2.0 → 4.3.0** live; pre-stage **4.4.1** and **4.5.0**; state production must follow [official ladder](https://aerospike.com/docs/kubernetes/manage/upgrade/upgrading-operator).
@@ -192,11 +184,14 @@ If time-limited: demo **4.2.0 → 4.3.0** live; pre-stage **4.4.1** and **4.5.0*
 - DB upgrade → [Lab 2.4](04-upgrade-aerospike-db.md)
 - Control plane → [Lab 2.6](06-k8s-control-plane-upgrade.md)
 
-
-
 ## Teardown / handoff
 
 **Required before Lab 1.4** (needs AKO 4.4.0+ — satisfied after the 4.4.1 step). Proceed to [Lab 1.4](../01-scaling-and-capacity/04-replication-factor.md) or continue 2.3–2.6.
+
+## Workshop artifacts
+
+- Operator upgrade values (Path B): [helm/operator-values.yaml](../../helm/operator-values.yaml)
+- Path A (OLM): subscription patches via scripts — no AerospikeCluster manifest
 
 ## References
 

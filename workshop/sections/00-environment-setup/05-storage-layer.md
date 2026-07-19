@@ -184,6 +184,16 @@ Optional demo after Part B (uses [`manifests/local-ssd-demo.yaml`](../../manifes
 
 Proceed to [Lab 0.6 — Secrets and validation](06-secrets-and-validation.md).
 
+## Workshop artifacts
+
+Setup manifests (Path A only — no Helm pairs):
+
+- [manifests/aerospike_local_volume_provisioner.yaml](../../manifests/aerospike_local_volume_provisioner.yaml)
+- [manifests/local-ssd-demo.yaml](../../manifests/local-ssd-demo.yaml) (optional instructor demo)
+- [scripts/setup/nvme-bootstrap-daemonset.yaml](../../scripts/setup/nvme-bootstrap-daemonset.yaml)
+- [config/disk-layouts.yaml](../../config/disk-layouts.yaml)
+- Vendored EBS/local storage: [vendor/storage/](../../vendor/storage/)
+
 ## References
 
 - Vendored storage manifests: [`vendor/storage/`](../../vendor/storage/) (provenance in [`vendor/storage/README.md`](../../vendor/storage/README.md))

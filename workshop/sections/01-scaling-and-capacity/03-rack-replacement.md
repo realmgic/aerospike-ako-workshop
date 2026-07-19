@@ -155,6 +155,17 @@ Rack revision → [Lab 1.2](02-rack-awareness-vertical-revision.md)
 
 `./scripts/reset-cluster.sh --yes` before Section 2 maintenance labs, or when done for the day.
 
+## Workshop artifacts
+
+Workshop YAML used in this lab (Path A = `kubectl apply`; Path B = `helm upgrade -f`):
+
+- **Baseline rack v1 (3 nodes):**
+  - Path A: [manifests/rack-cluster-v1.yaml](../../manifests/rack-cluster-v1.yaml)
+  - Path B: [helm/rack-cluster-v1-values.yaml](../../helm/rack-cluster-v1-values.yaml)
+- **Rack replacement (vertical scale):**
+  - Path A: [manifests/rack-cluster-replacement.yaml](../../manifests/rack-cluster-replacement.yaml)
+  - Path B: [helm/rack-cluster-replacement-values.yaml](../../helm/rack-cluster-replacement-values.yaml)
+
 ## References
 
 - [Scaling](https://aerospike.com/docs/kubernetes/manage/configure/scaling)

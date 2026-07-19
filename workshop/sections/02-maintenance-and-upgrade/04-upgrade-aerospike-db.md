@@ -88,13 +88,6 @@ Watch TPS in Terminal B (`status` tails `--debug` output). Perform Phase 1 below
 
 Unlike on-demand operations, the upgrade manifest changes **only** the image tag (plus the full cluster spec required by AKO). The workshop values already pin **8.1.2.0**.
 
-Reference artifacts:
-
-- [manifests/disk-aerospike-upgrade.yaml](../../manifests/disk-aerospike-upgrade.yaml) — device storage (default)
-- [manifests/aerospike-upgrade.yaml](../../manifests/aerospike-upgrade.yaml) — in-memory variant (`--dim`)
-- [helm/disk-aerospike-upgrade-values.yaml](../../helm/disk-aerospike-upgrade-values.yaml) — Path B device
-- [helm/aerospike-upgrade-values.yaml](../../helm/aerospike-upgrade-values.yaml) — Path B in-memory (`--dim`)
-
 ---
 
 ## Phase 1 — Upgrade to 8.1.2.x
@@ -201,11 +194,15 @@ Proceed to Lab 2.5 — pick one guide from the [Section 2 README](README.md#labs
 
 Cluster should be on **8.1.2.x** with phase `Completed`.
 
+## Workshop artifacts
+
+Workshop YAML used in this lab (Path A = `kubectl apply`; Path B = `helm upgrade -f`):
+
+- **Upgrade to 8.1.2.x:**
+  - Path A: [manifests/disk-aerospike-upgrade.yaml](../../manifests/disk-aerospike-upgrade.yaml) (default) · [manifests/aerospike-upgrade.yaml](../../manifests/aerospike-upgrade.yaml) (`--dim`)
+  - Path B: [helm/disk-aerospike-upgrade-values.yaml](../../helm/disk-aerospike-upgrade-values.yaml) · [helm/aerospike-upgrade-values.yaml](../../helm/aerospike-upgrade-values.yaml)
+
 ## References
 
-- [manifests/disk-aerospike-upgrade.yaml](../../manifests/disk-aerospike-upgrade.yaml)
-- [manifests/aerospike-upgrade.yaml](../../manifests/aerospike-upgrade.yaml)
-- [helm/disk-aerospike-upgrade-values.yaml](../../helm/disk-aerospike-upgrade-values.yaml)
-- [helm/aerospike-upgrade-values.yaml](../../helm/aerospike-upgrade-values.yaml)
 - [Upgrade Aerospike DB](https://aerospike.com/docs/kubernetes/install/deploy/upgrade-aerospike/)
 - [scripts/labs/run-lab-workload.sh](../../scripts/labs/run-lab-workload.sh)

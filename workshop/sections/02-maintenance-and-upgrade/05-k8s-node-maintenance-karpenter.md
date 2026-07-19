@@ -627,10 +627,16 @@ Proceed to [Lab 2.6](06-k8s-control-plane-upgrade.md). Aerospike cluster should 
 | Node stuck after `do-not-disrupt` + `expireAfter` | Ensure `terminationGracePeriod` is set ([Karpenter disruption docs](https://karpenter.sh/docs/concepts/disruption/)) |
 | Over-use of `do-not-disrupt` (>~30% of pods) | Audit quarterly; blocks consolidation and AMI drift efficiency |
 
+## Workshop artifacts
+
+Workshop YAML used in this lab (Path A = `kubectl apply`; Path B = `helm upgrade -f`):
+
+- **Maintenance cluster (8.1.2.x, extended grace period):**
+  - Path A: [manifests/disk-cluster-maintenance.yaml](../../manifests/disk-cluster-maintenance.yaml) (default) · [manifests/dim-cluster-maintenance.yaml](../../manifests/dim-cluster-maintenance.yaml) (`--dim`)
+  - Path B: [helm/disk-cluster-maintenance-values.yaml](../../helm/disk-cluster-maintenance-values.yaml) · [helm/dim-cluster-maintenance-values.yaml](../../helm/dim-cluster-maintenance-values.yaml)
+
 ## References
 
-- [manifests/disk-cluster-maintenance.yaml](../../manifests/disk-cluster-maintenance.yaml) — device storage (default)
-- [manifests/dim-cluster-maintenance.yaml](../../manifests/dim-cluster-maintenance.yaml) — in-memory (`--dim`)
 - [scripts/labs/load-data.sh](../../scripts/labs/load-data.sh)
 - [scripts/labs/verify-safe-pod-eviction.sh](../../scripts/labs/verify-safe-pod-eviction.sh)
 - [Node maintenance](https://aerospike.com/docs/kubernetes/manage/node-maintenance)
