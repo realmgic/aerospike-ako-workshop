@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prepare a lab: reset (Section 1), cluster staging (Labs 2.1/2.3/2.4/2.5), or upgrade-lab (Lab 2.6).
+# Prepare a lab: reset (Section 1), cluster staging (Labs 2.x/3.x), or upgrade-lab (Lab 2.6).
 #
 # Usage:
 #   ./scripts/labs/prepare-lab.sh <lab-id> [--dim|--disk] [--full|--light|--skip-reset] [--load-data]
@@ -276,6 +276,123 @@ prepare_cluster_lab() {
   echo "=== Lab ${lab_id} prepared ==="
 }
 
+validate_tls_secrets() {
+  local fail=0 secret
+  for secret in tls-ca-secret tls-server-secret tls-client-app-secret tls-ako-client-secret; do
+    if kubectl -n "${NAMESPACE}" get secret "${secret}" >/dev/null 2>&1; then
+      echo "OK  secret ${secret}"
+    else
+      echo "FAIL secret ${secret} missing — run generate-workshop-pki.sh and deploy-tls-secrets.sh" >&2
+      fail=1
+    fi
+  done
+  return "${fail}"
+}
+
+deploy_tls_standard() {
+  if [[ "${DEPLOY_PATH}" == "helm" ]]; then
+    "${SCRIPT_DIR}/deploy-cluster-tls-standard-helm.sh"
+  else
+    "${SCRIPT_DIR}/deploy-cluster-tls-standard.sh"
+  fi
+}
+
+deploy_tls_mtls() {
+  if [[ "${DEPLOY_PATH}" == "helm" ]]; then
+    "${SCRIPT_DIR}/deploy-cluster-tls-mtls-helm.sh"
+  else
+    "${SCRIPT_DIR}/deploy-cluster-tls-mtls.sh"
+  fi
+}
+
+prepare_lab_3_1() {
+  RESET_OVERRIDE=full
+  prepare_cluster_lab "3.1" \
+    "Full reset to 8.1.0.x baseline — generate and deploy TLS secrets in lab steps (cluster stays plain TCP until Lab 3.2)." \
+    true
+}
+
+prepare_lab_3_2() {
+  local reset_mode="${RESET_OVERRIDE:-light}"
+  echo "=== Prepare lab 3.2 (reset=${reset_mode}, storage=${EFFECTIVE_CLUSTER_STORAGE}) ==="
+  ensure_main_kubecontext
+  case "${reset_mode}" in
+    full)
+      "${WORKSHOP_SCRIPTS}/reset-cluster.sh" --yes
+      ;;
+    light)
+      "${WORKSHOP_SCRIPTS}/labs/teardown-cluster.sh"
+      ;;
+    skip)
+      if kubectl -n "${NAMESPACE}" get aerospikecluster aerocluster >/dev/null 2>&1; then
+        echo "Skipping teardown — upgrading existing cluster to TLS standard auth"
+      fi
+      ;;
+  esac
+  if [[ "${reset_mode}" != skip ]] && [[ "${EFFECTIVE_CLUSTER_STORAGE}" == disk ]]; then
+    validate_baseline_local_ssd_pvs 3
+  fi
+  validate_tls_secrets || exit 1
+  deploy_tls_standard
+  wait_for_cluster
+  validate_baseline_image
+  echo "=== Lab 3.2 prepared (TLS standard auth) ==="
+}
+
+prepare_lab_3_3() {
+  local reset_mode="${RESET_OVERRIDE:-skip}"
+  echo "=== Prepare lab 3.3 (reset=${reset_mode}, storage=${EFFECTIVE_CLUSTER_STORAGE}) ==="
+  ensure_main_kubecontext
+  case "${reset_mode}" in
+    full)
+      "${WORKSHOP_SCRIPTS}/reset-cluster.sh" --yes
+      validate_tls_secrets || exit 1
+      deploy_tls_mtls
+      ;;
+    light)
+      "${WORKSHOP_SCRIPTS}/labs/teardown-cluster.sh"
+      validate_tls_secrets || exit 1
+      deploy_tls_mtls
+      ;;
+    skip)
+      if ! kubectl -n "${NAMESPACE}" get aerospikecluster aerocluster >/dev/null 2>&1; then
+        echo "ERROR: aerocluster not found — run Lab 3.2 first" >&2
+        exit 1
+      fi
+      validate_tls_secrets || exit 1
+      deploy_tls_mtls
+      ;;
+  esac
+  wait_for_cluster
+  echo "=== Lab 3.3 prepared (mTLS cluster) ==="
+}
+
+prepare_lab_3_4() {
+  local reset_mode="${RESET_OVERRIDE:-skip}"
+  echo "=== Prepare lab 3.4 (reset=${reset_mode}) ==="
+  ensure_main_kubecontext
+  if [[ "${reset_mode}" == "skip" ]]; then
+    validate_cluster || exit 1
+    validate_tls_secrets || exit 1
+  else
+    prepare_lab_3_3
+  fi
+  echo "=== Lab 3.4 prepared (server cert rotation on live mTLS cluster) ==="
+}
+
+prepare_lab_3_5() {
+  local reset_mode="${RESET_OVERRIDE:-skip}"
+  echo "=== Prepare lab 3.5 (reset=${reset_mode}) ==="
+  ensure_main_kubecontext
+  if [[ "${reset_mode}" == "skip" ]]; then
+    validate_cluster || exit 1
+    validate_tls_secrets || exit 1
+  else
+    prepare_lab_3_4
+  fi
+  echo "=== Lab 3.5 prepared (client credential rotation) ==="
+}
+
 prepare_lab_2_1() {
   prepare_cluster_lab "2.1" \
     "Tearing down prior aerocluster (Section 1 rack/cluster CR uses the same name) and deploying baseline cluster." \
@@ -380,13 +497,38 @@ if [[ "${LAB_ID}" == "2.5" ]]; then
   exit 0
 fi
 
+if [[ "${LAB_ID}" == "3.1" ]]; then
+  prepare_lab_3_1
+  exit 0
+fi
+
+if [[ "${LAB_ID}" == "3.2" ]]; then
+  prepare_lab_3_2
+  exit 0
+fi
+
+if [[ "${LAB_ID}" == "3.3" ]]; then
+  prepare_lab_3_3
+  exit 0
+fi
+
+if [[ "${LAB_ID}" == "3.4" ]]; then
+  prepare_lab_3_4
+  exit 0
+fi
+
+if [[ "${LAB_ID}" == "3.5" ]]; then
+  prepare_lab_3_5
+  exit 0
+fi
+
 ensure_main_kubecontext
 
 default_reset_for_lab() {
   case "$1" in
     1.1|1.2|1.3|1.4) echo "light" ;;
     *)
-      echo "ERROR: unknown lab id: $1 (expected 1.1–1.4, 2.1, 2.3, 2.4, 2.5, or 2.6)" >&2
+      echo "ERROR: unknown lab id: $1 (expected 1.1–1.4, 2.1, 2.3, 2.4, 2.5, 2.6, or 3.1–3.5)" >&2
       exit 1
       ;;
   esac

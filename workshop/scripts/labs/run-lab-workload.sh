@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Continuous read/update workload for availability demos (Labs 2.3, 2.4, 2.6).
+# Continuous read/update workload for availability demos (Labs 2.3–2.6, 3.4–3.5).
 #
 # Usage:
 #   ./scripts/labs/run-lab-workload.sh start|stop|status
-#   ./scripts/labs/run-lab-workload.sh --upgrade-lab start   # Lab 2.6 upgrade-lab cluster
+#   ./scripts/labs/run-lab-workload.sh --tls start
+#   ./scripts/labs/run-lab-workload.sh --pki start
 set -euo pipefail
 source "$(dirname "$0")/../lib/common.sh"
+source "$(dirname "$0")/../lib/asbench-tls.sh"
 load_env
 require_cmd kubectl
 
@@ -24,22 +26,21 @@ ACTION=""
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") [--upgrade-lab] start|stop|status
+Usage: $(basename "$0") [--upgrade-lab] [--tls|--pki] start|stop|status
 
 Run continuous asbench read/update (RU,50 at ${WORKLOAD_TPS} TPS) in a background Job.
-Use a second terminal window — watch debug output with 'status'.
 
-  start   Create Job ${WORKLOAD_JOB_NAME}
-  stop    Delete Job ${WORKLOAD_JOB_NAME}
-  status  Show Job state and tail logs
-
-  --upgrade-lab   Target Lab 2.6 upgrade-lab cluster (default: main cluster)
+  --tls           Password auth over TLS (Lab 3.2+)
+  --pki           PKI auth over mTLS (Lab 3.3+)
+  --upgrade-lab   Target Lab 2.6 upgrade-lab cluster
 EOF
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --upgrade-lab) UPGRADE_LAB=true ;;
+    --tls) AEROSPIKE_TLS_MODE=tls ;;
+    --pki) AEROSPIKE_TLS_MODE=pki ;;
     start|stop|status)
       if [[ -n "${ACTION}" ]]; then
         echo "ERROR: specify one action: start, stop, or status" >&2
@@ -92,27 +93,71 @@ start_workload() {
     exit 1
   fi
 
-  echo "=== Starting workload Job (${WORKLOAD_TPS} TPS, RU,50) ==="
+  local host tls_args=() auth_args=()
+  host="$(asbench_host_arg)"
+  build_asbench_tls_args tls_args
+  asbench_auth_args auth_args
 
-  kubectl -n "${NAMESPACE}" create job "${WORKLOAD_JOB_NAME}" \
-    --image=aerospike/aerospike-tools:latest \
-    -- asbench \
-      -h aerocluster \
-      -U "${AEROSPIKE_AUTH_USER}" \
-      -P "${AEROSPIKE_AUTH_PASSWORD}" \
-      -n "${WORKLOAD_NAMESPACE}" \
-      -k "${WORKLOAD_RECORDS}" \
-      -o "S${WORKLOAD_OBJECT_SIZE}" \
-      -w "RU,50" \
-      -g "${WORKLOAD_TPS}" \
-      -z "${WORKLOAD_THREADS}" \
-      -t "${WORKLOAD_DURATION}" \
-      --debug
+  echo "=== Starting workload Job (${WORKLOAD_TPS} TPS, mode=${AEROSPIKE_TLS_MODE}) ==="
 
-  echo "Job ${WORKLOAD_JOB_NAME} created. Watch from this terminal:"
-  upgrade_lab_flag=""
-  [[ "${UPGRADE_LAB}" == true ]] && upgrade_lab_flag=" --upgrade-lab"
-  echo "  ./scripts/labs/run-lab-workload.sh${upgrade_lab_flag} status"
+  local job_file
+  job_file="$(mktemp)"
+  trap 'rm -f "${job_file}"' RETURN
+
+  {
+    cat <<EOF
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${WORKLOAD_JOB_NAME}
+  namespace: ${NAMESPACE}
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+EOF
+    tls_job_volumes_yaml
+    cat <<EOF
+      containers:
+        - name: asbench
+          image: aerospike/aerospike-tools:latest
+EOF
+    tls_job_volume_mounts_yaml
+    cat <<EOF
+          command:
+            - asbench
+            - -h
+            - ${host}
+EOF
+    for arg in "${auth_args[@]}"; do
+      printf '            - "%s"\n' "${arg}"
+    done
+    cat <<EOF
+            - -n
+            - ${WORKLOAD_NAMESPACE}
+            - -k
+            - "${WORKLOAD_RECORDS}"
+            - -o
+            - S${WORKLOAD_OBJECT_SIZE}
+            - -w
+            - RU,50
+            - -g
+            - "${WORKLOAD_TPS}"
+            - -z
+            - "${WORKLOAD_THREADS}"
+            - -t
+            - "${WORKLOAD_DURATION}"
+            - --debug
+EOF
+    for arg in "${tls_args[@]}"; do
+      printf '            - "%s"\n' "${arg}"
+    done
+  } > "${job_file}"
+
+  kubectl apply -f "${job_file}"
+
+  echo "Job ${WORKLOAD_JOB_NAME} created (TLS mode: ${AEROSPIKE_TLS_MODE})."
 }
 
 stop_workload() {
@@ -131,7 +176,6 @@ status_workload() {
   local pod
   pod="$(workload_pod_name)"
   if [[ -z "${pod}" ]]; then
-    echo "Waiting for workload pod..."
     local deadline=$((SECONDS + 120))
     while [[ "${SECONDS}" -lt "${deadline}" ]]; do
       pod="$(workload_pod_name)"

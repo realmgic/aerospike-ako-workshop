@@ -13,6 +13,7 @@ Kubernetes administrators and platform engineers new to AKO.
 | [0 — Environment Setup](sections/00-environment-setup/) | ~1–1.5 h (or pre-staged) |
 | [1 — Scaling & Capacity](sections/01-scaling-and-capacity/) | ~2–2.5 h |
 | [2 — Maintenance & Upgrade](sections/02-maintenance-and-upgrade/) | ~1.5–2 h |
+| [3 — Security & Authentication](sections/03-security-and-authentication/) (optional) | ~1.5–2 h |
 
 ## Deploy path selection
 
@@ -84,7 +85,10 @@ In the registry, `deploy_paths: [kubectl]` means **Path A** (OLM + `kubectl appl
 → 1.1 → 1.2 → 1.3
 → 2.1 → 2.2 (through AKO 4.5.0) → 1.4
 → 2.3 → 2.4 → 2.5 → 2.6
+→ 3.1 → 3.2 → 3.3 → 3.4 → 3.5   (optional — independent of Section 2)
 ```
+
+Section **3** is optional and requires only Lab **0.6**. In a full workshop, teach it **after Lab 2.5**. Lab **2.6** is optional and may precede or follow Section 3.
 
 Note: Lab **1.4** (replication factor) requires AKO **4.4.0+** — run after **2.2** reaches 4.4.1 (or complete the full ladder to 4.5.0). Lab **2.3** (on-demand operations) requires AKO **4.4.0+**. Lab **2.4** (DB upgrade to 8.1.2.x) requires AKO **4.5.0+**.
 
@@ -104,6 +108,11 @@ Note: Lab **1.4** (replication factor) requires AKO **4.4.0+** — run after **2
 | 2.4 | Upgrade Aerospike DB | `my-cluster` | **4.5.0** | 2.3 |
 | 2.5 | K8s node maintenance | `my-cluster` | **4.5.0** | 2.4 |
 | 2.6 | K8s control plane upgrade | `my-cluster-k8s-upgrade` | — | 0.7 |
+| 3.1 | Generate PKI keys and certificates | `my-cluster` | 4.2.0 | 0.6 |
+| 3.2 | TLS only (encryption in transit) | `my-cluster` | 4.2.0 | 3.1 |
+| 3.3 | mTLS and PKI authentication | `my-cluster` | 4.2.0 | 3.2 |
+| 3.4 | Server certificate rotation | `my-cluster` | 4.2.0 | 3.3 |
+| 3.5 | Live client credential rotation | `my-cluster` | 4.2.0 | 3.4 |
 
 ## Quick start (instructor)
 

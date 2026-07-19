@@ -1,0 +1,161 @@
+# Mirrors disk-cluster-tls-mtls.yaml
+replicas: 3
+enableDynamicConfigUpdate: true
+image:
+  repository: aerospike/aerospike-server-enterprise
+  tag: 8.1.0.0
+operatorClientCert:
+  secretCertSource:
+    secretName: tls-ako-client-secret
+    caCertsFilename: cacert.pem
+    clientCertFilename: ako_client.pem
+    clientKeyFilename: ako_client.key
+  tlsClientName: ako-operator
+podSpec:
+  nodeSelector:
+    workshop.aerospike.com/node-pool: baseline
+  multiPodPerHost: false
+  aerospikeContainer:
+    resources:
+      requests:
+        cpu: '7'
+        memory: 57Gi
+      limits:
+        cpu: '7'
+        memory: 57Gi
+  sidecars:
+  - name: aerospike-prometheus-exporter
+    image: aerospike/aerospike-prometheus-exporter:1.33.0
+    ports:
+    - containerPort: 9145
+      name: exporter
+    env:
+    - name: AS_AUTH_USER
+      value: exporter
+    - name: AS_AUTH_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          key: password
+          name: auth-exporter-secret
+    - name: AS_NODE_TLS_NAME
+      value: aerocluster
+    - name: AS_TLS_ENABLE
+      value: 'true'
+    - name: AS_TLS_CAFILE
+      value: /etc/aerospike/tls/ca/cacert.pem
+    - name: AS_TLS_CERTFILE
+      value: /etc/aerospike/tls/client/exporter.pem
+    - name: AS_TLS_KEYFILE
+      value: /etc/aerospike/tls/client/exporter.key
+    volumeMounts:
+    - name: tls-ca
+      mountPath: /etc/aerospike/tls/ca
+      readOnly: true
+    - name: tls-client-exporter
+      mountPath: /etc/aerospike/tls/client
+      readOnly: true
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+storage:
+  localStorageClasses:
+  - local-ssd
+  filesystemVolumePolicy:
+    cascadeDelete: true
+    initMethod: deleteFiles
+  blockVolumePolicy:
+    cascadeDelete: true
+    initMethod: blkdiscardWithHeaderCleanup
+    wipeMethod: blkdiscard
+  volumes:
+  - name: workdir
+    source:
+      persistentVolume:
+        storageClass: ssd
+        volumeMode: Filesystem
+        size: 3Gi
+    aerospike:
+      path: /opt/aerospike
+  - name: ns
+    source:
+      persistentVolume:
+        storageClass: local-ssd
+        volumeMode: Block
+        accessModes:
+        - ReadWriteOnce
+        size: 250Gi
+    aerospike:
+      path: /dev/data/local1
+  - name: aerospike-config-secret
+    source:
+      secret:
+        secretName: aerospike-secret
+    aerospike:
+      path: /etc/aerospike/secret
+  - name: tls-server-certs
+    source:
+      secret:
+        secretName: tls-server-secret
+    aerospike:
+      path: /etc/aerospike/tls
+  - name: tls-ca
+    source:
+      secret:
+        secretName: tls-ca-secret
+    aerospike:
+      path: /etc/aerospike/tls/ca
+  - name: tls-client-exporter
+    source:
+      secret:
+        secretName: tls-client-exporter-secret
+    aerospike:
+      path: /etc/aerospike/tls/client-exporter
+aerospikeAccessControl:
+  users:
+  - name: admin
+    secretName: auth-secret
+    roles:
+    - sys-admin
+    - user-admin
+  - name: app
+    secretName: auth-app-secret
+    roles:
+    - read
+    - write
+  - name: exporter
+    secretName: auth-exporter-secret
+    roles: []
+aerospikeConfig:
+  service:
+    feature-key-file: /etc/aerospike/secret/features.conf
+  security: {}
+  network:
+    service:
+      port: 3000
+      tls-name: aerocluster
+      tls-port: 4333
+      tls-authenticate-client: any
+    fabric:
+      port: 3001
+    heartbeat:
+      port: 3002
+    admin:
+      port: 3003
+    tls:
+    - name: aerocluster
+      cert-file: /etc/aerospike/tls/svc_chain.pem
+      key-file: /etc/aerospike/tls/svc_key.pem
+      ca-file: /etc/aerospike/tls/ca/cacert.pem
+  namespaces:
+  - name: test
+    replication-factor: 2
+    migrate-sleep: 0
+    indexes-memory-budget: 49478021959
+    storage-engine:
+      type: device
+      devices:
+      - /dev/data/local1

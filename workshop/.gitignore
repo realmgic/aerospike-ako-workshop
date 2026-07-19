@@ -1,4 +1,5 @@
 secrets/features.conf
+secrets/tls/
 *.env
 !scripts/env/*.env.example
 !scripts/labs/upgrade-ako/versions.env.example
