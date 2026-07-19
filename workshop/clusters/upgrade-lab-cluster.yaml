@@ -5,6 +5,7 @@
 #   UPGRADE_LAB_NODEGROUP_NAME (default ng-upgrade-lab)
 #   UPGRADE_LAB_NODE_TYPE       (default i8g.2xlarge)
 #   UPGRADE_LAB_NODE_COUNT      (default 3)
+#   SSH_PUBLIC_KEY              (nodegroup SSH via ensure-nodegroup.sh)
 #
 apiVersion: eksctl.io/v1alpha5
 kind: ClusterConfig
@@ -25,4 +26,4 @@ managedNodeGroups:
       - us-east-1c
     ssh:
       allow: true
-      publicKeyName: aerolab-base_us-east-1
+      publicKeyName: ${SSH_PUBLIC_KEY}

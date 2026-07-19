@@ -16,7 +16,7 @@ arm64_ami() {
     --names /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64 \
     --region "${AWS_REGION}" \
     --query 'Parameters[0].Value' \
-    --output text
+    --output text 2>/dev/null || true
 }
 
 subnet_in_zone() {
@@ -90,15 +90,16 @@ check_gvt_quota() {
   quota_value="$(aws service-quotas list-service-quotas \
     --service-code ec2 \
     --region "${AWS_REGION}" \
-    --query "Quotas[?contains(QuotaName, 'Running On-Demand G and VT')].Value | [0]" \
-    --output text 2>/dev/null || echo "")"
+    --query 'Quotas[].[QuotaName,Value]' \
+    --output text 2>/dev/null \
+    | awk -F'\t' '/Running On-Demand G and VT/ { print $2; exit }' || true)"
 
   if [[ -z "${quota_value}" || "${quota_value}" == "None" ]]; then
     echo "SKIP G/VT on-demand quota (could not read Service Quotas — verify manually)"
     return 0
   fi
 
-  if awk -v q="${quota_value}" -v need="${PEAK_GVT_NODES}" 'BEGIN { exit !(q >= need) }'; then
+  if awk -v q="${quota_value}" -v need="${PEAK_GVT_NODES}" 'BEGIN { exit !(q + 0 >= need + 0) }'; then
     echo "OK  G/VT on-demand quota ${quota_value} (need >= ${PEAK_GVT_NODES} at Lab 1.2 peak)"
     return 0
   fi

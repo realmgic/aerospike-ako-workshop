@@ -16,7 +16,7 @@ A Karpenter-managed EKS cluster with a **system** managed nodegroup for the cont
 ## Prerequisites
 
 - Lab 0.1 complete
-- EC2 key pair in target region
+- EC2 key pair `${SSH_PUBLIC_KEY}` exists in `${AWS_REGION}`
 - Quota for **4–8×** `i8g.2xlarge` plus 2× `t3.large` system nodes
 - Quota for **4–8×** `i8g.4xlarge` during Lab 1.2 Phase 2 (may run **8 nodes** total with idle baseline pool)
 - Helm 3.12+ (controller install)

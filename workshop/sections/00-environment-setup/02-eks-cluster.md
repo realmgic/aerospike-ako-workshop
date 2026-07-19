@@ -16,7 +16,7 @@ EKS control plane in `us-east-1` spanning two availability zones. **Per-AZ workl
 ## Prerequisites
 
 - Lab 0.1 complete
-- EC2 key pair `aerolab-base_us-east-1` in target region
+- EC2 key pair `${SSH_PUBLIC_KEY}` exists in `${AWS_REGION}`
 - Quota for 4× `i8g.2xlarge` across `AWS_ZONES` (default: `us-east-1c`, `us-east-1d`)
 
 ## Starting state
