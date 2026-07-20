@@ -10,6 +10,13 @@
 | 3.4 | 20 min | Run workload in background before rotation |
 | 3.5 | 25 min | Overlap + blacklist demo |
 
+## Reading Section 3 commands
+
+Each lab labels command blocks with **What / Credential / mode / Expect** (see [Section 03 README](README.md#how-to-read-commands)). Wrapper scripts echo the same facts to stdout — read script output alongside the lab guide.
+
+- **Lab 3.4 vs 3.5:** server cert rotation replaces one server identity (new serial, same CN); client cert rotation keeps the same CN (`app`) with two valid serials during overlap until blacklist.
+- **Lab 3.5 Step 3 is required** — do not skip the v1 overlap proof. Narrate: "two valid serials until blacklist." Run Step 5 (re-test v1) immediately after blacklist so trainees see the before/after contrast.
+
 ## Pitfalls
 
 - **Lab 3.1 uses light reset** — redeploys the AerospikeCluster on 8.1.0.x without tearing down workload node pools (reuses Section 1/2 nodes). Pass `--full` only if you intentionally want to destroy and recreate nodegroups.

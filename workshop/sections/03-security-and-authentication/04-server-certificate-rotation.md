@@ -29,6 +29,15 @@ Patch secret in place    →    Hot-reloads cert content
 (same secret name)              without pod restart
 ```
 
+This lab rotates the **server** cert (`svc_chain.pem`), not the client cert. Client auth is unaffected:
+
+```text
+Before rotation          After rotation
+────────────────         ────────────────
+svc_chain.pem (serial A) svc_chain.pem (serial B)  ← new file, same secret name
+app.pem unchanged        app.pem unchanged         ← client auth unaffected
+```
+
 - There is **no AKO “rotate certificate” API** — rotation is regenerate with OpenSSL, then `kubectl apply` the **same** Secret name.
 - AKO’s role is **volume mount delivery** only. Hitless server rotation is **Aerospike TLS file reload** (see [References](#references)).
 - **Contrast with Labs 3.2/3.3:** changing `network.tls[]`, `tls-authenticate-client`, or `authMode` is a **CR schema change** → AKO **rolling restart**. Lab 3.4 only changes **secret content** at the same mount path — no CR edit required.
@@ -72,6 +81,10 @@ During server cert rotation, clients and workloads stay authenticated because:
 
 ## Phase 0 — Prepare lab
 
+**What:** Ensure PKI workload is running before rotating the server cert.
+**Credential / mode:** Background asbench Job using client cert `app.pem` (`--pki`).
+**Run:**
+
 ```bash
 ./scripts/labs/prepare-lab.sh 3.4 --skip-reset
 ./scripts/labs/run-lab-workload.sh --pki start
@@ -83,9 +96,15 @@ Watch TPS in a second terminal:
 ./scripts/labs/run-lab-workload.sh status
 ```
 
+**Expect:** Steady TPS with no auth errors — baseline before rotation.
+
 ## Steps
 
-### Record current server cert and pod identity
+### Step 1 — Record baseline (before rotation)
+
+**What:** Capture server cert serial and pod container ID **before** any change.
+**Credential / mode:** Server cert `svc_chain.pem` (serial A); client cert `app.pem` unchanged.
+**Run:**
 
 ```bash
 openssl x509 -in secrets/tls/svc_chain.pem -noout -dates -serial
@@ -95,35 +114,50 @@ echo "Pod: ${POD}"
 kubectl -n aerospike get pod "${POD}" -o jsonpath='Container ID: {.status.containerStatuses[?(@.name=="aerospike-server")].containerID}{"\n"}'
 ```
 
-Save the pod name and container ID — you will compare them after rotation.
+**Expect:** Note serial A and container ID — you will compare both after rotation.
 
-### Rotate server certificate
+### Step 2 — Rotate server certificate
+
+**What:** Regenerate `svc_chain.pem` and patch `tls-server-secret` in place (same secret name).
+**Credential / mode:** Server cert only — client cert `app.pem` and CA unchanged.
+**Run:**
 
 ```bash
 ./scripts/setup/tls/rotate-server-cert.sh
 ```
 
-Wait ~60s for secret sync to pods, then verify new cert on a pod:
+The script prints old and new server serials. **Expect:** Serial B differs from serial A; client certs unchanged.
+
+Wait ~60s for secret sync to pods, then compare workstation file vs pod mount:
 
 ```bash
+echo "Workstation serial:" && openssl x509 -in secrets/tls/svc_chain.pem -noout -serial
+
 POD=$(kubectl -n aerospike get pod -l aerospike.com/cr=aerocluster -o jsonpath='{.items[0].metadata.name}')
-kubectl -n aerospike exec "${POD}" -c aerospike-server -- \
-  openssl x509 -in /etc/aerospike/tls/svc_chain.pem -noout -dates -serial
+echo "Pod-mounted serial:" && kubectl -n aerospike exec "${POD}" -c aerospike-server -- \
+  openssl x509 -in /etc/aerospike/tls/svc_chain.pem -noout -serial
 ```
 
-Confirm the **same pod** is still running (no recreation):
+**Expect:** Workstation and pod-mounted serials match (serial B); both differ from serial A recorded in Step 1.
+
+### Step 3 — Confirm no pod recreation
+
+**What:** Verify the same pod process is still running (no AKO rolling restart).
+**Credential / mode:** N/A — infrastructure check only.
+**Run:**
 
 ```bash
-kubectl -n aerospike get pod "${POD}" -o jsonpath='{.status.containerStatuses[?(@.name=="aerospike-server")].containerID}{"\n"}'
+kubectl -n aerospike get pod "${POD}" -o jsonpath='Container ID: {.status.containerStatuses[?(@.name=="aerospike-server")].containerID}{"\n"}'
 ```
 
-Compare pod name and container ID to values recorded **before** rotation — both should be unchanged.
+**Expect:** Container ID unchanged from Step 1 — same pod, same process; only the cert file content changed.
 
 ## Verify
 
 - Workload **TPS uninterrupted** (`run-lab-workload.sh status`)
 - Pod **container ID unchanged** (no rolling restart for cert content update)
-- PKI clients still connect on **4333**
+- Server serial B on pod mount matches workstation `svc_chain.pem`
+- PKI clients still connect on **4333** (client cert `app.pem` unaffected)
 
 ## Troubleshooting
 

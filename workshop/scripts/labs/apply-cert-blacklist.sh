@@ -43,3 +43,5 @@ manifest="$(resolve_cluster_manifest dim-cluster-tls-mtls-blacklist "${storage}"
 kubectl apply -f "${manifest}"
 
 echo "=== Certificate blacklist applied — v1 client cert should now be rejected ==="
+echo "Re-test v1 PKI login (Lab 3.5 Step 3 command) — should fail."
+echo "v2 workload should continue: ./scripts/labs/run-lab-workload.sh status"

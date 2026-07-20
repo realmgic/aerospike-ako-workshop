@@ -33,6 +33,16 @@ Section 3 is **optional** and independent of Section 2 — only Lab **0.6** is r
 
 Pick **Path A (kubectl/OLM)** or **Path B (Helm)** in Section 0 and stay consistent. TLS manifests mirror the baseline cluster (`exporter` **1.33.0**, Aerospike **8.1.0.0**).
 
+## How to read commands
+
+Each lab labels command blocks with three lines:
+
+- **What:** what the step does
+- **Credential / mode:** which cert, auth mode, or port is in use (e.g. plain TCP, TLS+password, PKI, client cert v1 vs v2)
+- **Expect:** what success looks like in the output
+
+Wrapper scripts (`rotate-client-cert.sh`, etc.) echo the same facts to stdout when you run them.
+
 ## Instructor notes
 
 See [instructor-notes.md](instructor-notes.md) for timing, PKIOnly migration order, and skip paths.

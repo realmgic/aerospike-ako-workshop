@@ -32,18 +32,26 @@ Encrypt client-to-cluster traffic with **server TLS only** (`tls-authenticate-cl
 
 Lab **3.1** is the prep (PKI secrets + plain-TCP baseline). Upgrade in place to service TLS:
 
+**What:** Enable server TLS on port **4333**; password auth unchanged.
+**Credential / mode:** Server cert `svc_chain.pem` mounted on DB pods; clients still use password only (no client cert).
+**Run:**
+
 ```bash
 ./scripts/labs/deploy-cluster-tls-standard.sh        # Path A
 ./scripts/labs/deploy-cluster-tls-standard-helm.sh   # Path B
 ```
 
-This applies [`manifests/*-cluster-tls-standard.yaml`](../../manifests/disk-cluster-tls-standard.yaml) (server TLS on port **4333**; password auth unchanged). AKO requires `operatorClientCert` whenever service TLS is enabled — in this lab it reuses the **server cert** (`svc_chain.pem`, `tlsClientName: aerocluster`) for operator management TLS only. The `ako-operator` client cert is used from Lab **3.3** mTLS onward. App clients still use password only (no client cert).
+**Expect:** Cluster reaches `phase=Completed`; service TLS active on port **4333**. AKO `operatorClientCert` reuses the **server cert** (`svc_chain.pem`, `tlsClientName: aerocluster`) — the `ako-operator` client cert is used from Lab **3.3** mTLS onward.
 
 ## Steps
 
 `aerocluster` is a headless Kubernetes Service (`ClusterIP: None`) — it only resolves inside the cluster network, not from your workstation. Run these `asadm`/`openssl` commands from a short-lived debug pod instead; `--rm --attach` prints output and cleans up the pod automatically.
 
 ### Connect with TLS + password (no client cert)
+
+**What:** Connect over encrypted TLS port **4333** using password auth only.
+**Credential / mode:** TLS port **4333**, CA file only (`tls-ca-secret`), password (`admin` / `admin123`) — **no client cert**.
+**Run:**
 
 ```bash
 kubectl -n aerospike run aerospike-tool-tls --rm --attach --restart=Never \
@@ -55,7 +63,13 @@ kubectl -n aerospike run aerospike-tool-tls --rm --attach --restart=Never \
     "volumes":[{"name":"tls-ca","secret":{"secretName":"tls-ca-secret"}}]}}'
 ```
 
+**Expect:** `cluster_size=3` over TLS — traffic encrypted, password still required.
+
 ### Confirm plain port still works
+
+**What:** Verify the legacy plain-TCP port is still open alongside TLS.
+**Credential / mode:** Plain TCP port **3000**, password auth — no TLS flags.
+**Run:**
 
 ```bash
 kubectl run -it --rm aerospike-tool -n aerospike --restart=Never \
@@ -63,7 +77,13 @@ kubectl run -it --rm aerospike-tool -n aerospike --restart=Never \
   asadm -h aerocluster -U admin -P admin123 -e "show stat like cluster_size"
 ```
 
+**Expect:** `cluster_size=3` on port **3000** — plain TCP still reachable.
+
 ### Inspect TLS handshake (no client cert required)
+
+**What:** Inspect the server TLS handshake without authenticating to Aerospike.
+**Credential / mode:** TLS handshake only — CA trust, no client cert, no password.
+**Run:**
 
 ```bash
 kubectl -n aerospike run aerospike-tls-inspect --rm --attach --restart=Never \
@@ -73,6 +93,8 @@ kubectl -n aerospike run aerospike-tls-inspect --rm --attach --restart=Never \
     "volumeMounts":[{"name":"tls-ca","mountPath":"/etc/aerospike/tls/ca","readOnly":true}]}],
     "volumes":[{"name":"tls-ca","secret":{"secretName":"tls-ca-secret"}}]}}'
 ```
+
+**Expect:** `Verify return code: 0 (ok)` — server presents a cert signed by the workshop CA.
 
 ## Verify (pass/fail)
 

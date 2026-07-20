@@ -30,16 +30,22 @@ Escalate service TLS to **mTLS** (client cert required), then migrate from passw
 
 ## Phase 0 — Prepare lab
 
+**What:** Deploy mTLS cluster config (client cert required on port 4333).
+**Credential / mode:** mTLS enabled; password auth still available until Phase C.
+**Run:**
+
 ```bash
 ./scripts/labs/prepare-lab.sh 3.3 --skip-reset
 ```
 
-Or deploy mTLS manifest:
+Or deploy mTLS manifest directly:
 
 ```bash
 ./scripts/labs/deploy-cluster-tls-mtls.sh
 ./scripts/labs/deploy-cluster-tls-mtls-helm.sh   # Path B
 ```
+
+**Expect:** Cluster reaches `phase=Completed`; `tls-authenticate-client: any` active.
 
 ### Deploy note — schema change vs cert content
 
@@ -51,7 +57,9 @@ Later labs (**3.4** and **3.5**) rotate **certificate file content** or revoke b
 
 ## Phase A — mTLS + password
 
-Connect with client cert **and** password:
+**What:** Connect with client cert **and** password — both are required in this phase.
+**Credential / mode:** mTLS port **4333**; client cert `app.pem` (`tls-client-app-secret`) + password (`app` / `app123`).
+**Run:**
 
 ```bash
 kubectl -n aerospike run aerospike-tool-mtls --rm --attach --restart=Never \
@@ -63,9 +71,15 @@ kubectl -n aerospike run aerospike-tool-mtls --rm --attach --restart=Never \
     "volumes":[{"name":"tls-ca","secret":{"secretName":"tls-ca-secret"}},{"name":"tls-client-app","secret":{"secretName":"tls-client-app-secret"}}]}}'
 ```
 
-**Expected:** Lab 3.2 connection without client cert now **fails**.
+**Expect:** `info` succeeds — client cert and password both accepted.
+
+**Negative check (Phase A):** Retry the Lab 3.2 TLS-only command (CA + password, **no client cert**). Connection should **fail** — mTLS now requires a client cert.
 
 ## Phase B — PKI auth (no password)
+
+**What:** Authenticate using the client cert as identity — no password.
+**Credential / mode:** mTLS port **4333**; client cert `app.pem` + `--auth PKI` (no `-U`/`-P`).
+**Run:**
 
 ```bash
 kubectl -n aerospike run aerospike-tool-pki --rm --attach --restart=Never \
@@ -77,16 +91,24 @@ kubectl -n aerospike run aerospike-tool-pki --rm --attach --restart=Never \
     "volumes":[{"name":"tls-ca","secret":{"secretName":"tls-ca-secret"}},{"name":"tls-client-app","secret":{"secretName":"tls-client-app-secret"}}]}}'
 ```
 
-Workload example:
+**Expect:** `info` succeeds without a password — cert CN (`app`) is the identity.
+
+**What:** Start background workload using PKI auth.
+**Credential / mode:** `tls-client-app-secret` / `app.pem` via `--pki` flag.
+**Run:**
 
 ```bash
 ./scripts/labs/run-lab-workload.sh --pki start
 ./scripts/labs/load-data.sh --pki
 ```
 
+**Expect:** asbench Job running; TPS reported in logs with no auth errors.
+
 ## Phase C — PKIOnly
 
-Apply PKIOnly manifest (migrate **`app`** and **`exporter`** first, **`admin`** last):
+**What:** Remove password auth path for all users — PKI cert is the only way in.
+**Credential / mode:** Same client certs; CR change sets `authMode: PKIOnly` (no `secretName` on users).
+**Run:**
 
 ```bash
 ./scripts/labs/deploy-cluster-tls-mtls-pki-only.sh
@@ -97,15 +119,17 @@ Confirm PKI login for `admin` in a **second terminal** before applying — `PKIO
 
 PKIOnly users must not set `secretName` — identity comes from the client cert CN, not a password secret. AKO's admission webhook rejects any user that specifies both.
 
-**Verify:** Password login fails for migrated users; PKI login succeeds; exporter sidecar scrapes metrics on `:9145`.
+**Negative check (Phase C):** Retry the Phase A command (client cert + password `-P app123`). Login should fail with `No credential or bad credential` — password path removed.
+
+**Expect:** Password login fails for migrated users; PKI login succeeds; exporter sidecar scrapes metrics on `:9145`.
 
 ## Verify
 
-| Phase | Pass criteria |
-|-------|---------------|
-| A | Client cert required; password still works |
-| B | `--auth PKI` succeeds without `-P` |
-| C | Password rejected; PKI works; exporter healthy |
+| Phase | Credential used | Pass criteria |
+|-------|-----------------|---------------|
+| A | Client cert `app.pem` + password | Client cert required; password still works |
+| B | Client cert `app.pem` only (`--auth PKI`) | `--auth PKI` succeeds without `-P` |
+| C | Client cert only (PKIOnly) | Password rejected; PKI works; exporter healthy |
 
 ## Workshop artifacts
 
