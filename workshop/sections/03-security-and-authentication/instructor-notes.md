@@ -12,7 +12,10 @@
 
 ## Pitfalls
 
-- **Lab 3.1 always uses `--full`** — clears Section 2 CR drift (operations, RF3, 8.1.2.x image).
+- **Lab 3.1 uses light reset** — redeploys the AerospikeCluster on 8.1.0.x without tearing down workload node pools (reuses Section 1/2 nodes). Pass `--full` only if you intentionally want to destroy and recreate nodegroups.
+- **Lab 3.1 → 3.2 handoff** — trainees finish 3.1 with PKI secrets and a plain-TCP baseline, then deploy TLS in 3.2 (`deploy-cluster-tls-standard*.sh`). `prepare-lab.sh 3.2` is instructor recovery only (`RESET=skip` default: validate secrets + deploy + wait; no teardown).
+- **Lab 3.2 stuck / ACLUpdateFailed** — if prepare-lab hangs after Helm deploy, check `kubectl -n aerospike get aerospikecluster aerocluster -o jsonpath='{.status.phase}'`. Phase `Error` with `ACLUpdateFailed` usually means operator TLS config is wrong: tls-standard needs `ca-file` in the server TLS stanza; `operatorClientCert` should use the **server cert** (`svc_chain.pem` from `tls-server-secret`) with `tlsClientName: aerocluster` (matching `tls-name`). Do not use `ako-operator` or a separate operator client cert here — that is for Lab 3.3+ mTLS. Aerospike logs may show `SSL alert bad certificate` when the wrong cert is presented.
+- **Server cert must have a SAN, not just a CN** — `generate-workshop-pki.sh` signs `svc_chain.pem` with `subjectAltName = DNS:${TLS_CLUSTER_NAME}` (`aerocluster`). Go's `crypto/x509` (used by the AKO operator's embedded Aerospike client) has ignored CN-as-hostname since Go 1.15, so a CN-only server cert fails the operator's TLS handshake with a `bad certificate` alert and ACL reconcile never completes — even when `operatorClientCert`/`tlsClientName`/`ca-file` are otherwise correct. If PKI was regenerated manually (not via the script) and 3.2 is stuck, run `openssl x509 -in secrets/tls/svc_chain.pem -noout -text | grep -A1 "Subject Alternative Name"` to confirm the SAN is present; if missing, run `./scripts/setup/tls/generate-workshop-pki.sh --server-only && ./scripts/setup/tls/deploy-tls-secrets.sh` and redeploy.
 - **`PKIOnly` is one-way** — migrate `app` and `exporter` before `admin`; confirm PKI login in a second terminal before removing admin password.
 - **Service TLS only** — do not enable fabric/heartbeat TLS; intra-cluster traffic stays on 3001/3002.
 - **Lab 2.5 on Karpenter** — blocklist path is eksctl-only; Section 3 has no such restriction.
@@ -61,7 +64,7 @@ Rotation pitfalls:
 ## Skip paths
 
 - **Short workshop:** Stop after Lab 3.2 (encryption in transit only).
-- **No Section 2:** Run 3.1 after 0.6; `prepare-lab.sh 3.1` full-resets to 8.1.0.0 baseline automatically.
+- **No Section 2:** Run 3.1 after 0.6; `prepare-lab.sh 3.1` light-resets to 8.1.0.0 baseline and ensures baseline nodes exist.
 
 ## Artifacts
 

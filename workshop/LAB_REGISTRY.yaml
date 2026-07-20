@@ -438,7 +438,6 @@ labs:
       kubectl: [manifests/disk-cluster-tls-standard.yaml, manifests/dim-cluster-tls-standard.yaml]
       helm: [helm/disk-cluster-tls-standard-values.yaml, helm/dim-cluster-tls-standard-values.yaml]
     scripts:
-      - scripts/labs/prepare-lab.sh
       - scripts/labs/deploy-cluster-tls-standard.sh
       - scripts/labs/deploy-cluster-tls-standard-helm.sh
     depends_on: ["3.1"]

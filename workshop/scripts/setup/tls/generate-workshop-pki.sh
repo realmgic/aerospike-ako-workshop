@@ -42,11 +42,51 @@ done
 
 mkdir -p "${TLS_DIR}"
 
+write_extfile() {
+  local kind="$1" path="$2" san="${3:-}"
+  case "${kind}" in
+    client)
+      cat > "${path}" <<EOF
+[v3_ext]
+basicConstraints = CA:FALSE
+keyUsage = digitalSignature, keyEncipherment
+extendedKeyUsage = clientAuth
+EOF
+      ;;
+    server)
+      # SAN is required: Go's crypto/x509 (used by aerospike-client-go / the
+      # AKO operator) has ignored CN-as-hostname since Go 1.15, so a
+      # CN-only cert fails hostname verification and the TLS handshake is
+      # rejected with a "bad certificate" alert.
+      cat > "${path}" <<EOF
+[v3_ext]
+basicConstraints = CA:FALSE
+keyUsage = digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName = DNS:${san}
+EOF
+      ;;
+    *)
+      echo "ERROR: unknown cert kind: ${kind}" >&2
+      return 1
+      ;;
+  esac
+}
+
 sign_cert() {
-  local csr="$1" out="$2"
-  openssl x509 -req -in "${csr}" \
-    -CA "${TLS_DIR}/cacert.pem" -CAkey "${TLS_DIR}/cakey.pem" \
-    -CAcreateserial -out "${out}" -days "${TLS_CERT_DAYS}"
+  local csr="$1" out="$2" kind="${3:-}" san="${4:-}"
+  if [[ -n "${kind}" ]]; then
+    write_extfile "${kind}" "${TLS_DIR}/.tmp.ext" "${san}"
+    openssl x509 -req -in "${csr}" \
+      -CA "${TLS_DIR}/cacert.pem" -CAkey "${TLS_DIR}/cakey.pem" \
+      -CAcreateserial -out "${out}" -days "${TLS_CERT_DAYS}" \
+      -extfile "${TLS_DIR}/.tmp.ext" -extensions v3_ext
+    rm -f "${TLS_DIR}/.tmp.ext"
+  else
+    openssl x509 -req -in "${csr}" \
+      -CA "${TLS_DIR}/cacert.pem" -CAkey "${TLS_DIR}/cakey.pem" \
+      -CAcreateserial -out "${out}" -days "${TLS_CERT_DAYS}"
+  fi
 }
 
 generate_client() {
@@ -54,7 +94,7 @@ generate_client() {
   openssl genrsa -out "${key}" 2048
   openssl req -new -key "${key}" -out "${TLS_DIR}/.tmp.csr" \
     -subj "/CN=${cn}/O=Aerospike Workshop/C=US"
-  sign_cert "${TLS_DIR}/.tmp.csr" "${pem}"
+  sign_cert "${TLS_DIR}/.tmp.csr" "${pem}" client
   rm -f "${TLS_DIR}/.tmp.csr"
 }
 
@@ -78,7 +118,7 @@ if [[ "${SERVER_ONLY}" == true ]]; then
   openssl genrsa -out "${TLS_DIR}/svc_key.pem" 2048
   openssl req -new -key "${TLS_DIR}/svc_key.pem" -out "${TLS_DIR}/.tmp.csr" \
     -subj "/CN=${TLS_CLUSTER_NAME}/O=Aerospike Workshop/C=US"
-  sign_cert "${TLS_DIR}/.tmp.csr" "${TLS_DIR}/svc.pem"
+  sign_cert "${TLS_DIR}/.tmp.csr" "${TLS_DIR}/svc.pem" server "${TLS_CLUSTER_NAME}"
   rm -f "${TLS_DIR}/.tmp.csr"
   cat "${TLS_DIR}/svc.pem" "${TLS_DIR}/cacert.pem" > "${TLS_DIR}/svc_chain.pem"
   echo "OK  ${TLS_DIR}/svc_chain.pem"
@@ -95,13 +135,14 @@ openssl req -new -x509 -days "${TLS_CA_DAYS}" -key "${TLS_DIR}/cakey.pem" \
 openssl genrsa -out "${TLS_DIR}/svc_key.pem" 2048
 openssl req -new -key "${TLS_DIR}/svc_key.pem" -out "${TLS_DIR}/.tmp.csr" \
   -subj "/CN=${TLS_CLUSTER_NAME}/O=Aerospike Workshop/C=US"
-sign_cert "${TLS_DIR}/.tmp.csr" "${TLS_DIR}/svc.pem"
+sign_cert "${TLS_DIR}/.tmp.csr" "${TLS_DIR}/svc.pem" server "${TLS_CLUSTER_NAME}"
 rm -f "${TLS_DIR}/.tmp.csr"
 cat "${TLS_DIR}/svc.pem" "${TLS_DIR}/cacert.pem" > "${TLS_DIR}/svc_chain.pem"
 
 generate_client admin "${TLS_DIR}/admin.pem" "${TLS_DIR}/admin.key"
 generate_client app "${TLS_DIR}/app.pem" "${TLS_DIR}/app.key"
 generate_client exporter "${TLS_DIR}/exporter.pem" "${TLS_DIR}/exporter.key"
+generate_client "${TLS_CLUSTER_NAME}" "${TLS_DIR}/operator_client.pem" "${TLS_DIR}/operator_client.key"
 generate_client ako-operator "${TLS_DIR}/ako_client.pem" "${TLS_DIR}/ako_client.key"
 
 chmod 600 "${TLS_DIR}"/*.key "${TLS_DIR}/cakey.pem" 2>/dev/null || true

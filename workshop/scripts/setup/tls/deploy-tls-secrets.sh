@@ -31,11 +31,13 @@ kubectl -n "${NAMESPACE}" create secret generic tls-ca-secret \
 kubectl -n "${NAMESPACE}" create secret generic tls-server-secret \
   --from-file=svc_chain.pem="${TLS_DIR}/svc_chain.pem" \
   --from-file=svc_key.pem="${TLS_DIR}/svc_key.pem" \
+  --from-file=cacert.pem="${TLS_DIR}/cacert.pem" \
   --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl -n "${NAMESPACE}" create secret generic tls-client-admin-secret \
   --from-file=admin.pem="${TLS_DIR}/admin.pem" \
   --from-file=admin.key="${TLS_DIR}/admin.key" \
+  --from-file=cacert.pem="${TLS_DIR}/cacert.pem" \
   --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl -n "${NAMESPACE}" create secret generic tls-client-app-secret \
@@ -50,6 +52,8 @@ kubectl -n "${NAMESPACE}" create secret generic tls-client-exporter-secret \
 
 kubectl -n "${NAMESPACE}" create secret generic tls-ako-client-secret \
   --from-file=cacert.pem="${TLS_DIR}/cacert.pem" \
+  --from-file=operator_client.pem="${TLS_DIR}/operator_client.pem" \
+  --from-file=operator_client.key="${TLS_DIR}/operator_client.key" \
   --from-file=ako_client.pem="${TLS_DIR}/ako_client.pem" \
   --from-file=ako_client.key="${TLS_DIR}/ako_client.key" \
   --dry-run=client -o yaml | kubectl apply -f -

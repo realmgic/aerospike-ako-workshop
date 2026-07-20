@@ -4,7 +4,11 @@
 | ------------------ | ----- |
 | Lab ID             | `3.3` |
 | Section            | Security & Authentication |
+| EKS cluster        | `my-cluster` |
+| Aerospike cluster  | `aerocluster` |
 | AKO min version    | `4.2.0` |
+| Aerospike baseline | 3-node **8.1.0.0** with mTLS → PKI → **PKIOnly** |
+| Deploy path        | both |
 | Duration           | ~30 min |
 | Validation status  | `draft` |
 
@@ -15,6 +19,14 @@ Escalate service TLS to **mTLS** (client cert required), then migrate from passw
 ## Prerequisites
 
 - Lab **3.2** (cluster on standard-auth TLS)
+
+## Node requirements
+
+| Item | Value |
+|------|-------|
+| Instance | `i8g.2xlarge` baseline pool (same as Section 1) |
+| Reset | **Skip** (default) — escalates mTLS on existing cluster; reuses node pools |
+| Node pools | Unchanged from Labs 3.1–3.2 |
 
 ## Phase 0 — Prepare lab
 
@@ -35,15 +47,20 @@ Changes in this lab to `network.tls[]`, `tls-authenticate-client`, or `authMode:
 
 Later labs (**3.4** and **3.5**) rotate **certificate file content** or revoke by serial number — a different mechanism, mostly **hitless at the Aerospike layer** (server file reload and PKI overlap/blacklist). Keep this distinction in mind when comparing rolling restarts here to uninterrupted workload in Lab 3.4.
 
+`aerocluster` is a headless Kubernetes Service (`ClusterIP: None`) — it only resolves inside the cluster network, not from your workstation. Run `asadm` from a short-lived debug pod with the CA and app client cert secrets mounted; `--rm --attach` prints output and cleans up the pod automatically.
+
 ## Phase A — mTLS + password
 
 Connect with client cert **and** password:
 
 ```bash
-asadm -h "aerocluster:aerocluster:4333" --tls-enable \
-  --tls-cafile secrets/tls/cacert.pem \
-  --tls-certfile secrets/tls/app.pem --tls-keyfile secrets/tls/app.key \
-  -U app -P app123 -e "info"
+kubectl -n aerospike run aerospike-tool-mtls --rm --attach --restart=Never \
+  --image=aerospike/aerospike-tools:latest \
+  --overrides='{"spec":{"containers":[{"name":"aerospike-tool-mtls","image":"aerospike/aerospike-tools:latest",
+    "command":["asadm"],
+    "args":["-h","aerocluster:aerocluster:4333","--tls-enable","--tls-cafile","/etc/aerospike/tls/ca/cacert.pem","--tls-certfile","/etc/aerospike/tls/client/app.pem","--tls-keyfile","/etc/aerospike/tls/client/app.key","-U","app","-P","app123","-e","info"],
+    "volumeMounts":[{"name":"tls-ca","mountPath":"/etc/aerospike/tls/ca","readOnly":true},{"name":"tls-client-app","mountPath":"/etc/aerospike/tls/client","readOnly":true}]}],
+    "volumes":[{"name":"tls-ca","secret":{"secretName":"tls-ca-secret"}},{"name":"tls-client-app","secret":{"secretName":"tls-client-app-secret"}}]}}'
 ```
 
 **Expected:** Lab 3.2 connection without client cert now **fails**.
@@ -51,10 +68,13 @@ asadm -h "aerocluster:aerocluster:4333" --tls-enable \
 ## Phase B — PKI auth (no password)
 
 ```bash
-asadm -h "aerocluster:aerocluster:4333" --tls-enable \
-  --tls-cafile secrets/tls/cacert.pem \
-  --tls-certfile secrets/tls/app.pem --tls-keyfile secrets/tls/app.key \
-  --auth PKI -e "info"
+kubectl -n aerospike run aerospike-tool-pki --rm --attach --restart=Never \
+  --image=aerospike/aerospike-tools:latest \
+  --overrides='{"spec":{"containers":[{"name":"aerospike-tool-pki","image":"aerospike/aerospike-tools:latest",
+    "command":["asadm"],
+    "args":["-h","aerocluster:aerocluster:4333","--tls-enable","--tls-cafile","/etc/aerospike/tls/ca/cacert.pem","--tls-certfile","/etc/aerospike/tls/client/app.pem","--tls-keyfile","/etc/aerospike/tls/client/app.key","--auth","PKI","-e","info"],
+    "volumeMounts":[{"name":"tls-ca","mountPath":"/etc/aerospike/tls/ca","readOnly":true},{"name":"tls-client-app","mountPath":"/etc/aerospike/tls/client","readOnly":true}]}],
+    "volumes":[{"name":"tls-ca","secret":{"secretName":"tls-ca-secret"}},{"name":"tls-client-app","secret":{"secretName":"tls-client-app-secret"}}]}}'
 ```
 
 Workload example:

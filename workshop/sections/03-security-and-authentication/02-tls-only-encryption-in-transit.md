@@ -4,7 +4,11 @@
 | ------------------ | ----- |
 | Lab ID             | `3.2` |
 | Section            | Security & Authentication |
+| EKS cluster        | `my-cluster` |
+| Aerospike cluster  | `aerocluster` |
 | AKO min version    | `4.2.0` |
+| Aerospike baseline | 3-node **8.1.0.0** with service TLS (standard auth, port **4333**) |
+| Deploy path        | both |
 | Duration           | ~20 min |
 | Validation status  | `draft` |
 
@@ -16,42 +20,58 @@ Encrypt client-to-cluster traffic with **server TLS only** (`tls-authenticate-cl
 
 - Lab **3.1** (TLS secrets deployed)
 
-## Phase 0 — Prepare lab
+## Node requirements
 
-```bash
-./scripts/labs/prepare-lab.sh 3.2
-```
+| Item | Value |
+|------|-------|
+| Instance | `i8g.2xlarge` baseline pool (same as Section 1) |
+| Reset | None — continues from Lab 3.1 baseline cluster and TLS secrets |
+| Node pools | Baseline pool from Lab 3.1 — no new nodegroups required |
 
-Deploys the standard-auth TLS cluster (`manifests/*-cluster-tls-standard.yaml`).
+## Phase 0 — Deploy TLS standard cluster
 
-Or deploy manually:
+Lab **3.1** is the prep (PKI secrets + plain-TCP baseline). Upgrade in place to service TLS:
 
 ```bash
 ./scripts/labs/deploy-cluster-tls-standard.sh        # Path A
 ./scripts/labs/deploy-cluster-tls-standard-helm.sh   # Path B
 ```
 
+This applies [`manifests/*-cluster-tls-standard.yaml`](../../manifests/disk-cluster-tls-standard.yaml) (server TLS on port **4333**; password auth unchanged). AKO requires `operatorClientCert` whenever service TLS is enabled — in this lab it reuses the **server cert** (`svc_chain.pem`, `tlsClientName: aerocluster`) for operator management TLS only. The `ako-operator` client cert is used from Lab **3.3** mTLS onward. App clients still use password only (no client cert).
+
 ## Steps
+
+`aerocluster` is a headless Kubernetes Service (`ClusterIP: None`) — it only resolves inside the cluster network, not from your workstation. Run these `asadm`/`openssl` commands from a short-lived debug pod instead; `--rm --attach` prints output and cleans up the pod automatically.
 
 ### Connect with TLS + password (no client cert)
 
 ```bash
-asadm -h "aerocluster:aerocluster:4333" --tls-enable \
-  --tls-cafile secrets/tls/cacert.pem \
-  -U admin -P admin123 -e "show stat like cluster_size"
+kubectl -n aerospike run aerospike-tool-tls --rm --attach --restart=Never \
+  --image=aerospike/aerospike-tools:latest \
+  --overrides='{"spec":{"containers":[{"name":"aerospike-tool-tls","image":"aerospike/aerospike-tools:latest",
+    "command":["asadm"],
+    "args":["-h","aerocluster:aerocluster:4333","--tls-enable","--tls-cafile","/etc/aerospike/tls/ca/cacert.pem","-U","admin","-P","admin123","-e","show stat like cluster_size"],
+    "volumeMounts":[{"name":"tls-ca","mountPath":"/etc/aerospike/tls/ca","readOnly":true}]}],
+    "volumes":[{"name":"tls-ca","secret":{"secretName":"tls-ca-secret"}}]}}'
 ```
 
 ### Confirm plain port still works
 
 ```bash
-asadm -h aerocluster -U admin -P admin123 -e "show stat like cluster_size"
+kubectl run -it --rm aerospike-tool -n aerospike --restart=Never \
+  --image=aerospike/aerospike-tools:latest -- \
+  asadm -h aerocluster -U admin -P admin123 -e "show stat like cluster_size"
 ```
 
 ### Inspect TLS handshake (no client cert required)
 
 ```bash
-POD_IP=$(kubectl -n aerospike get pod -l aerospike.com/cr=aerocluster -o jsonpath='{.items[0].status.podIP}')
-openssl s_client -connect "${POD_IP}:4333" -CAfile secrets/tls/cacert.pem </dev/null
+kubectl -n aerospike run aerospike-tls-inspect --rm --attach --restart=Never \
+  --image=aerospike/aerospike-tools:latest \
+  --overrides='{"spec":{"containers":[{"name":"aerospike-tls-inspect","image":"aerospike/aerospike-tools:latest",
+    "command":["sh","-c","openssl s_client -connect aerocluster:4333 -CAfile /etc/aerospike/tls/ca/cacert.pem </dev/null"],
+    "volumeMounts":[{"name":"tls-ca","mountPath":"/etc/aerospike/tls/ca","readOnly":true}]}],
+    "volumes":[{"name":"tls-ca","secret":{"secretName":"tls-ca-secret"}}]}}'
 ```
 
 ## Verify (pass/fail)

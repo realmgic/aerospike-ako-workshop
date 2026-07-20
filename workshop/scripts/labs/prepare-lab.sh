@@ -222,9 +222,47 @@ deploy_maintenance_cluster() {
 }
 
 wait_for_cluster() {
-  kubectl -n "${NAMESPACE}" wait --for=jsonpath='{.status.phase}'=Completed \
-    aerospikecluster/aerocluster --timeout=600s
-  validate_cluster
+  local timeout="${1:-600}"
+  local deadline=$((SECONDS + timeout))
+  local poll_interval=15
+  local error_streak=0
+  local phase running expected=3
+
+  echo "Waiting for AerospikeCluster phase Completed (timeout ${timeout}s)..."
+  while (( SECONDS < deadline )); do
+    phase="$(kubectl -n "${NAMESPACE}" get aerospikecluster aerocluster -o jsonpath='{.status.phase}' 2>/dev/null || echo missing)"
+    running="$(kubectl -n "${NAMESPACE}" get pods -l aerospike.com/cr=aerocluster --field-selector=status.phase=Running --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+
+    if [[ "${phase}" == "Completed" ]] && [[ "${running:-0}" -ge "${expected}" ]]; then
+      validate_cluster
+      return 0
+    fi
+
+    echo "  phase=${phase}, pods Running=${running:-0}/${expected}"
+
+    if [[ "${phase}" == "Error" ]]; then
+      error_streak=$((error_streak + 1))
+      if [[ "${error_streak}" -ge 2 ]]; then
+        echo "FAIL AerospikeCluster phase Error — AKO reconcile did not complete" >&2
+        echo "Recent events:" >&2
+        kubectl -n "${NAMESPACE}" get events --field-selector involvedObject.name=aerocluster --sort-by='.lastTimestamp' 2>/dev/null \
+          | tail -5 >&2 || true
+        echo "Check: kubectl -n ${NAMESPACE} describe aerospikecluster aerocluster" >&2
+        echo "Common cause (Lab 3.2): tls stanza needs ca-file; operatorClientCert should use server cert (svc_chain.pem) + tlsClientName aerocluster." >&2
+        echo "Also check: svc_chain.pem must have a SAN (not just CN) — 'openssl x509 -in secrets/tls/svc_chain.pem -noout -text | grep -A1 \"Subject Alternative Name\"'. If missing, run generate-workshop-pki.sh --server-only + deploy-tls-secrets.sh." >&2
+        return 1
+      fi
+    else
+      error_streak=0
+    fi
+
+    sleep "${poll_interval}"
+  done
+
+  echo "FAIL timed out waiting for AerospikeCluster phase Completed (${timeout}s)" >&2
+  kubectl -n "${NAMESPACE}" get aerospikecluster aerocluster -o wide 2>/dev/null || true
+  kubectl -n "${NAMESPACE}" get pods -l aerospike.com/cr=aerocluster 2>/dev/null || true
+  return 1
 }
 
 prepare_cluster_lab() {
@@ -306,15 +344,27 @@ deploy_tls_mtls() {
 }
 
 prepare_lab_3_1() {
-  RESET_OVERRIDE=full
+  if [[ "${RESET_OVERRIDE}" == "full" ]]; then
+    echo "NOTE: Lab 3.1 reuses existing workload node pools — using light reset instead of --full."
+    RESET_OVERRIDE=light
+  fi
+
+  echo "=== Prepare lab 3.1 (reset=${RESET_OVERRIDE:-light}, storage=${EFFECTIVE_CLUSTER_STORAGE}) ==="
+  echo "Ensuring baseline node pool exists, then light reset to 8.1.0.x (PKI generated in lab steps)."
+
+  ensure_main_kubecontext
+  "${SCRIPT_DIR}/lab-nodes.sh" "1.1" ensure
+  "${SCRIPT_DIR}/lab-nodes.sh" "1.1" validate
+
   prepare_cluster_lab "3.1" \
-    "Full reset to 8.1.0.x baseline — generate and deploy TLS secrets in lab steps (cluster stays plain TCP until Lab 3.2)." \
+    "Light reset redeploys plain-TCP baseline on 8.1.0.x — existing node pools are reused." \
     true
 }
 
 prepare_lab_3_2() {
-  local reset_mode="${RESET_OVERRIDE:-light}"
+  local reset_mode="${RESET_OVERRIDE:-skip}"
   echo "=== Prepare lab 3.2 (reset=${reset_mode}, storage=${EFFECTIVE_CLUSTER_STORAGE}) ==="
+  echo "NOTE: Trainees should follow Lab 3.2 guide — deploy TLS after Lab 3.1 (no separate prep)." >&2
   ensure_main_kubecontext
   case "${reset_mode}" in
     full)

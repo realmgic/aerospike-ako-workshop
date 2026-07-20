@@ -4,7 +4,11 @@
 | ------------------ | ----- |
 | Lab ID             | `3.4` |
 | Section            | Security & Authentication |
+| EKS cluster        | `my-cluster` |
+| Aerospike cluster  | `aerocluster` |
 | AKO min version    | `4.2.0` |
+| Aerospike baseline | 3-node **8.1.0.0** mTLS + PKI (continues from Lab 3.3) |
+| Deploy path        | both |
 | Duration           | ~20 min |
 | Validation status  | `draft` |
 
@@ -57,6 +61,14 @@ During server cert rotation, clients and workloads stay authenticated because:
 ## Prerequisites
 
 - Lab **3.3** complete (mTLS + PKI recommended)
+
+## Node requirements
+
+| Item | Value |
+|------|-------|
+| Instance | `i8g.2xlarge` baseline pool (same as Section 1) |
+| Reset | **Skip** (default) — rotates server cert on live cluster; reuses node pools |
+| Node pools | Unchanged from Labs 3.1–3.3 |
 
 ## Phase 0 — Prepare lab
 

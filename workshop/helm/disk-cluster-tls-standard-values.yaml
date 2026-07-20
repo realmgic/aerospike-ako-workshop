@@ -4,6 +4,13 @@ enableDynamicConfigUpdate: true
 image:
   repository: aerospike/aerospike-server-enterprise
   tag: 8.1.0.0
+operatorClientCert:
+  secretCertSource:
+    secretName: tls-server-secret
+    caCertsFilename: cacert.pem
+    clientCertFilename: svc_chain.pem
+    clientKeyFilename: svc_key.pem
+  tlsClientName: aerocluster
 podSpec:
   nodeSelector:
     workshop.aerospike.com/node-pool: baseline
@@ -129,6 +136,7 @@ aerospikeConfig:
     - name: aerocluster
       cert-file: /etc/aerospike/tls/svc_chain.pem
       key-file: /etc/aerospike/tls/svc_key.pem
+      ca-file: /etc/aerospike/tls/ca/cacert.pem
   namespaces:
   - name: test
     replication-factor: 2

@@ -4,7 +4,11 @@
 | ------------------ | ----- |
 | Lab ID             | `3.5` |
 | Section            | Security & Authentication |
+| EKS cluster        | `my-cluster` |
+| Aerospike cluster  | `aerocluster` |
 | AKO min version    | `4.2.0` |
+| Aerospike baseline | 3-node **8.1.0.0** mTLS + PKIOnly (continues from Lab 3.4) |
+| Deploy path        | both |
 | Duration           | ~25 min |
 | Validation status  | `draft` |
 
@@ -46,6 +50,14 @@ Patching `tls-client-app-secret` alone follows the same Kubernetes pattern as La
 
 - Lab **3.4** (or **3.3** with PKI workload running)
 
+## Node requirements
+
+| Item | Value |
+|------|-------|
+| Instance | `i8g.2xlarge` baseline pool (same as Section 1) |
+| Reset | **Skip** (default) — client cert overlap on live cluster; reuses node pools |
+| Node pools | Unchanged from Labs 3.1–3.4 |
+
 ## Phase 0 — Prepare lab
 
 ```bash
@@ -71,13 +83,23 @@ Both v1 and v2 are valid until blacklist is applied.
 
 Confirm v2 connection works; v1 still works (overlap window).
 
-Test v1 explicitly (optional):
+Test v1 explicitly (optional). `aerocluster` is a headless Service and only resolves inside the cluster, and `app-v1.pem`/`app-v1.key` are local-only files (not a deployed Secret), so stage them into a temporary Secret and mount it into a debug pod:
 
 ```bash
-asadm -h "aerocluster:aerocluster:4333" --tls-enable \
-  --tls-cafile secrets/tls/cacert.pem \
-  --tls-certfile secrets/tls/app-v1.pem --tls-keyfile secrets/tls/app-v1.key \
-  --auth PKI -e "info"
+kubectl -n aerospike create secret generic tls-client-app-v1-secret \
+  --from-file=app-v1.pem=secrets/tls/app-v1.pem \
+  --from-file=app-v1.key=secrets/tls/app-v1.key \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl -n aerospike run aerospike-tool-v1 --rm --attach --restart=Never \
+  --image=aerospike/aerospike-tools:latest \
+  --overrides='{"spec":{"containers":[{"name":"aerospike-tool-v1","image":"aerospike/aerospike-tools:latest",
+    "command":["asadm"],
+    "args":["-h","aerocluster:aerocluster:4333","--tls-enable","--tls-cafile","/etc/aerospike/tls/ca/cacert.pem","--tls-certfile","/etc/aerospike/tls/client/app-v1.pem","--tls-keyfile","/etc/aerospike/tls/client/app-v1.key","--auth","PKI","-e","info"],
+    "volumeMounts":[{"name":"tls-ca","mountPath":"/etc/aerospike/tls/ca","readOnly":true},{"name":"tls-client-v1","mountPath":"/etc/aerospike/tls/client","readOnly":true}]}],
+    "volumes":[{"name":"tls-ca","secret":{"secretName":"tls-ca-secret"}},{"name":"tls-client-v1","secret":{"secretName":"tls-client-app-v1-secret"}}]}}'
+
+kubectl -n aerospike delete secret tls-client-app-v1-secret
 ```
 
 ### Apply cert blacklist for v1
