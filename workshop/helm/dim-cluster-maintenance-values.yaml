@@ -1,4 +1,0 @@
-# Lab 2.5: post-2.4 baseline — overlay for helm/dim-cluster-values.yaml
-image:
-  repository: aerospike/aerospike-server-enterprise
-  tag: "8.1.2.0"

@@ -32,25 +32,31 @@ Pin chart version to match the installed AKO operator. Lab scripts call `resolve
 
 ## Lab artifacts
 
-Each lab AerospikeCluster manifest under `manifests/` has equivalent Helm values. Storage variants use explicit **`dim-`** (in-memory) or **`disk-`** (device) prefixes.
+Each lab AerospikeCluster manifest under `manifests/` has equivalent Helm values. Storage-specific config lives in the **base** files; lab deltas live in **overlay** files.
 
 ### Base + overlay layering
 
-Full cluster specs live in two base files only:
+Full cluster specs live in two storage-specific base files:
 
-- `helm/dim-cluster-values.yaml` — in-memory baseline (8.1.0.0)
-- `helm/disk-cluster-values.yaml` — device baseline (8.1.0.0)
+- `helm/base-dim-cluster-values.yaml` — in-memory baseline (8.1.0.0)
+- `helm/base-disk-cluster-values.yaml` — device baseline (8.1.0.0)
 
-Lab-specific Helm files are **thin overlays** merged with `-f` (later files override earlier keys). Example — warm restart on device storage:
+Lab-specific Helm files are **thin overlays** merged with `-f` (later files override earlier keys). Most overlays are **shared** (same file for disk and dim) because the delta is storage-agnostic; only replication-factor overlays differ by storage engine.
+
+Example — warm restart on device storage:
 
 ```bash
 helm upgrade --install aerocluster aerospike/aerospike-cluster \
-  -f helm/disk-cluster-values.yaml \
-  -f helm/disk-pod-warm-restart-op-values.yaml \
+  -f helm/base-disk-cluster-values.yaml \
+  -f helm/overlay-pod-warm-restart-op-values.yaml \
   ...
 ```
 
+In-memory: swap the base to `helm/base-dim-cluster-values.yaml`; the overlay file is the same.
+
 Lab scripts call `build_cluster_helm_value_args()` in `scripts/lib/cluster-storage.sh` to resolve the correct base + overlay chain for `CLUSTER_STORAGE=disk|dim`.
+
+**Naming rule:** `base-` prefix = full storage baseline; `overlay-` prefix = thin lab delta merged with `-f`. Within overlays, `overlay-dim-` / `overlay-disk-` means content differs by storage engine (currently only `overlay-dim-replication-factor-rf3-values.yaml` and `overlay-disk-replication-factor-rf3-values.yaml`). Standalone full specs (`rack-cluster-*`, `operator-values.yaml`) have no prefix.
 
 **Exceptions (setup/demo only — no Helm pair):**
 

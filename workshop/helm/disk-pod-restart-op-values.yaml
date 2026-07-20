@@ -1,4 +1,0 @@
-# Lab 2.3: PodRestart (cold) — overlay for helm/disk-cluster-values.yaml
-operations:
-  - kind: PodRestart
-    id: pod-restart-1

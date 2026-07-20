@@ -97,19 +97,26 @@ disk_helm_basename() {
 cluster_helm_base_path() {
   local storage="$1"
   if [[ "${storage}" == dim ]]; then
-    echo "${WORKSHOP_ROOT}/helm/dim-cluster-values.yaml"
+    echo "${WORKSHOP_ROOT}/helm/base-dim-cluster-values.yaml"
   else
-    echo "${WORKSHOP_ROOT}/helm/disk-cluster-values.yaml"
+    echo "${WORKSHOP_ROOT}/helm/base-disk-cluster-values.yaml"
   fi
 }
 
 cluster_helm_overlay_path() {
   local storage="$1" name="$2"
-  if [[ "${storage}" == dim ]]; then
-    echo "${WORKSHOP_ROOT}/helm/dim-${name}-values.yaml"
-  else
-    echo "${WORKSHOP_ROOT}/helm/disk-${name}-values.yaml"
-  fi
+  case "${name}" in
+    replication-factor-rf3)
+      if [[ "${storage}" == dim ]]; then
+        echo "${WORKSHOP_ROOT}/helm/overlay-dim-replication-factor-rf3-values.yaml"
+      else
+        echo "${WORKSHOP_ROOT}/helm/overlay-disk-replication-factor-rf3-values.yaml"
+      fi
+      ;;
+    *)
+      echo "${WORKSHOP_ROOT}/helm/overlay-${name}-values.yaml"
+      ;;
+  esac
 }
 
 resolve_cluster_helm_value_files() {

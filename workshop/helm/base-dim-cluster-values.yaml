@@ -1,4 +1,4 @@
-# Mirrors manifests/disk-cluster.yaml
+# Base cluster values (in-memory) — mirrors manifests/dim-cluster.yaml; layer lab overlays with additional -f flags
 replicas: 3
 enableDynamicConfigUpdate: true
 
@@ -42,15 +42,9 @@ podSpec:
 
 
 storage:
-  localStorageClasses:
-    - local-ssd
   filesystemVolumePolicy:
     cascadeDelete: true
     initMethod: deleteFiles
-  blockVolumePolicy:
-    cascadeDelete: true
-    initMethod: blkdiscardWithHeaderCleanup
-    wipeMethod: blkdiscard
   volumes:
     - name: workdir
       source:
@@ -60,15 +54,6 @@ storage:
           size: 3Gi
       aerospike:
         path: /opt/aerospike
-    - name: ns
-      source:
-        persistentVolume:
-          storageClass: local-ssd
-          volumeMode: Block
-          accessModes: ["ReadWriteOnce"]
-          size: 250Gi
-      aerospike:
-        path: /dev/data/local1
     - name: aerospike-config-secret
       source:
         secret:
@@ -110,8 +95,7 @@ aerospikeConfig:
     - name: test
       replication-factor: 2
       migrate-sleep: 0 # For demo purposes only
-      indexes-memory-budget: 49478021959  # 80% of 57.6 GiB (90% of 64 GiB) = 46.08 GiB
+      indexes-memory-budget: 15461882265  # 25% of 57.6 GiB (90% of 64 GiB) = 14.4 GiB
       storage-engine:
-        type: device
-        devices:
-          - /dev/data/local1
+        type: memory
+        data-size: 30923764531  # 50% of 57.6 GiB (90% of 64 GiB) = 28.8 GiB

@@ -112,5 +112,5 @@ See [instructor-notes.md](instructor-notes.md).
 - EKS reference config: [clusters/upgrade-lab-cluster.yaml](../../clusters/upgrade-lab-cluster.yaml)
 - **Baseline Aerospike cluster (3 nodes):**
   - Path A: [manifests/disk-cluster.yaml](../../manifests/disk-cluster.yaml) (default) · [manifests/dim-cluster.yaml](../../manifests/dim-cluster.yaml) (`--dim`)
-  - Path B: [helm/disk-cluster-values.yaml](../../helm/disk-cluster-values.yaml) · [helm/dim-cluster-values.yaml](../../helm/dim-cluster-values.yaml)
+  - Path B: [helm/base-disk-cluster-values.yaml](../../helm/base-disk-cluster-values.yaml) · [helm/base-dim-cluster-values.yaml](../../helm/base-dim-cluster-values.yaml)
 

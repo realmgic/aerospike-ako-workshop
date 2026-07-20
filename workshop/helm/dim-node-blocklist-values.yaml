@@ -1,3 +1,0 @@
-# Lab 2.5: k8sNodeBlockList — overlay for helm/dim-cluster-values.yaml + helm/dim-cluster-maintenance-values.yaml
-k8sNodeBlockList:
-  - ip-192-168-x-x.ec2.internal  # TRAINEE EDIT

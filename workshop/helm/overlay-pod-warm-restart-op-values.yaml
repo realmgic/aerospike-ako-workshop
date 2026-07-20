@@ -1,0 +1,4 @@
+# Lab 2.3: WarmRestart — overlay for helm/base-dim-cluster-values.yaml or helm/base-disk-cluster-values.yaml
+operations:
+  - kind: WarmRestart
+    id: warm-restart-1

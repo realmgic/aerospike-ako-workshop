@@ -175,7 +175,7 @@ labs:
     karpenter_observe: [nodeclaims, nodes]
     artifacts:
       kubectl: [manifests/disk-cluster.yaml, manifests/dim-cluster.yaml, manifests/disk-cluster-scale-5.yaml, manifests/dim-cluster-scale-5.yaml]
-      helm: [helm/disk-cluster-values.yaml, helm/dim-cluster-values.yaml, helm/disk-cluster-scale-5-values.yaml, helm/dim-cluster-scale-5-values.yaml]
+      helm: [helm/base-disk-cluster-values.yaml, helm/base-dim-cluster-values.yaml, helm/overlay-cluster-scale-5-values.yaml]
     scripts: [scripts/labs/prepare-lab.sh, scripts/labs/lab-nodes.sh, scripts/labs/deploy-cluster.sh, scripts/labs/deploy-cluster-helm.sh, scripts/labs/deploy-dim-cluster.sh, scripts/labs/deploy-dim-cluster-helm.sh, scripts/labs/load-data.sh]
     depends_on: ["0.6"]
     doc_urls:
@@ -235,7 +235,7 @@ labs:
     node_provisioning: [eksctl, karpenter]
     artifacts:
       kubectl: [manifests/disk-cluster.yaml, manifests/dim-cluster.yaml, manifests/disk-replication-factor-rf3.yaml, manifests/dim-replication-factor-rf3.yaml]
-      helm: [helm/disk-cluster-values.yaml, helm/dim-cluster-values.yaml, helm/disk-replication-factor-rf3-values.yaml, helm/dim-replication-factor-rf3-values.yaml]
+      helm: [helm/base-disk-cluster-values.yaml, helm/base-dim-cluster-values.yaml, helm/overlay-disk-replication-factor-rf3-values.yaml, helm/overlay-dim-replication-factor-rf3-values.yaml]
     scripts: [scripts/labs/prepare-lab.sh, scripts/labs/lab-nodes.sh, scripts/labs/deploy-cluster.sh, scripts/labs/deploy-cluster-helm.sh, scripts/labs/deploy-dim-cluster.sh, scripts/labs/deploy-dim-cluster-helm.sh]
     depends_on: ["2.2"]
     doc_urls:
@@ -299,7 +299,7 @@ labs:
     node_provisioning: [eksctl, karpenter]
     artifacts:
       kubectl: [manifests/dim-pod-restart-op.yaml, manifests/dim-pod-warm-restart-op.yaml, manifests/disk-pod-restart-op.yaml, manifests/disk-pod-warm-restart-op.yaml]
-      helm: [helm/disk-cluster-values.yaml, helm/dim-cluster-values.yaml, helm/disk-pod-restart-op-values.yaml, helm/dim-pod-restart-op-values.yaml, helm/disk-pod-warm-restart-op-values.yaml, helm/dim-pod-warm-restart-op-values.yaml]
+      helm: [helm/base-disk-cluster-values.yaml, helm/base-dim-cluster-values.yaml, helm/overlay-pod-restart-op-values.yaml, helm/overlay-pod-warm-restart-op-values.yaml]
     scripts:
       - scripts/labs/prepare-lab.sh
       - scripts/labs/deploy-cluster.sh
@@ -324,7 +324,7 @@ labs:
     node_provisioning: [eksctl, karpenter]
     artifacts:
       kubectl: [manifests/dim-aerospike-upgrade.yaml, manifests/disk-aerospike-upgrade.yaml]
-      helm: [helm/disk-cluster-values.yaml, helm/dim-cluster-values.yaml, helm/disk-aerospike-upgrade-values.yaml, helm/dim-aerospike-upgrade-values.yaml]
+      helm: [helm/base-disk-cluster-values.yaml, helm/base-dim-cluster-values.yaml, helm/overlay-aerospike-upgrade-values.yaml]
     scripts:
       - scripts/labs/prepare-lab.sh
       - scripts/labs/deploy-cluster.sh
@@ -355,12 +355,10 @@ labs:
         - manifests/disk-node-blocklist.yaml
         - manifests/dim-node-blocklist.yaml
       helm:
-        - helm/disk-cluster-values.yaml
-        - helm/dim-cluster-values.yaml
-        - helm/disk-cluster-maintenance-values.yaml
-        - helm/dim-cluster-maintenance-values.yaml
-        - helm/disk-node-blocklist-values.yaml
-        - helm/dim-node-blocklist-values.yaml
+        - helm/base-disk-cluster-values.yaml
+        - helm/base-dim-cluster-values.yaml
+        - helm/overlay-cluster-maintenance-values.yaml
+        - helm/overlay-node-blocklist-values.yaml
     scripts:
       - scripts/labs/prepare-lab.sh
       - scripts/labs/verify-safe-pod-eviction.sh

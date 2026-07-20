@@ -407,7 +407,7 @@ Same migration observation pattern, triggered via CR blocklist instead of drain 
 
 ### Path B — Helm
 
-1. Edit `helm/disk-node-blocklist-values.yaml` (or `helm/dim-node-blocklist-values.yaml` with `--dim`) — set `k8sNodeBlockList` to `$NODE`.
+1. Edit `helm/overlay-node-blocklist-values.yaml` — set `k8sNodeBlockList` to `$NODE`.
 2. Apply and watch (chart `--version` must match installed AKO — same resolver as `deploy-cluster-maintenance-helm.sh`):
   ```bash
    source scripts/env/workshop.env
@@ -415,9 +415,9 @@ Same migration observation pattern, triggered via CR blocklist instead of drain 
    load_env
    helm upgrade aerocluster aerospike/aerospike-cluster \
      -n aerospike \
-     -f helm/disk-cluster-values.yaml \
-     -f helm/disk-cluster-maintenance-values.yaml \
-     -f helm/disk-node-blocklist-values.yaml \
+     -f helm/base-disk-cluster-values.yaml \
+     -f helm/overlay-cluster-maintenance-values.yaml \
+     -f helm/overlay-node-blocklist-values.yaml \
      --version="$(resolve_cluster_helm_chart_version)"
    kubectl -n aerospike get pod -o wide --field-selector spec.nodeName="$NODE" -w
   ```
@@ -488,8 +488,8 @@ source scripts/lib/common.sh
 load_env
 helm upgrade aerocluster aerospike/aerospike-cluster \
   -n aerospike \
-  -f helm/disk-cluster-values.yaml \
-  -f helm/disk-cluster-maintenance-values.yaml \
+  -f helm/base-disk-cluster-values.yaml \
+  -f helm/overlay-cluster-maintenance-values.yaml \
   --version="$(resolve_cluster_helm_chart_version)" \
   --set k8sNodeBlockList=null
 kubectl -n aerospike wait --for=jsonpath='{.status.phase}'=Completed aerospikecluster/aerocluster --timeout=900s
@@ -524,10 +524,10 @@ Workshop YAML used in this lab (Path A = `kubectl apply`; Path B = `helm upgrade
 
 - **Maintenance cluster (8.1.2.x, extended grace period):**
   - Path A: [manifests/disk-cluster-maintenance.yaml](../../manifests/disk-cluster-maintenance.yaml) (default) · [manifests/dim-cluster-maintenance.yaml](../../manifests/dim-cluster-maintenance.yaml) (`--dim`)
-  - Path B: [helm/disk-cluster-values.yaml](../../helm/disk-cluster-values.yaml) + [helm/disk-cluster-maintenance-values.yaml](../../helm/disk-cluster-maintenance-values.yaml) (default) · [helm/dim-cluster-values.yaml](../../helm/dim-cluster-values.yaml) + [helm/dim-cluster-maintenance-values.yaml](../../helm/dim-cluster-maintenance-values.yaml) (`--dim`)
+  - Path B: [helm/base-disk-cluster-values.yaml](../../helm/base-disk-cluster-values.yaml) or [helm/base-dim-cluster-values.yaml](../../helm/base-dim-cluster-values.yaml) (`--dim`) + [helm/overlay-cluster-maintenance-values.yaml](../../helm/overlay-cluster-maintenance-values.yaml)
 - **Node blocklist (eksctl path only):**
   - Path A: [manifests/disk-node-blocklist.yaml](../../manifests/disk-node-blocklist.yaml) (default) · [manifests/dim-node-blocklist.yaml](../../manifests/dim-node-blocklist.yaml) (`--dim`)
-  - Path B: [helm/disk-cluster-values.yaml](../../helm/disk-cluster-values.yaml) + [helm/disk-cluster-maintenance-values.yaml](../../helm/disk-cluster-maintenance-values.yaml) + [helm/disk-node-blocklist-values.yaml](../../helm/disk-node-blocklist-values.yaml) (default) · [helm/dim-cluster-values.yaml](../../helm/dim-cluster-values.yaml) + [helm/dim-cluster-maintenance-values.yaml](../../helm/dim-cluster-maintenance-values.yaml) + [helm/dim-node-blocklist-values.yaml](../../helm/dim-node-blocklist-values.yaml) (`--dim`)
+  - Path B: [helm/base-disk-cluster-values.yaml](../../helm/base-disk-cluster-values.yaml) or [helm/base-dim-cluster-values.yaml](../../helm/base-dim-cluster-values.yaml) (`--dim`) + [helm/overlay-cluster-maintenance-values.yaml](../../helm/overlay-cluster-maintenance-values.yaml) + [helm/overlay-node-blocklist-values.yaml](../../helm/overlay-node-blocklist-values.yaml)
 
 ## References
 

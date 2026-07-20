@@ -1,4 +1,4 @@
-# Lab 1.4: replication-factor 3 — overlay for helm/disk-cluster-values.yaml
+# Lab 1.4: replication-factor 3 — overlay for helm/base-disk-cluster-values.yaml
 aerospikeConfig:
   namespaces:
     - name: test

@@ -1,2 +1,0 @@
-# Lab 1.1: scale to 5 replicas — overlay for helm/disk-cluster-values.yaml
-replicas: 5

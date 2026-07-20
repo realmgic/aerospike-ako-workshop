@@ -1,0 +1,2 @@
+# Lab 1.1: scale to 5 replicas — overlay for helm/base-dim-cluster-values.yaml or helm/base-disk-cluster-values.yaml
+replicas: 5
