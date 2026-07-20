@@ -95,8 +95,8 @@ start_workload() {
 
   local host tls_args=() auth_args=()
   host="$(asbench_host_arg)"
-  build_asbench_tls_args tls_args
-  asbench_auth_args auth_args
+  read_args_into tls_args < <(build_asbench_tls_args)
+  read_args_into auth_args < <(asbench_auth_args)
 
   echo "=== Starting workload Job (${WORKLOAD_TPS} TPS, mode=${AEROSPIKE_TLS_MODE}) ==="
 
@@ -130,7 +130,7 @@ EOF
             - -h
             - ${host}
 EOF
-    for arg in "${auth_args[@]}"; do
+    for arg in "${auth_args[@]+"${auth_args[@]}"}"; do
       printf '            - "%s"\n' "${arg}"
     done
     cat <<EOF
@@ -150,7 +150,7 @@ EOF
             - "${WORKLOAD_DURATION}"
             - --debug
 EOF
-    for arg in "${tls_args[@]}"; do
+    for arg in "${tls_args[@]+"${tls_args[@]}"}"; do
       printf '            - "%s"\n' "${arg}"
     done
   } > "${job_file}"

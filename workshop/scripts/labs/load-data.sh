@@ -60,8 +60,8 @@ validate_cluster_exists() {
 run_asbench_pod() {
   local host tls_args=() auth_args=() job_name="asbench-load-$$"
   host="$(asbench_host_arg)"
-  build_asbench_tls_args tls_args
-  asbench_auth_args auth_args
+  read_args_into tls_args < <(build_asbench_tls_args)
+  read_args_into auth_args < <(asbench_auth_args)
 
   local job_file
   job_file="$(mktemp)"
@@ -93,7 +93,7 @@ EOF
             - -h
             - ${host}
 EOF
-    for arg in "${auth_args[@]}"; do printf '            - "%s"\n' "${arg}"; done
+    for arg in "${auth_args[@]+"${auth_args[@]}"}"; do printf '            - "%s"\n' "${arg}"; done
     cat <<EOF
             - -n
             - ${MIGRATION_LOAD_NAMESPACE}
@@ -112,7 +112,7 @@ EOF
     if [[ "${MIGRATION_LOAD_DURATION}" -gt 0 ]]; then
       printf '            - -T\n            - "%s"\n' "${MIGRATION_LOAD_DURATION}"
     fi
-    for arg in "${tls_args[@]}"; do printf '            - "%s"\n' "${arg}"; done
+    for arg in "${tls_args[@]+"${tls_args[@]}"}"; do printf '            - "%s"\n' "${arg}"; done
   } > "${job_file}"
 
   kubectl apply -f "${job_file}"
@@ -125,11 +125,11 @@ print_namespace_stats() {
   echo "=== Namespace ${MIGRATION_LOAD_NAMESPACE} stats ==="
   local host tls_args=() auth_args=()
   host="$(asbench_host_arg)"
-  build_asbench_tls_args tls_args
-  asbench_auth_args auth_args
+  read_args_into tls_args < <(build_asbench_tls_args)
+  read_args_into auth_args < <(asbench_auth_args)
   kubectl run "aerospike-tool-stats-$$" -n "${NAMESPACE}" --restart=Never \
     --image=aerospike/aerospike-tools:latest --rm -i -- \
-    asadm -h "${host}" "${auth_args[@]}" "${tls_args[@]}" -e "info" 2>/dev/null || true
+    asadm -h "${host}" "${auth_args[@]+"${auth_args[@]}"}" "${tls_args[@]+"${tls_args[@]}"}" -e "info" 2>/dev/null || true
 }
 
 ensure_target_kubecontext

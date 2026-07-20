@@ -18,23 +18,23 @@ asbench_host_arg() {
   fi
 }
 
-# Populates a nameref array with TLS/PKI asbench flags.
+# Prints TLS/PKI asbench flags, one per line. `local -n` namerefs (bash 4.3+)
+# are avoided here since macOS ships bash 3.2 by default; capture output with
+# a `while read` loop instead (see build_asbench_tls_args / asbench_auth_args
+# call sites in run-lab-workload.sh and load-data.sh).
 build_asbench_tls_args() {
-  local -n _out=$1
-  _out=()
   case "${AEROSPIKE_TLS_MODE}" in
     plain) ;;
     tls)
-      _out+=(--tls-enable --tls-cafile "${AEROSPIKE_TLS_CA_MOUNT}")
+      printf '%s\n' --tls-enable --tls-cafile "${AEROSPIKE_TLS_CA_MOUNT}"
       ;;
     pki)
-      _out+=(
-        --tls-enable
-        --tls-cafile "${AEROSPIKE_TLS_CA_MOUNT}"
-        --tls-certfile "${AEROSPIKE_TLS_CERT_MOUNT}"
-        --tls-keyfile "${AEROSPIKE_TLS_KEY_MOUNT}"
+      printf '%s\n' \
+        --tls-enable \
+        --tls-cafile "${AEROSPIKE_TLS_CA_MOUNT}" \
+        --tls-certfile "${AEROSPIKE_TLS_CERT_MOUNT}" \
+        --tls-keyfile "${AEROSPIKE_TLS_KEY_MOUNT}" \
         --auth PKI
-      )
       ;;
     *)
       echo "ERROR: invalid AEROSPIKE_TLS_MODE=${AEROSPIKE_TLS_MODE}" >&2
@@ -44,10 +44,25 @@ build_asbench_tls_args() {
 }
 
 asbench_auth_args() {
-  local -n _out=$1
-  _out=()
   if [[ "${AEROSPIKE_TLS_MODE}" != pki ]]; then
-    _out+=(-U "${AEROSPIKE_AUTH_USER:-app}" -P "${AEROSPIKE_AUTH_PASSWORD:-app123}")
+    printf '%s\n' -U "${AEROSPIKE_AUTH_USER:-app}" -P "${AEROSPIKE_AUTH_PASSWORD:-app123}"
+  fi
+}
+
+# Reads newline-delimited items from stdin into the named array variable
+# (portable bash 3.2+ substitute for `local -n` namerefs / `mapfile -t`).
+# The empty-array branch avoids "unbound variable" under `set -u` on bash
+# versions before 4.4, which treat `${arr[@]}` on an empty array as unset.
+read_args_into() {
+  local __var="$1" __line
+  local __arr=()
+  while IFS= read -r __line; do
+    __arr+=("${__line}")
+  done
+  if [[ ${#__arr[@]} -eq 0 ]]; then
+    eval "${__var}=()"
+  else
+    eval "${__var}=(\"\${__arr[@]}\")"
   fi
 }
 
