@@ -1,8 +1,24 @@
 #!/usr/bin/env bash
 # Shared helpers for workshop scripts.
-set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Only enable errexit when executed directly; sourcing must not kill the parent shell.
+if [[ -n "${BASH_VERSION:-}" ]]; then
+  [[ "${BASH_SOURCE[0]}" == "${0}" ]] && set -euo pipefail
+elif [[ -n "${ZSH_VERSION:-}" ]]; then
+  [[ "${(%):-%x}" == "${0}" ]] && set -euo pipefail
+else
+  set -euo pipefail
+fi
+
+if [[ -n "${BASH_VERSION:-}" ]]; then
+  _LIB_SELF="${BASH_SOURCE[0]}"
+elif [[ -n "${ZSH_VERSION:-}" ]]; then
+  _LIB_SELF="${(%):-%x}"
+else
+  _LIB_SELF="$0"
+fi
+SCRIPT_DIR="$(cd "$(dirname "${_LIB_SELF}")" && pwd)"
+unset _LIB_SELF
 WORKSHOP_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 ensure_noninteractive_cli() {
@@ -89,17 +105,13 @@ ako_operator_deployment_name() {
 # Parse semver from aerospike-kubernetes-operator.v4.4.1 or chart name suffix.
 _ako_version_from_csv_name() {
   local csv_name="$1"
-  if [[ "${csv_name}" =~ ^aerospike-kubernetes-operator\.v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
-    echo "${BASH_REMATCH[1]}"
-  fi
+  sed -En 's/^aerospike-kubernetes-operator\.v([0-9]+\.[0-9]+\.[0-9]+)$/\1/p' <<< "${csv_name}"
 }
 
 # Parse semver from aerospike-kubernetes-operator-4.4.1 Helm chart string.
 _ako_version_from_helm_chart() {
   local chart="$1"
-  if [[ "${chart}" =~ aerospike-kubernetes-operator-([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
-    echo "${BASH_REMATCH[1]}"
-  fi
+  sed -En 's/^aerospike-kubernetes-operator-([0-9]+\.[0-9]+\.[0-9]+)$/\1/p' <<< "${chart}"
 }
 
 # Return installed AKO operator version (e.g. 4.4.1), or empty if unknown.

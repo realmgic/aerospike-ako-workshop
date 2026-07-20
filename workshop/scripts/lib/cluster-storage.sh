@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 # Cluster storage selection: disk (default) or dim (in-memory).
 
+if [[ -n "${BASH_VERSION:-}" ]]; then
+  _LIB_SELF="${BASH_SOURCE[0]}"
+elif [[ -n "${ZSH_VERSION:-}" ]]; then
+  _LIB_SELF="${(%):-%x}"
+else
+  _LIB_SELF="$0"
+fi
+SCRIPT_DIR="$(cd "$(dirname "${_LIB_SELF}")" && pwd)"
+unset _LIB_SELF
+
 : "${CLUSTER_STORAGE:=disk}"
 : "${CLUSTER_STORAGE_DIM_LABS:=}"
 : "${CLUSTER_STORAGE_DISK_LABS:=}"
@@ -134,7 +144,7 @@ validate_cluster_storage_engine() {
 
 validate_baseline_local_ssd_pvs() {
   local expected_pods="${1:-3}"
-  source "$(dirname "${BASH_SOURCE[0]}")/local-storage.sh"
+  source "${SCRIPT_DIR}/local-storage.sh"
   ensure_local_ssd_pvs_for_pool "${NODE_TYPE}" "${expected_pods}" "baseline (${NODE_TYPE})"
 }
 
