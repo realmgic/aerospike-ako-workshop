@@ -140,7 +140,9 @@ source scripts/env/workshop.env
 source scripts/lib/common.sh
 load_env
 helm upgrade aerocluster aerospike/aerospike-cluster \
-  -n aerospike -f helm/disk-aerospike-upgrade-values.yaml \
+  -n aerospike \
+  -f helm/disk-cluster-values.yaml \
+  -f helm/disk-aerospike-upgrade-values.yaml \
   --version="$(resolve_cluster_helm_chart_version)"
 ```
 
@@ -199,8 +201,8 @@ Cluster should be on **8.1.2.x** with phase `Completed`.
 Workshop YAML used in this lab (Path A = `kubectl apply`; Path B = `helm upgrade -f`):
 
 - **Upgrade to 8.1.2.x:**
-  - Path A: [manifests/disk-aerospike-upgrade.yaml](../../manifests/disk-aerospike-upgrade.yaml) (default) · [manifests/aerospike-upgrade.yaml](../../manifests/aerospike-upgrade.yaml) (`--dim`)
-  - Path B: [helm/disk-aerospike-upgrade-values.yaml](../../helm/disk-aerospike-upgrade-values.yaml) · [helm/aerospike-upgrade-values.yaml](../../helm/aerospike-upgrade-values.yaml)
+  - Path A: [manifests/disk-aerospike-upgrade.yaml](../../manifests/disk-aerospike-upgrade.yaml) (default) · [manifests/dim-aerospike-upgrade.yaml](../../manifests/dim-aerospike-upgrade.yaml) (`--dim`)
+  - Path B: [helm/disk-cluster-values.yaml](../../helm/disk-cluster-values.yaml) + [helm/disk-aerospike-upgrade-values.yaml](../../helm/disk-aerospike-upgrade-values.yaml) (default) · [helm/dim-cluster-values.yaml](../../helm/dim-cluster-values.yaml) + [helm/dim-aerospike-upgrade-values.yaml](../../helm/dim-aerospike-upgrade-values.yaml) (`--dim`)
 
 ## References
 

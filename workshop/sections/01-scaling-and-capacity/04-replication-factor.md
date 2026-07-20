@@ -118,7 +118,9 @@ source scripts/env/workshop.env
 source scripts/lib/common.sh
 load_env
 helm upgrade aerocluster aerospike/aerospike-cluster \
-  -n aerospike -f helm/disk-replication-factor-rf3-values.yaml \
+  -n aerospike \
+  -f helm/disk-cluster-values.yaml \
+  -f helm/disk-replication-factor-rf3-values.yaml \
   --version="$(resolve_cluster_helm_chart_version)"
 ```
 
@@ -128,7 +130,9 @@ source scripts/env/workshop.env
 source scripts/lib/common.sh
 load_env
 helm upgrade aerocluster aerospike/aerospike-cluster \
-  -n aerospike -f helm/dim-replication-factor-rf3-values.yaml \
+  -n aerospike \
+  -f helm/dim-cluster-values.yaml \
+  -f helm/dim-replication-factor-rf3-values.yaml \
   --version="$(resolve_cluster_helm_chart_version)"
 ```
 
@@ -187,7 +191,7 @@ Workshop YAML used in this lab (Path A = `kubectl apply`; Path B = `helm upgrade
   - Path B: [helm/disk-cluster-values.yaml](../../helm/disk-cluster-values.yaml) · [helm/dim-cluster-values.yaml](../../helm/dim-cluster-values.yaml)
 - **Change RF to 3:**
   - Path A: [manifests/disk-replication-factor-rf3.yaml](../../manifests/disk-replication-factor-rf3.yaml) (default) · [manifests/dim-replication-factor-rf3.yaml](../../manifests/dim-replication-factor-rf3.yaml) (`--dim`)
-  - Path B: [helm/disk-replication-factor-rf3-values.yaml](../../helm/disk-replication-factor-rf3-values.yaml) · [helm/dim-replication-factor-rf3-values.yaml](../../helm/dim-replication-factor-rf3-values.yaml)
+  - Path B: [helm/disk-cluster-values.yaml](../../helm/disk-cluster-values.yaml) + [helm/disk-replication-factor-rf3-values.yaml](../../helm/disk-replication-factor-rf3-values.yaml) (default) · [helm/dim-cluster-values.yaml](../../helm/dim-cluster-values.yaml) + [helm/dim-replication-factor-rf3-values.yaml](../../helm/dim-replication-factor-rf3-values.yaml) (`--dim`)
 
 ## References
 

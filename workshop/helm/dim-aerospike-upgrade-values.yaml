@@ -1,0 +1,6 @@
+# Lab 2.4: upgrade to 8.1.2.x — overlay for helm/dim-cluster-values.yaml
+image:
+  tag: "8.1.2.0"
+aerospikeConfig:
+  service:
+    cgroup-mem-tracking: true

@@ -1,0 +1,4 @@
+# Lab 2.3: WarmRestart — overlay for helm/dim-cluster-values.yaml
+operations:
+  - kind: WarmRestart
+    id: warm-restart-1
