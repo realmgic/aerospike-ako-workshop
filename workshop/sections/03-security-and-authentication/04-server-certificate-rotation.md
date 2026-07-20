@@ -92,7 +92,7 @@ openssl x509 -in secrets/tls/svc_chain.pem -noout -dates -serial
 
 POD=$(kubectl -n aerospike get pod -l aerospike.com/cr=aerocluster -o jsonpath='{.items[0].metadata.name}')
 echo "Pod: ${POD}"
-kubectl -n aerospike get pod "${POD}" -o jsonpath='Container ID: {.status.containerStatuses[?(@.name=="aerospike")].containerID}{"\n"}'
+kubectl -n aerospike get pod "${POD}" -o jsonpath='Container ID: {.status.containerStatuses[?(@.name=="aerospike-server")].containerID}{"\n"}'
 ```
 
 Save the pod name and container ID — you will compare them after rotation.
@@ -107,14 +107,14 @@ Wait ~60s for secret sync to pods, then verify new cert on a pod:
 
 ```bash
 POD=$(kubectl -n aerospike get pod -l aerospike.com/cr=aerocluster -o jsonpath='{.items[0].metadata.name}')
-kubectl -n aerospike exec "${POD}" -c aerospike -- \
+kubectl -n aerospike exec "${POD}" -c aerospike-server -- \
   openssl x509 -in /etc/aerospike/tls/svc_chain.pem -noout -dates -serial
 ```
 
 Confirm the **same pod** is still running (no recreation):
 
 ```bash
-kubectl -n aerospike get pod "${POD}" -o jsonpath='{.status.containerStatuses[?(@.name=="aerospike")].containerID}{"\n"}'
+kubectl -n aerospike get pod "${POD}" -o jsonpath='{.status.containerStatuses[?(@.name=="aerospike-server")].containerID}{"\n"}'
 ```
 
 Compare pod name and container ID to values recorded **before** rotation — both should be unchanged.
