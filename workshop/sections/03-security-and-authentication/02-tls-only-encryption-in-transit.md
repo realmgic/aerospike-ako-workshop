@@ -66,10 +66,12 @@ Leave the cluster on standard-auth TLS. Lab **3.3** escalates to mTLS (`tls-auth
 
 ## Workshop artifacts
 
-| kubectl | helm |
-|---------|------|
-| `manifests/disk-cluster-tls-standard.yaml` | `helm/disk-cluster-tls-standard-values.yaml` |
-| `manifests/dim-cluster-tls-standard.yaml` | `helm/dim-cluster-tls-standard-values.yaml` |
+Workshop YAML used in this lab (Path A = `kubectl apply`; Path B = `helm upgrade -f`):
+
+- **TLS standard auth (server cert only):**
+  - Path A: [manifests/disk-cluster-tls-standard.yaml](../../manifests/disk-cluster-tls-standard.yaml) (default) · [manifests/dim-cluster-tls-standard.yaml](../../manifests/dim-cluster-tls-standard.yaml) (`--dim`)
+  - Path B: [helm/disk-cluster-tls-standard-values.yaml](../../helm/disk-cluster-tls-standard-values.yaml) · [helm/dim-cluster-tls-standard-values.yaml](../../helm/dim-cluster-tls-standard-values.yaml)
+- Deploy scripts: [scripts/labs/deploy-cluster-tls-standard.sh](../../scripts/labs/deploy-cluster-tls-standard.sh) · [scripts/labs/deploy-cluster-tls-standard-helm.sh](../../scripts/labs/deploy-cluster-tls-standard-helm.sh)
 
 ## References
 

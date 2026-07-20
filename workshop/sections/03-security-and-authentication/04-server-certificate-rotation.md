@@ -29,6 +29,22 @@ Patch secret in place    →    Hot-reloads cert content
 - AKO’s role is **volume mount delivery** only. Hitless server rotation is **Aerospike TLS file reload** (see [References](#references)).
 - **Contrast with Labs 3.2/3.3:** changing `network.tls[]`, `tls-authenticate-client`, or `authMode` is a **CR schema change** → AKO **rolling restart**. Lab 3.4 only changes **secret content** at the same mount path — no CR edit required.
 
+### Secret updates and pod recreation
+
+Patching Secret **data** in place (same Secret name, same CR volume reference) does **not** recreate Aerospike pods:
+
+1. **Kubernetes** — the kubelet syncs updated Secret bytes into the existing volume mount (often after a short delay; allow ~60s).
+2. **AKO** — does not reconcile, because the `AerospikeCluster` spec is unchanged.
+3. **Aerospike** — reloads cert files from the mount path without restarting the process.
+
+| Change | Aerospike pods recreated? |
+|--------|---------------------------|
+| Patch Secret **data** only (`tls-server-secret`, same `secretName` in CR) | **No** |
+| Change CR: `secretName`, mount path, new volume, `network.tls[]`, `authMode`, etc. | **Yes** — AKO rolling restart |
+| Delete pod manually | **Yes** (replacement pod) |
+
+If pods roll after “rotation,” check whether the **CR** changed — not just the Secret content.
+
 ## Why access is preserved
 
 During server cert rotation, clients and workloads stay authenticated because:
@@ -57,11 +73,17 @@ Watch TPS in a second terminal:
 
 ## Steps
 
-### Record current server cert
+### Record current server cert and pod identity
 
 ```bash
 openssl x509 -in secrets/tls/svc_chain.pem -noout -dates -serial
+
+POD=$(kubectl -n aerospike get pod -l aerospike.com/cr=aerocluster -o jsonpath='{.items[0].metadata.name}')
+echo "Pod: ${POD}"
+kubectl -n aerospike get pod "${POD}" -o jsonpath='Container ID: {.status.containerStatuses[?(@.name=="aerospike")].containerID}{"\n"}'
 ```
+
+Save the pod name and container ID — you will compare them after rotation.
 
 ### Rotate server certificate
 
@@ -77,6 +99,14 @@ kubectl -n aerospike exec "${POD}" -c aerospike -- \
   openssl x509 -in /etc/aerospike/tls/svc_chain.pem -noout -dates -serial
 ```
 
+Confirm the **same pod** is still running (no recreation):
+
+```bash
+kubectl -n aerospike get pod "${POD}" -o jsonpath='{.status.containerStatuses[?(@.name=="aerospike")].containerID}{"\n"}'
+```
+
+Compare pod name and container ID to values recorded **before** rotation — both should be unchanged.
+
 ## Verify
 
 - Workload **TPS uninterrupted** (`run-lab-workload.sh status`)
@@ -89,13 +119,13 @@ kubectl -n aerospike exec "${POD}" -c aerospike -- \
 |---------|----------------|
 | Clients fail after rotation | CA changed, wrong secret, or mount path changed — requires a CR change, not just a secret patch |
 | Cert on pod still shows old dates after ~60s | Kubernetes secret sync delay — wait and re-check the mount inside the pod |
+| Aerospike pods rolled after rotation | CR was changed (not just Secret data) — compare `AerospikeCluster` spec to pre-rotation state |
 
 ## Workshop artifacts
 
-| Script | Purpose |
-|--------|---------|
-| `scripts/setup/tls/rotate-server-cert.sh` | Regenerate + patch `tls-server-secret` |
-| `scripts/setup/tls/generate-workshop-pki.sh --server-only` | OpenSSL server cert only |
+- [scripts/setup/tls/rotate-server-cert.sh](../../scripts/setup/tls/rotate-server-cert.sh) — regenerate + patch `tls-server-secret`
+- [scripts/setup/tls/generate-workshop-pki.sh](../../scripts/setup/tls/generate-workshop-pki.sh) — use `--server-only` for OpenSSL server cert only
+- [scripts/labs/run-lab-workload.sh](../../scripts/labs/run-lab-workload.sh) — background PKI workload (`--pki`)
 
 ## References
 

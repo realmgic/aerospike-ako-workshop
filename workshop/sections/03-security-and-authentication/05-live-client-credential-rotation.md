@@ -24,6 +24,18 @@ Client credential rotation is an **Aerospike PKI procedure** on top of K8s secre
 
 **Scope:** this lab rotates the **`app`** client cert only. `admin`, `exporter`, and `ako-operator` use separate secrets and are not rotated here.
 
+### Secret updates and pod recreation
+
+Not every step in this lab affects Aerospike DB pods the same way:
+
+| Step | What changes | Aerospike DB pods recreated? | What restarts instead |
+|------|----------------|------------------------------|------------------------|
+| `rotate-client-cert.sh --save-v1` | `tls-client-app-secret` data | **No** — app client secret is not mounted on DB pods | Nothing (overlap: v1 still valid server-side) |
+| `rotate-client-workload.sh` | Workload picks up v2 from Secret | **No** | **asbench Job** stop/start (intentional) |
+| `apply-cert-blacklist.sh` | CR + `tls-cert-blacklist-secret` | **Possibly yes** — first-time blacklist volume + `security.cert-blacklist` is a **CR schema change** | AKO may rolling-restart to apply new volume/config |
+
+Patching `tls-client-app-secret` alone follows the same Kubernetes pattern as Lab 3.4: the kubelet updates mounted files on pods that reference the Secret. The workshop workload Job is restarted separately so asbench reads the new cert — that is **client** pod recreation, not an AKO-driven DB pod roll.
+
 ## Why access is preserved
 
 - **Order matters:** prove v2 works **before** blacklisting v1. The overlap window is intentional.
@@ -83,14 +95,23 @@ asadm -h "aerocluster:aerocluster:4333" --tls-enable \
 
 True zero-TPS client rollover would require overlapping clients (two Jobs) or application-level reconnect logic — out of scope for this lab.
 
+## Troubleshooting
+
+| Symptom | Likely cause |
+|---------|----------------|
+| v1 still works after blacklist | Wrong serial in `revoked.txt` — re-run `apply-cert-blacklist.sh` with correct `--cert` path |
+| Aerospike pods rolled during client cert patch | Unexpected if only `tls-client-app-secret` changed — check for accidental CR edits |
+| Aerospike pods rolled during blacklist step | Expected on first blacklist CR apply — plan for brief reconcile; auth overlap should cover client access |
+
 ## Workshop artifacts
 
-| Script | Purpose |
-|--------|---------|
-| `scripts/setup/tls/rotate-client-cert.sh --save-v1` | Overlap rotation |
-| `scripts/labs/rotate-client-workload.sh` | Restart Job with new secret |
-| `scripts/labs/apply-cert-blacklist.sh` | Deploy blacklist + CR patch |
-| `manifests/*-cluster-tls-mtls-blacklist.yaml` | CR with `security.cert-blacklist` |
+- [scripts/setup/tls/rotate-client-cert.sh](../../scripts/setup/tls/rotate-client-cert.sh) — overlap rotation (use `--save-v1`)
+- [scripts/labs/rotate-client-workload.sh](../../scripts/labs/rotate-client-workload.sh) — restart Job with new secret
+- [scripts/labs/apply-cert-blacklist.sh](../../scripts/labs/apply-cert-blacklist.sh) — deploy blacklist + CR patch
+- [scripts/labs/run-lab-workload.sh](../../scripts/labs/run-lab-workload.sh) — background PKI workload (`--pki`)
+- **Cert blacklist CR (Path A):**
+  - [manifests/disk-cluster-tls-mtls-blacklist.yaml](../../manifests/disk-cluster-tls-mtls-blacklist.yaml) (default) · [manifests/dim-cluster-tls-mtls-blacklist.yaml](../../manifests/dim-cluster-tls-mtls-blacklist.yaml) (`--dim`)
+  - Path B: [helm/disk-cluster-tls-mtls-blacklist-values.yaml](../../helm/disk-cluster-tls-mtls-blacklist-values.yaml) · [helm/dim-cluster-tls-mtls-blacklist-values.yaml](../../helm/dim-cluster-tls-mtls-blacklist-values.yaml)
 
 ## References
 

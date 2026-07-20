@@ -48,6 +48,15 @@ Rotation pitfalls:
 - **Do not rotate the CA in-place** without a migration plan — clients and server trust must move together.
 - **Blacklist after overlap**, not before — revoking v1 before v2 is live locks out the `app` user.
 - **Job restart ≠ auth outage** — `rotate-client-workload.sh` stops then starts the Job; TPS may dip briefly while PKI overlap keeps authentication available. Set this expectation in the classroom.
+- **Secret data patch ≠ pod recreation** — patching Secret content in place does not trigger AKO reconcile; only **CR spec changes** do. See Lab 3.4 and 3.5 **Secret updates and pod recreation** sections.
+
+### When Aerospike pods roll vs stay up
+
+| Change | DB pods recreated? |
+|--------|-------------------|
+| Patch Secret data (`tls-server-secret`, `tls-client-app-secret`) — CR unchanged | **No** (kubelet updates mounts; Aerospike reloads or clients reconnect) |
+| Change CR spec (TLS config, volumes, `authMode`, blacklist volume) | **Yes** — AKO rolling restart |
+| Restart asbench Job (`rotate-client-workload.sh`) | **No** (DB pods unaffected; workload Job only) |
 
 ## Skip paths
 
@@ -56,4 +65,6 @@ Rotation pitfalls:
 
 ## Artifacts
 
-Generated PKI lives under `secrets/tls/` (gitignored). Kubernetes secrets: `tls-ca-secret`, `tls-server-secret`, `tls-client-*`, `tls-ako-client-secret`.
+Generated PKI lives under `secrets/tls/` (gitignored). See [secrets/README.md](../../secrets/README.md) for the TLS secret layout. Kubernetes secrets: `tls-ca-secret`, `tls-server-secret`, `tls-client-*`, `tls-ako-client-secret`.
+
+Section scripts and manifests are linked from each lab guide under **Workshop artifacts**.

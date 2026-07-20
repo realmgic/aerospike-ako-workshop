@@ -70,11 +70,9 @@ Secrets are ready for Lab **3.2**. Client cert secrets are **not** consumed by t
 
 ## Workshop artifacts
 
-| Path | Purpose |
-|------|---------|
-| `scripts/setup/tls/generate-workshop-pki.sh` | OpenSSL CA + certs |
-| `scripts/setup/tls/deploy-tls-secrets.sh` | kubectl apply secrets |
-| `secrets/tls/` | Generated material (local, gitignored) |
+- [scripts/setup/tls/generate-workshop-pki.sh](../../scripts/setup/tls/generate-workshop-pki.sh) — OpenSSL CA + certs
+- [scripts/setup/tls/deploy-tls-secrets.sh](../../scripts/setup/tls/deploy-tls-secrets.sh) — kubectl apply secrets
+- [secrets/README.md](../../secrets/README.md) — TLS secret layout; generated files under `secrets/tls/` (gitignored)
 
 ## References
 
