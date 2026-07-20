@@ -95,6 +95,8 @@ Apply PKIOnly manifest (migrate **`app`** and **`exporter`** first, **`admin`** 
 
 Confirm PKI login for `admin` in a **second terminal** before applying — `PKIOnly` is **one-way**.
 
+PKIOnly users must not set `secretName` — identity comes from the client cert CN, not a password secret. AKO's admission webhook rejects any user that specifies both.
+
 **Verify:** Password login fails for migrated users; PKI login succeeds; exporter sidecar scrapes metrics on `:9145`.
 
 ## Verify

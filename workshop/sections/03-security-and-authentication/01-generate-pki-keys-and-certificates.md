@@ -14,7 +14,7 @@
 
 ## Takeaway
 
-Build workshop PKI **before** enabling TLS on the cluster: CA, server cert (`CN=aerocluster`), client certs (`CN` = username).
+Build workshop PKI **before** enabling TLS on the cluster: CA, server cert (`CN=aerocluster` with a `DNS:aerocluster` SAN), client certs (`CN` = username).
 
 ## Prerequisites
 
@@ -49,7 +49,7 @@ Light reset redeploys a plain-TCP **8.1.0.0** cluster and validates the baseline
 ./scripts/setup/tls/generate-workshop-pki.sh
 ```
 
-Output under `secrets/tls/` (gitignored): `cacert.pem`, `svc_chain.pem`, `svc_key.pem`, client certs for `admin`, `app`, `exporter`, `operator_client` (CN=`aerocluster`, AKO Lab 3.2), `ako-operator`.
+Output under `secrets/tls/` (gitignored): `cacert.pem`, `svc_chain.pem`, `svc_key.pem`, client certs for `admin`, `app`, `exporter`, `operator_client` (CN=`aerocluster`), `ako-operator`. Lab **3.2** tls-standard reuses the **server cert** (`svc_chain.pem`/`svc_key.pem`) for `operatorClientCert`, not `operator_client.pem`; `ako_client.pem` (CN=`ako-operator`) is used from Lab **3.3+** mTLS manifests.
 
 The server cert (`svc_chain.pem`) is signed with **`subjectAltName = DNS:aerocluster`**, not just `CN=aerocluster`. This matters because the AKO operator's embedded Aerospike client is written in Go, and Go's `crypto/x509` has ignored the legacy CN-as-hostname fallback since Go 1.15 — a CN-only server cert fails hostname verification during the operator's TLS handshake with `tls-name: aerocluster` and blocks ACL reconcile in Lab 3.2. If you ever regenerate the server cert manually (outside this script), keep the SAN.
 
