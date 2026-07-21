@@ -46,15 +46,8 @@ spec:
             value: /etc/aerospike/tls/ca/cacert.pem
           - name: AS_NODE_TLS_NAME
             value: aerocluster
-          - name: AS_TLS_ENABLE
-            value: "true"
-        volumeMounts:
-          - name: tls-ca
-            mountPath: /etc/aerospike/tls/ca
-            readOnly: true
-          - name: tls-client-exporter
-            mountPath: /etc/aerospike/tls/client
-            readOnly: true
+          - name: AS_PORT
+            value: "4333"
         resources:
           requests:
             cpu: 100m
@@ -94,12 +87,22 @@ spec:
             secretName: tls-ca-secret
         aerospike:
           path: /etc/aerospike/tls/ca
+        sidecars:
+          - containerName: aerospike-prometheus-exporter
+            path: /etc/aerospike/tls/ca
+            mountOptions:
+              readOnly: true
       - name: tls-client-exporter
         source:
           secret:
             secretName: tls-client-exporter-secret
         aerospike:
           path: /etc/aerospike/tls/client-exporter
+        sidecars:
+          - containerName: aerospike-prometheus-exporter
+            path: /etc/aerospike/tls/client
+            mountOptions:
+              readOnly: true
 
   aerospikeAccessControl:
     users:
