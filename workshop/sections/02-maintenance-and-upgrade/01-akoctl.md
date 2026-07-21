@@ -31,8 +31,8 @@ Manual deploy (if needed):
 
 ```bash
 ./scripts/labs/deploy-cluster.sh           # Path A (kubectl; default storage)
+./scripts/labs/deploy-cluster-helm.sh      # Path B (helm)
 # or: ./scripts/labs/deploy-dim-cluster.sh       # explicit in-memory
-# or: ./scripts/labs/deploy-cluster-helm.sh      # Path B (helm)
 kubectl -n aerospike get pods
 ```
 

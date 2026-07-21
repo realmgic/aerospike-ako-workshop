@@ -28,20 +28,16 @@ Escalate service TLS to **mTLS** (client cert required), then migrate from passw
 | Reset | **Skip** (default) — escalates mTLS on existing cluster; reuses node pools |
 | Node pools | Unchanged from Labs 3.1–3.2 |
 
-## Phase 0 — Prepare lab
+## Phase A — Deploy mTLS + connect with password
+
+Lab **3.2** is the prep (standard-auth TLS). Upgrade in place to mTLS:
 
 **What:** Deploy mTLS cluster config (client cert required on port 4333).
 **Credential / mode:** mTLS enabled; password auth still available until Phase C.
 **Run:**
 
 ```bash
-./scripts/labs/prepare-lab.sh 3.3 --skip-reset
-```
-
-Or deploy mTLS manifest directly:
-
-```bash
-./scripts/labs/deploy-cluster-tls-mtls.sh
+./scripts/labs/deploy-cluster-tls-mtls.sh        # Path A
 ./scripts/labs/deploy-cluster-tls-mtls-helm.sh   # Path B
 ```
 
@@ -54,8 +50,6 @@ Changes in this lab to `network.tls[]`, `tls-authenticate-client`, or `authMode:
 Later labs (**3.4** and **3.5**) rotate **certificate file content** or revoke by serial number — a different mechanism, mostly **hitless at the Aerospike layer** (server file reload and PKI overlap/blacklist). Keep this distinction in mind when comparing rolling restarts here to uninterrupted workload in Lab 3.4.
 
 `aerocluster` is a headless Kubernetes Service (`ClusterIP: None`) — it only resolves inside the cluster network, not from your workstation. Run `asadm` from a short-lived debug pod with the CA and app client cert secrets mounted; `--rm --attach` prints output and cleans up the pod automatically.
-
-## Phase A — mTLS + password
 
 **What:** Connect with client cert **and** password — both are required in this phase.
 **Credential / mode:** mTLS port **4333**; client cert `app.pem` (`tls-client-app-secret`) + password (`app` / `app123`).
@@ -111,8 +105,8 @@ kubectl -n aerospike run aerospike-tool-pki --rm --attach --restart=Never \
 **Run:**
 
 ```bash
-./scripts/labs/deploy-cluster-tls-mtls-pki-only.sh
-# Path B: ./scripts/labs/deploy-cluster-tls-mtls-pki-only-helm.sh
+./scripts/labs/deploy-cluster-tls-mtls-pki-only.sh        # Path A
+./scripts/labs/deploy-cluster-tls-mtls-pki-only-helm.sh   # Path B
 ```
 
 Confirm PKI login for `admin` in a **second terminal** before applying — `PKIOnly` is **one-way**.
