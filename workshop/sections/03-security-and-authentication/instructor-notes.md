@@ -14,7 +14,9 @@
 
 Each lab labels command blocks with **What / Credential / mode / Expect** (see [Section 03 README](README.md#how-to-read-commands)). Wrapper scripts echo the same facts to stdout — read script output alongside the lab guide.
 
+- **Labs 3.4 / 3.5 script sections** — point trainees to **Background → What the rotation scripts do** before running `rotate-server-cert.sh` or `rotate-client-cert.sh` / `rotate-client-workload.sh`. Lab 3.5: also **What Step 4 does** before `apply-cert-blacklist.sh`.
 - **Lab 3.4 vs 3.5:** server cert rotation replaces one server identity (new serial, same CN); client cert rotation keeps the same CN (`app`) with two valid serials during overlap until blacklist.
+- **Lab 3.5 Step 2b** — optional but useful: v2 `asadm` via `tls-client-app-secret` before Step 3 proves v1 still works.
 - **Lab 3.5 Step 3 is required** — do not skip the v1 overlap proof. Narrate: "two valid serials until blacklist." Run Step 5 (re-test v1) immediately after blacklist so trainees see the before/after contrast.
 
 ## Pitfalls

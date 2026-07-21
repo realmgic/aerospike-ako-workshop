@@ -40,6 +40,59 @@ Not every step in this lab affects Aerospike DB pods the same way:
 
 Patching `tls-client-app-secret` alone follows the same Kubernetes pattern as Lab 3.4: the kubelet updates mounted files on pods that reference the Secret. The workshop workload Job is restarted separately so asbench reads the new cert — that is **client** pod recreation, not an AKO-driven DB pod roll.
 
+### What the rotation scripts do
+
+Steps 1–2 use two lab wrappers (not AKO rotation APIs):
+
+#### `rotate-client-cert.sh [--save-v1]`
+
+| Flag / step | Behavior |
+|-------------|----------|
+| `--save-v1` (this lab) | Copy `app.pem`/`app.key` → `app-v1.pem`/`app-v1.key`; create/update **`tls-client-app-v1-secret`** for Step 3 overlap demo |
+| (always) | [`generate-workshop-pki.sh --client-app-only`](../../scripts/setup/tls/generate-workshop-pki.sh) → new `app.pem`/`app.key` on the workstation |
+| (always) | `kubectl apply` **`tls-client-app-secret`** with v2 material (same secret name) |
+
+- **Does not** restart the asbench Job — the running workload still uses v1 until Step 2.
+- **Does not** mount the app client secret on DB pods (see table above).
+- Without `--save-v1`, the script still patches v2 into the secret and prints a hint to run `rotate-client-workload.sh`.
+
+#### `rotate-client-workload.sh`
+
+- [`run-lab-workload.sh stop`](../../scripts/labs/run-lab-workload.sh) (tolerates failure if already stopped).
+- [`run-lab-workload.sh --pki start`](../../scripts/labs/run-lab-workload.sh) so the Job remounts **`tls-client-app-secret`** (v2).
+- **Only** the asbench Job restarts; Aerospike DB pods are untouched (TPS may dip briefly).
+
+```text
+rotate-client-cert.sh --save-v1 → tls-client-app-v1-secret + tls-client-app-secret (v2)
+rotate-client-workload.sh       → asbench Job stop/start (reads v2 secret)
+```
+
+### What Step 4 does (apply-cert-blacklist.sh)
+
+Step 4 runs **only after** Steps 2–3 prove v2 works and v1 still authenticates during overlap. It closes the overlap window by revoking v1 **server-side** via Aerospike **`security.cert-blacklist`** — not by deleting the old secret or rotating the CA. The v1 PEM can remain in **`tls-client-app-v1-secret`**; the server rejects client connections whose cert serial appears in `revoked.txt`.
+
+[`apply-cert-blacklist.sh`](../../scripts/labs/apply-cert-blacklist.sh) performs:
+
+| Order | Action | Effect |
+|-------|--------|--------|
+| 1 | Read cert path (`--cert`, default `secrets/tls/app-v1.pem`) | Must exist (from Step 1 `--save-v1`) |
+| 2 | `openssl x509 … -serial` → normalized hex serial | Printed to stdout for verification |
+| 3 | Write **`secrets/tls/revoked.txt`**; `kubectl apply` **`tls-cert-blacklist-secret`** | Delivers blacklist file to the cluster |
+| 4 | `kubectl apply -f` blacklist **AerospikeCluster** manifest | [`disk-cluster-tls-mtls-blacklist.yaml`](../../manifests/disk-cluster-tls-mtls-blacklist.yaml) or dim variant per `CLUSTER_STORAGE` |
+
+The blacklist manifest (vs PKI-only from Lab 3.3) adds:
+
+- Storage volume **`tls-cert-blacklist`** — mounts `tls-cert-blacklist-secret` at `/etc/aerospike/tls/blacklist`
+- `aerospikeConfig.security.cert-blacklist: /etc/aerospike/tls/blacklist/revoked.txt`
+
+- **Not** a rotate script — does not regenerate certs or patch `tls-client-app-secret`.
+- **Is** a **CR spec change** — AKO may **rolling-restart** DB pods on first blacklist apply (see table above); unlike Lab 3.4 secret-only patches.
+- Blacklists **only** the serial from `--cert` (v1 in this lab); v2 is unaffected.
+
+```text
+apply-cert-blacklist.sh → revoked.txt → tls-cert-blacklist-secret → CR apply → cert-blacklist on server
+```
+
 ## Why access is preserved
 
 - **Order matters:** prove v2 works **before** blacklisting v1. The overlap window is intentional.
@@ -75,7 +128,7 @@ Patching `tls-client-app-secret` alone follows the same Kubernetes pattern as La
 
 ### Step 1 — Save v1, generate v2
 
-**What:** Copy current cert to `app-v1.pem`; generate new `app.pem` (v2); patch `tls-client-app-secret`.
+**What:** Copy current cert to `app-v1.pem`; generate new `app.pem` (v2); patch `tls-client-app-secret`. See [What the rotation scripts do](#what-the-rotation-scripts-do).
 **Credential / mode:** v1 saved to `secrets/tls/app-v1.pem` + `tls-client-app-v1-secret`; v2 active in `tls-client-app-secret`.
 **Run:**
 
@@ -94,7 +147,7 @@ echo "v2 (active):" && openssl x509 -in secrets/tls/app.pem -noout -serial
 
 ### Step 2 — Roll workload to v2
 
-**What:** Stop and restart the asbench Job so it mounts v2 from `tls-client-app-secret`.
+**What:** Stop and restart the asbench Job so it mounts v2 from `tls-client-app-secret`. See [What the rotation scripts do](#what-the-rotation-scripts-do).
 **Credential / mode:** Workload switches from v1 (`app-v1.pem`) to v2 (`app.pem`).
 **Run:**
 
@@ -104,6 +157,24 @@ echo "v2 (active):" && openssl x509 -in secrets/tls/app.pem -noout -serial
 ```
 
 **Expect:** TPS resumes with no auth errors — workload now authenticates with v2. Server still accepts v1 too (overlap window open).
+
+### Step 2b — Confirm v2 with asadm
+
+**What:** Interactive PKI login using **v2** cert material from the cluster secret (same trust path as production clients mounting `tls-client-app-secret`).
+**Credential / mode:** Client cert **v2** from **`tls-client-app-secret`**; PKI on port **4333** (same as Lab 3.3).
+**Run:**
+
+```bash
+kubectl -n aerospike run aerospike-tool-v2 --rm --attach --restart=Never \
+  --image=aerospike/aerospike-tools:latest \
+  --overrides='{"spec":{"containers":[{"name":"aerospike-tool-v2","image":"aerospike/aerospike-tools:latest",
+    "command":["asadm"],
+    "args":["-h","aerocluster:aerocluster:4333","--tls-enable","--tls-cafile","/etc/aerospike/tls/ca/cacert.pem","--tls-certfile","/etc/aerospike/tls/client/app.pem","--tls-keyfile","/etc/aerospike/tls/client/app.key","--auth","PKI","-e","info"],
+    "volumeMounts":[{"name":"tls-ca","mountPath":"/etc/aerospike/tls/ca","readOnly":true},{"name":"tls-client-app","mountPath":"/etc/aerospike/tls/client","readOnly":true}]}],
+    "volumes":[{"name":"tls-ca","secret":{"secretName":"tls-ca-secret"}},{"name":"tls-client-app","secret":{"secretName":"tls-client-app-secret"}}]}}'
+```
+
+**Expect:** `info` succeeds — v2 serial authenticates as user `app`. Step 3 next proves v1 **also** still works during overlap.
 
 ### Step 3 — Prove overlap: v1 still works
 
@@ -125,15 +196,16 @@ kubectl -n aerospike run aerospike-tool-v1 --rm --attach --restart=Never \
 
 ### Step 4 — Blacklist v1 serial
 
-**What:** Revoke v1 server-side by adding its serial to `security.cert-blacklist`.
+**What:** Revoke v1 server-side by adding its serial to `security.cert-blacklist`. See [What Step 4 does (apply-cert-blacklist.sh)](#what-step-4-does-apply-cert-blacklistsh).
 **Credential / mode:** Server rejects v1 serial; v2 still trusted.
 **Run:**
 
 ```bash
 ./scripts/labs/apply-cert-blacklist.sh --cert secrets/tls/app-v1.pem
+cat secrets/tls/revoked.txt
 ```
 
-**Expect:** Script prints the blacklisted serial (matches v1 from Step 1). v2 workload should continue unaffected.
+**Expect:** Script prints the blacklisted serial (matches v1 from Step 1). `revoked.txt` contains that serial. v2 workload and Step 2b asadm remain valid. Step 5 re-proves v1 is rejected.
 
 ### Step 5 — Prove v1 rejected
 
@@ -141,7 +213,7 @@ kubectl -n aerospike run aerospike-tool-v1 --rm --attach --restart=Never \
 **Credential / mode:** Client cert **v1** (`app-v1.pem`) — same as Step 3.
 **Run:** Repeat the `kubectl run aerospike-tool-v1 …` command from Step 3.
 
-**Expect:** Login **fails** (`Not able to connect` or auth error). v2 workload from Step 2 still running — run `./scripts/labs/run-lab-workload.sh status` to confirm TPS.
+**Expect:** Login **fails** (`Not able to connect` or auth error). v2 workload from Step 2 still running — run `./scripts/labs/run-lab-workload.sh status` to confirm TPS. Optionally re-run the Step 2b `aerospike-tool-v2` command — v2 PKI login should still succeed.
 
 ## Verify
 
@@ -149,9 +221,10 @@ kubectl -n aerospike run aerospike-tool-v1 --rm --attach --restart=Never \
 |------|-------|---------------|
 | 1 | Two serials exist | v1 and v2 serials differ; script confirms overlap window |
 | 2 | Workload on v2 | TPS resumes after Job restart; no auth errors |
+| 2b | v2 asadm | `info` succeeds with `tls-client-app-secret` (v2 serial) |
 | 3 | Overlap proof | v1 PKI login **succeeds** while v2 workload runs |
-| 4 | Blacklist applied | Script prints v1 serial in `revoked.txt` |
-| 5 | v1 revoked | Same Step 3 command **fails**; v2 workload still healthy |
+| 4 | Blacklist applied | Script prints v1 serial; `revoked.txt` matches v1 serial |
+| 5 | v1 revoked | Same Step 3 command **fails**; v2 workload (and optional Step 2b asadm) still healthy |
 
 True zero-TPS client rollover would require overlapping clients (two Jobs) or application-level reconnect logic — out of scope for this lab.
 

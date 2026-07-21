@@ -41,7 +41,7 @@ Each lab labels command blocks with three lines:
 - **Credential / mode:** which cert, auth mode, or port is in use (e.g. plain TCP, TLS+password, PKI, client cert v1 vs v2)
 - **Expect:** what success looks like in the output
 
-Wrapper scripts (`rotate-client-cert.sh`, etc.) echo the same facts to stdout when you run them.
+Wrapper scripts (`rotate-server-cert.sh`, `rotate-client-cert.sh`, `apply-cert-blacklist.sh`, etc.) echo key facts to stdout when you run them. Labs **3.4** and **3.5** also document each wrapper under **Background** (*What the rotation scripts do*; Lab 3.5 adds *What Step 4 does*) — read those before the step commands.
 
 ## Instructor notes
 

@@ -58,6 +58,28 @@ Patching Secret **data** in place (same Secret name, same CR volume reference) d
 
 If pods roll after “rotation,” check whether the **CR** changed — not just the Secret content.
 
+### What the rotation scripts do
+
+Lab Step 2 uses [`rotate-server-cert.sh`](../../scripts/setup/tls/rotate-server-cert.sh) — a thin wrapper around OpenSSL regeneration and secret deploy (not an AKO API):
+
+| Order | Action | Effect |
+|-------|--------|--------|
+| 1 | Print current `svc_chain.pem` serial (if the file exists) | Baseline for comparison with Step 1 |
+| 2 | [`generate-workshop-pki.sh --server-only`](../../scripts/setup/tls/generate-workshop-pki.sh) | Regenerates **only** `svc_chain.pem` / `svc_key.pem` under `secrets/tls/`; CA and client keys on disk unchanged |
+| 3 | [`deploy-tls-secrets.sh`](../../scripts/setup/tls/deploy-tls-secrets.sh) | Idempotent `kubectl apply` of TLS secrets; **`tls-server-secret`** gets new data; same secret **names** and CR volume refs |
+
+The script **does not** edit `AerospikeCluster` (see table above). It **does not** rotate client certs (`app.pem` stays the same on disk). After it finishes, allow ~60s for kubelet secret sync and Aerospike TLS file reload before verifying the pod mount.
+
+`deploy-tls-secrets.sh` applies all workshop TLS secrets from disk; after `--server-only`, only server file content changed — client secret applies are effectively unchanged.
+
+```text
+rotate-server-cert.sh → generate-workshop-pki.sh --server-only → deploy-tls-secrets.sh
+                              ↓                                        ↓
+                    secrets/tls/svc_chain.pem (new serial)    tls-server-secret patched
+                                                                        ↓
+                                                              Aerospike hot-reloads mount
+```
+
 ## Why access is preserved
 
 During server cert rotation, clients and workloads stay authenticated because:
@@ -118,7 +140,7 @@ kubectl -n aerospike get pod "${POD}" -o jsonpath='Container ID: {.status.contai
 
 ### Step 2 — Rotate server certificate
 
-**What:** Regenerate `svc_chain.pem` and patch `tls-server-secret` in place (same secret name).
+**What:** Regenerate `svc_chain.pem` and patch `tls-server-secret` in place (same secret name). See [What the rotation scripts do](#what-the-rotation-scripts-do).
 **Credential / mode:** Server cert only — client cert `app.pem` and CA unchanged.
 **Run:**
 
