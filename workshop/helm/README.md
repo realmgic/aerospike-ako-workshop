@@ -41,7 +41,7 @@ Full cluster specs live in two storage-specific base files:
 - `helm/base-dim-cluster-values.yaml` — in-memory baseline (8.1.0.0)
 - `helm/base-disk-cluster-values.yaml` — device baseline (8.1.0.0)
 
-Lab-specific Helm files are **thin overlays** merged with `-f` (later files override earlier keys). Most overlays are **shared** (same file for disk and dim) because the delta is storage-agnostic; only replication-factor overlays differ by storage engine.
+Lab-specific Helm files are **thin overlays** merged with `-f` (later files override earlier keys). Most overlays are **shared** (same file for disk and dim) because the delta is storage-agnostic; replication-factor and Section 3 TLS overlays differ by storage engine because they replace `storage.volumes`, which is not identical between the disk and dim base files (Helm merges lists by full replacement, not by append).
 
 Example — warm restart on device storage:
 
@@ -56,7 +56,15 @@ In-memory: swap the base to `helm/base-dim-cluster-values.yaml`; the overlay fil
 
 Lab scripts call `build_cluster_helm_value_args()` in `scripts/lib/cluster-storage.sh` to resolve the correct base + overlay chain for `CLUSTER_STORAGE=disk|dim`.
 
-**Naming rule:** `base-` prefix = full storage baseline; `overlay-` prefix = thin lab delta merged with `-f`. Within overlays, `overlay-dim-` / `overlay-disk-` means content differs by storage engine (currently only `overlay-dim-replication-factor-rf3-values.yaml` and `overlay-disk-replication-factor-rf3-values.yaml`). Standalone full specs (`rack-cluster-*`, `operator-values.yaml`) have no prefix.
+**Naming rule:** `base-` prefix = full storage baseline; `overlay-` prefix = thin lab delta merged with `-f`. Within overlays, `overlay-dim-` / `overlay-disk-` means content differs by storage engine:
+
+- `overlay-{dim,disk}-replication-factor-rf3-values.yaml`
+- `overlay-{dim,disk}-cluster-tls-standard-values.yaml` (Lab 3.2)
+- `overlay-{dim,disk}-cluster-tls-mtls-values.yaml` (Lab 3.3 Phase A/B)
+- `overlay-{dim,disk}-cluster-tls-mtls-pki-only-values.yaml` (Lab 3.3 Phase C)
+- `overlay-{dim,disk}-cluster-tls-mtls-blacklist-values.yaml` (Lab 3.5)
+
+Standalone full specs (`rack-cluster-*`, `operator-values.yaml`) have no prefix.
 
 **Exceptions (setup/demo only — no Helm pair):**
 

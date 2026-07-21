@@ -20,9 +20,13 @@ sections:
     title: Maintenance & Upgrade
     path: sections/02-maintenance-and-upgrade
     status: active
-  - id: "03-future-section"
+  - id: "03-security-and-authentication"
+    title: Security & Authentication
+    path: sections/03-security-and-authentication
+    status: active
+  - id: "04-future-section"
     title: Reserved for future sections
-    path: sections/03-future-section
+    path: sections/04-future-section
     status: stub
 
 labs:
@@ -399,6 +403,134 @@ labs:
     validated_on: null
     validated_with: { ako: null, k8s: null }
 
+  - id: "3.1"
+    title: Generate PKI keys and certificates
+    section: "03-security-and-authentication"
+    guide: sections/03-security-and-authentication/01-generate-pki-keys-and-certificates.md
+    eks_cluster: my-cluster
+    ako_min_version: "4.2.0"
+    deploy_paths: [kubectl, helm]
+    node_provisioning: [eksctl, karpenter]
+    artifacts:
+      kubectl: []
+      helm: []
+    scripts:
+      - scripts/labs/prepare-lab.sh
+      - scripts/setup/tls/generate-workshop-pki.sh
+      - scripts/setup/tls/deploy-tls-secrets.sh
+    depends_on: ["0.6"]
+    doc_urls:
+      - https://aerospike.com/docs/server/operations/configure/network/tls/
+      - https://aerospike.com/docs/server/operations/configure/security/pki/
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
+  - id: "3.2"
+    title: TLS only (encryption in transit)
+    section: "03-security-and-authentication"
+    guide: sections/03-security-and-authentication/02-tls-only-encryption-in-transit.md
+    eks_cluster: my-cluster
+    ako_min_version: "4.2.0"
+    deploy_paths: [kubectl, helm]
+    node_provisioning: [eksctl, karpenter]
+    artifacts:
+      kubectl: [manifests/disk-cluster-tls-standard.yaml, manifests/dim-cluster-tls-standard.yaml]
+      helm:
+        - helm/base-disk-cluster-values.yaml
+        - helm/base-dim-cluster-values.yaml
+        - helm/overlay-disk-cluster-tls-standard-values.yaml
+        - helm/overlay-dim-cluster-tls-standard-values.yaml
+    scripts:
+      - scripts/labs/deploy-cluster-tls-standard.sh
+      - scripts/labs/deploy-cluster-tls-standard-helm.sh
+    depends_on: ["3.1"]
+    doc_urls:
+      - https://aerospike.com/docs/kubernetes/manage/configure/network/tls/
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
+  - id: "3.3"
+    title: mTLS and PKI authentication
+    section: "03-security-and-authentication"
+    guide: sections/03-security-and-authentication/03-mtls-pki-authentication.md
+    eks_cluster: my-cluster
+    ako_min_version: "4.2.0"
+    deploy_paths: [kubectl, helm]
+    node_provisioning: [eksctl, karpenter]
+    artifacts:
+      kubectl:
+        - manifests/disk-cluster-tls-mtls.yaml
+        - manifests/dim-cluster-tls-mtls.yaml
+        - manifests/disk-cluster-tls-mtls-pki-only.yaml
+        - manifests/dim-cluster-tls-mtls-pki-only.yaml
+      helm:
+        - helm/base-disk-cluster-values.yaml
+        - helm/base-dim-cluster-values.yaml
+        - helm/overlay-disk-cluster-tls-mtls-values.yaml
+        - helm/overlay-dim-cluster-tls-mtls-values.yaml
+        - helm/overlay-disk-cluster-tls-mtls-pki-only-values.yaml
+        - helm/overlay-dim-cluster-tls-mtls-pki-only-values.yaml
+    scripts:
+      - scripts/labs/prepare-lab.sh
+      - scripts/labs/deploy-cluster-tls-mtls.sh
+      - scripts/labs/deploy-cluster-tls-mtls-helm.sh
+      - scripts/labs/deploy-cluster-tls-mtls-pki-only.sh
+      - scripts/labs/deploy-cluster-tls-mtls-pki-only-helm.sh
+      - scripts/labs/run-lab-workload.sh
+      - scripts/labs/load-data.sh
+    depends_on: ["3.2"]
+    doc_urls:
+      - https://aerospike.com/docs/server/operations/configure/security/pki/
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
+  - id: "3.4"
+    title: Server certificate rotation
+    section: "03-security-and-authentication"
+    guide: sections/03-security-and-authentication/04-server-certificate-rotation.md
+    eks_cluster: my-cluster
+    ako_min_version: "4.2.0"
+    deploy_paths: [kubectl, helm]
+    node_provisioning: [eksctl, karpenter]
+    artifacts: {}
+    scripts:
+      - scripts/labs/prepare-lab.sh
+      - scripts/setup/tls/rotate-server-cert.sh
+      - scripts/labs/run-lab-workload.sh
+    depends_on: ["3.3"]
+    doc_urls:
+      - https://aerospike.com/docs/server/operations/configure/network/tls/
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
+  - id: "3.5"
+    title: Live client credential rotation
+    section: "03-security-and-authentication"
+    guide: sections/03-security-and-authentication/05-live-client-credential-rotation.md
+    eks_cluster: my-cluster
+    ako_min_version: "4.2.0"
+    deploy_paths: [kubectl, helm]
+    node_provisioning: [eksctl, karpenter]
+    artifacts:
+      kubectl: [manifests/disk-cluster-tls-mtls-blacklist.yaml, manifests/dim-cluster-tls-mtls-blacklist.yaml]
+      helm: []
+    scripts:
+      - scripts/labs/prepare-lab.sh
+      - scripts/setup/tls/rotate-client-cert.sh
+      - scripts/labs/rotate-client-workload.sh
+      - scripts/labs/apply-cert-blacklist.sh
+      - scripts/labs/run-lab-workload.sh
+    depends_on: ["3.4"]
+    doc_urls:
+      - https://aerospike.com/docs/server/operations/configure/security/pki/
+    validation_status: draft
+    validated_on: null
+    validated_with: { ako: null, k8s: null }
+
 curriculum_order:
   - "0.1"
   - "0.2"
@@ -417,14 +549,17 @@ curriculum_order:
   - "2.4"
   - "2.5"
   - "2.6"
+  - "3.1"
+  - "3.2"
+  - "3.3"
+  - "3.4"
+  - "3.5"
 
 future_sections:
-  - id: "03-backup-and-restore"
-    title: Backup & Restore
   - id: "04-monitoring"
     title: Monitoring & Observability
-  - id: "05-security"
-    title: Security and TLS
+  - id: "05-backup-and-restore"
+    title: Backup & Restore
   - id: "06-strong-consistency"
     title: Strong Consistency
 

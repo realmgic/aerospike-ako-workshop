@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prepare a lab: reset (Section 1), cluster staging (Labs 2.1/2.3/2.4/2.5), or upgrade-lab (Lab 2.6).
+# Prepare a lab: reset (Section 1), cluster staging (Labs 2.x/3.x), or upgrade-lab (Lab 2.6).
 #
 # Usage:
 #   ./scripts/labs/prepare-lab.sh <lab-id> [--dim|--disk] [--full|--light|--skip-reset] [--load-data]
@@ -222,9 +222,47 @@ deploy_maintenance_cluster() {
 }
 
 wait_for_cluster() {
-  kubectl -n "${NAMESPACE}" wait --for=jsonpath='{.status.phase}'=Completed \
-    aerospikecluster/aerocluster --timeout=600s
-  validate_cluster
+  local timeout="${1:-600}"
+  local deadline=$((SECONDS + timeout))
+  local poll_interval=15
+  local error_streak=0
+  local phase running expected=3
+
+  echo "Waiting for AerospikeCluster phase Completed (timeout ${timeout}s)..."
+  while (( SECONDS < deadline )); do
+    phase="$(kubectl -n "${NAMESPACE}" get aerospikecluster aerocluster -o jsonpath='{.status.phase}' 2>/dev/null || echo missing)"
+    running="$(kubectl -n "${NAMESPACE}" get pods -l aerospike.com/cr=aerocluster --field-selector=status.phase=Running --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+
+    if [[ "${phase}" == "Completed" ]] && [[ "${running:-0}" -ge "${expected}" ]]; then
+      validate_cluster
+      return 0
+    fi
+
+    echo "  phase=${phase}, pods Running=${running:-0}/${expected}"
+
+    if [[ "${phase}" == "Error" ]]; then
+      error_streak=$((error_streak + 1))
+      if [[ "${error_streak}" -ge 2 ]]; then
+        echo "FAIL AerospikeCluster phase Error — AKO reconcile did not complete" >&2
+        echo "Recent events:" >&2
+        kubectl -n "${NAMESPACE}" get events --field-selector involvedObject.name=aerocluster --sort-by='.lastTimestamp' 2>/dev/null \
+          | tail -5 >&2 || true
+        echo "Check: kubectl -n ${NAMESPACE} describe aerospikecluster aerocluster" >&2
+        echo "Common cause (Lab 3.2): tls stanza needs ca-file; operatorClientCert should use server cert (svc_chain.pem) + tlsClientName aerocluster." >&2
+        echo "Also check: svc_chain.pem must have a SAN (not just CN) — 'openssl x509 -in secrets/tls/svc_chain.pem -noout -text | grep -A1 \"Subject Alternative Name\"'. If missing, run generate-workshop-pki.sh --server-only + deploy-tls-secrets.sh." >&2
+        return 1
+      fi
+    else
+      error_streak=0
+    fi
+
+    sleep "${poll_interval}"
+  done
+
+  echo "FAIL timed out waiting for AerospikeCluster phase Completed (${timeout}s)" >&2
+  kubectl -n "${NAMESPACE}" get aerospikecluster aerocluster -o wide 2>/dev/null || true
+  kubectl -n "${NAMESPACE}" get pods -l aerospike.com/cr=aerocluster 2>/dev/null || true
+  return 1
 }
 
 prepare_cluster_lab() {
@@ -274,6 +312,135 @@ prepare_cluster_lab() {
     validate_baseline_image
   fi
   echo "=== Lab ${lab_id} prepared ==="
+}
+
+validate_tls_secrets() {
+  local fail=0 secret
+  for secret in tls-ca-secret tls-server-secret tls-client-app-secret tls-ako-client-secret; do
+    if kubectl -n "${NAMESPACE}" get secret "${secret}" >/dev/null 2>&1; then
+      echo "OK  secret ${secret}"
+    else
+      echo "FAIL secret ${secret} missing — run generate-workshop-pki.sh and deploy-tls-secrets.sh" >&2
+      fail=1
+    fi
+  done
+  return "${fail}"
+}
+
+deploy_tls_standard() {
+  if [[ "${DEPLOY_PATH}" == "helm" ]]; then
+    "${SCRIPT_DIR}/deploy-cluster-tls-standard-helm.sh"
+  else
+    "${SCRIPT_DIR}/deploy-cluster-tls-standard.sh"
+  fi
+}
+
+deploy_tls_mtls() {
+  if [[ "${DEPLOY_PATH}" == "helm" ]]; then
+    "${SCRIPT_DIR}/deploy-cluster-tls-mtls-helm.sh"
+  else
+    "${SCRIPT_DIR}/deploy-cluster-tls-mtls.sh"
+  fi
+}
+
+prepare_lab_3_1() {
+  if [[ "${RESET_OVERRIDE}" == "full" ]]; then
+    echo "NOTE: Lab 3.1 reuses existing workload node pools — using light reset instead of --full."
+    RESET_OVERRIDE=light
+  fi
+
+  echo "=== Prepare lab 3.1 (reset=${RESET_OVERRIDE:-light}, storage=${EFFECTIVE_CLUSTER_STORAGE}) ==="
+  echo "Ensuring baseline node pool exists, then light reset to 8.1.0.x (PKI generated in lab steps)."
+
+  ensure_main_kubecontext
+  "${SCRIPT_DIR}/lab-nodes.sh" "1.1" ensure
+  "${SCRIPT_DIR}/lab-nodes.sh" "1.1" validate
+
+  prepare_cluster_lab "3.1" \
+    "Light reset redeploys plain-TCP baseline on 8.1.0.x — existing node pools are reused." \
+    true
+}
+
+prepare_lab_3_2() {
+  local reset_mode="${RESET_OVERRIDE:-skip}"
+  echo "=== Prepare lab 3.2 (reset=${reset_mode}, storage=${EFFECTIVE_CLUSTER_STORAGE}) ==="
+  echo "NOTE: Trainees should follow Lab 3.2 guide — deploy TLS after Lab 3.1 (no separate prep)." >&2
+  ensure_main_kubecontext
+  case "${reset_mode}" in
+    full)
+      "${WORKSHOP_SCRIPTS}/reset-cluster.sh" --yes
+      ;;
+    light)
+      "${WORKSHOP_SCRIPTS}/labs/teardown-cluster.sh"
+      ;;
+    skip)
+      if kubectl -n "${NAMESPACE}" get aerospikecluster aerocluster >/dev/null 2>&1; then
+        echo "Skipping teardown — upgrading existing cluster to TLS standard auth"
+      fi
+      ;;
+  esac
+  if [[ "${reset_mode}" != skip ]] && [[ "${EFFECTIVE_CLUSTER_STORAGE}" == disk ]]; then
+    validate_baseline_local_ssd_pvs 3
+  fi
+  validate_tls_secrets || exit 1
+  deploy_tls_standard
+  wait_for_cluster
+  validate_baseline_image
+  echo "=== Lab 3.2 prepared (TLS standard auth) ==="
+}
+
+prepare_lab_3_3() {
+  local reset_mode="${RESET_OVERRIDE:-skip}"
+  echo "=== Prepare lab 3.3 (reset=${reset_mode}, storage=${EFFECTIVE_CLUSTER_STORAGE}) ==="
+  ensure_main_kubecontext
+  case "${reset_mode}" in
+    full)
+      "${WORKSHOP_SCRIPTS}/reset-cluster.sh" --yes
+      validate_tls_secrets || exit 1
+      deploy_tls_mtls
+      ;;
+    light)
+      "${WORKSHOP_SCRIPTS}/labs/teardown-cluster.sh"
+      validate_tls_secrets || exit 1
+      deploy_tls_mtls
+      ;;
+    skip)
+      if ! kubectl -n "${NAMESPACE}" get aerospikecluster aerocluster >/dev/null 2>&1; then
+        echo "ERROR: aerocluster not found — run Lab 3.2 first" >&2
+        exit 1
+      fi
+      validate_tls_secrets || exit 1
+      deploy_tls_mtls
+      ;;
+  esac
+  wait_for_cluster
+  echo "=== Lab 3.3 prepared (mTLS cluster) ==="
+}
+
+prepare_lab_3_4() {
+  local reset_mode="${RESET_OVERRIDE:-skip}"
+  echo "=== Prepare lab 3.4 (reset=${reset_mode}) ==="
+  ensure_main_kubecontext
+  if [[ "${reset_mode}" == "skip" ]]; then
+    validate_cluster || exit 1
+    validate_tls_secrets || exit 1
+  else
+    prepare_lab_3_3
+  fi
+  echo "=== Lab 3.4 prepared (server cert rotation on live mTLS cluster) ==="
+}
+
+prepare_lab_3_5() {
+  local reset_mode="${RESET_OVERRIDE:-skip}"
+  echo "=== Prepare lab 3.5 (reset=${reset_mode}) ==="
+  ensure_main_kubecontext
+  if [[ "${reset_mode}" == "skip" ]]; then
+    validate_cluster || exit 1
+    validate_tls_secrets || exit 1
+  else
+    prepare_lab_3_4
+  fi
+  echo "=== Lab 3.5 prepared (client credential rotation) ==="
 }
 
 prepare_lab_2_1() {
@@ -380,13 +547,38 @@ if [[ "${LAB_ID}" == "2.5" ]]; then
   exit 0
 fi
 
+if [[ "${LAB_ID}" == "3.1" ]]; then
+  prepare_lab_3_1
+  exit 0
+fi
+
+if [[ "${LAB_ID}" == "3.2" ]]; then
+  prepare_lab_3_2
+  exit 0
+fi
+
+if [[ "${LAB_ID}" == "3.3" ]]; then
+  prepare_lab_3_3
+  exit 0
+fi
+
+if [[ "${LAB_ID}" == "3.4" ]]; then
+  prepare_lab_3_4
+  exit 0
+fi
+
+if [[ "${LAB_ID}" == "3.5" ]]; then
+  prepare_lab_3_5
+  exit 0
+fi
+
 ensure_main_kubecontext
 
 default_reset_for_lab() {
   case "$1" in
     1.1|1.2|1.3|1.4) echo "light" ;;
     *)
-      echo "ERROR: unknown lab id: $1 (expected 1.1–1.4, 2.1, 2.3, 2.4, 2.5, or 2.6)" >&2
+      echo "ERROR: unknown lab id: $1 (expected 1.1–1.4, 2.1, 2.3, 2.4, 2.5, 2.6, or 3.1–3.5)" >&2
       exit 1
       ;;
   esac

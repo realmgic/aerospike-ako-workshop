@@ -106,11 +106,11 @@ cluster_helm_base_path() {
 cluster_helm_overlay_path() {
   local storage="$1" name="$2"
   case "${name}" in
-    replication-factor-rf3)
+    replication-factor-rf3|cluster-tls-standard|cluster-tls-mtls|cluster-tls-mtls-pki-only|cluster-tls-mtls-blacklist)
       if [[ "${storage}" == dim ]]; then
-        echo "${WORKSHOP_ROOT}/helm/overlay-dim-replication-factor-rf3-values.yaml"
+        echo "${WORKSHOP_ROOT}/helm/overlay-dim-${name}-values.yaml"
       else
-        echo "${WORKSHOP_ROOT}/helm/overlay-disk-replication-factor-rf3-values.yaml"
+        echo "${WORKSHOP_ROOT}/helm/overlay-disk-${name}-values.yaml"
       fi
       ;;
     *)
@@ -153,6 +153,22 @@ resolve_cluster_helm_value_files() {
       cluster_helm_base_path "${storage}"
       cluster_helm_overlay_path "${storage}" "cluster-maintenance"
       cluster_helm_overlay_path "${storage}" "node-blocklist"
+      ;;
+    dim-cluster-tls-standard)
+      cluster_helm_base_path "${storage}"
+      cluster_helm_overlay_path "${storage}" "cluster-tls-standard"
+      ;;
+    dim-cluster-tls-mtls)
+      cluster_helm_base_path "${storage}"
+      cluster_helm_overlay_path "${storage}" "cluster-tls-mtls"
+      ;;
+    dim-cluster-tls-mtls-pki-only)
+      cluster_helm_base_path "${storage}"
+      cluster_helm_overlay_path "${storage}" "cluster-tls-mtls-pki-only"
+      ;;
+    dim-cluster-tls-mtls-blacklist)
+      cluster_helm_base_path "${storage}"
+      cluster_helm_overlay_path "${storage}" "cluster-tls-mtls-blacklist"
       ;;
     *)
       if [[ "${storage}" == dim ]]; then
