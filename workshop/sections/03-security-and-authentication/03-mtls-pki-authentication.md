@@ -137,10 +137,10 @@ Workshop YAML used in this lab (Path A = `kubectl apply`; Path B = `helm upgrade
 
 - **mTLS (Phase A/B):**
   - Path A: [manifests/disk-cluster-tls-mtls.yaml](../../manifests/disk-cluster-tls-mtls.yaml) (default) · [manifests/dim-cluster-tls-mtls.yaml](../../manifests/dim-cluster-tls-mtls.yaml) (`--dim`)
-  - Path B: [helm/disk-cluster-tls-mtls-values.yaml](../../helm/disk-cluster-tls-mtls-values.yaml) · [helm/dim-cluster-tls-mtls-values.yaml](../../helm/dim-cluster-tls-mtls-values.yaml)
+  - Path B: [helm/base-disk-cluster-values.yaml](../../helm/base-disk-cluster-values.yaml) + [helm/overlay-disk-cluster-tls-mtls-values.yaml](../../helm/overlay-disk-cluster-tls-mtls-values.yaml) (default) · [helm/base-dim-cluster-values.yaml](../../helm/base-dim-cluster-values.yaml) + [helm/overlay-dim-cluster-tls-mtls-values.yaml](../../helm/overlay-dim-cluster-tls-mtls-values.yaml) (`--dim`)
 - **PKIOnly (Phase C):**
   - Path A: [manifests/disk-cluster-tls-mtls-pki-only.yaml](../../manifests/disk-cluster-tls-mtls-pki-only.yaml) (default) · [manifests/dim-cluster-tls-mtls-pki-only.yaml](../../manifests/dim-cluster-tls-mtls-pki-only.yaml) (`--dim`)
-  - Path B: [helm/disk-cluster-tls-mtls-pki-only-values.yaml](../../helm/disk-cluster-tls-mtls-pki-only-values.yaml) · [helm/dim-cluster-tls-mtls-pki-only-values.yaml](../../helm/dim-cluster-tls-mtls-pki-only-values.yaml)
+  - Path B: [helm/base-disk-cluster-values.yaml](../../helm/base-disk-cluster-values.yaml) + [helm/overlay-disk-cluster-tls-mtls-pki-only-values.yaml](../../helm/overlay-disk-cluster-tls-mtls-pki-only-values.yaml) (default) · [helm/base-dim-cluster-values.yaml](../../helm/base-dim-cluster-values.yaml) + [helm/overlay-dim-cluster-tls-mtls-pki-only-values.yaml](../../helm/overlay-dim-cluster-tls-mtls-pki-only-values.yaml) (`--dim`)
 - Deploy scripts: [scripts/labs/deploy-cluster-tls-mtls.sh](../../scripts/labs/deploy-cluster-tls-mtls.sh) · [scripts/labs/deploy-cluster-tls-mtls-helm.sh](../../scripts/labs/deploy-cluster-tls-mtls-helm.sh) · [scripts/labs/deploy-cluster-tls-mtls-pki-only.sh](../../scripts/labs/deploy-cluster-tls-mtls-pki-only.sh) · [scripts/labs/deploy-cluster-tls-mtls-pki-only-helm.sh](../../scripts/labs/deploy-cluster-tls-mtls-pki-only-helm.sh)
 - Workload: [scripts/labs/run-lab-workload.sh](../../scripts/labs/run-lab-workload.sh) · [scripts/labs/load-data.sh](../../scripts/labs/load-data.sh)
 

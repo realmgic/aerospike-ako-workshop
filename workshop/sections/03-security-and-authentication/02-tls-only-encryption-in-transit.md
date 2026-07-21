@@ -112,7 +112,7 @@ Workshop YAML used in this lab (Path A = `kubectl apply`; Path B = `helm upgrade
 
 - **TLS standard auth (server cert only):**
   - Path A: [manifests/disk-cluster-tls-standard.yaml](../../manifests/disk-cluster-tls-standard.yaml) (default) · [manifests/dim-cluster-tls-standard.yaml](../../manifests/dim-cluster-tls-standard.yaml) (`--dim`)
-  - Path B: [helm/disk-cluster-tls-standard-values.yaml](../../helm/disk-cluster-tls-standard-values.yaml) · [helm/dim-cluster-tls-standard-values.yaml](../../helm/dim-cluster-tls-standard-values.yaml)
+  - Path B: [helm/base-disk-cluster-values.yaml](../../helm/base-disk-cluster-values.yaml) + [helm/overlay-disk-cluster-tls-standard-values.yaml](../../helm/overlay-disk-cluster-tls-standard-values.yaml) (default) · [helm/base-dim-cluster-values.yaml](../../helm/base-dim-cluster-values.yaml) + [helm/overlay-dim-cluster-tls-standard-values.yaml](../../helm/overlay-dim-cluster-tls-standard-values.yaml) (`--dim`)
 - Deploy scripts: [scripts/labs/deploy-cluster-tls-standard.sh](../../scripts/labs/deploy-cluster-tls-standard.sh) · [scripts/labs/deploy-cluster-tls-standard-helm.sh](../../scripts/labs/deploy-cluster-tls-standard-helm.sh)
 
 ## References

@@ -171,7 +171,7 @@ True zero-TPS client rollover would require overlapping clients (two Jobs) or ap
 - [scripts/labs/run-lab-workload.sh](../../scripts/labs/run-lab-workload.sh) — background PKI workload (`--pki`)
 - **Cert blacklist CR (Path A):**
   - [manifests/disk-cluster-tls-mtls-blacklist.yaml](../../manifests/disk-cluster-tls-mtls-blacklist.yaml) (default) · [manifests/dim-cluster-tls-mtls-blacklist.yaml](../../manifests/dim-cluster-tls-mtls-blacklist.yaml) (`--dim`)
-  - Path B: [helm/disk-cluster-tls-mtls-blacklist-values.yaml](../../helm/disk-cluster-tls-mtls-blacklist-values.yaml) · [helm/dim-cluster-tls-mtls-blacklist-values.yaml](../../helm/dim-cluster-tls-mtls-blacklist-values.yaml)
+  - Path B (values only, no scripted Helm deploy for this lab): [helm/base-disk-cluster-values.yaml](../../helm/base-disk-cluster-values.yaml) + [helm/overlay-disk-cluster-tls-mtls-blacklist-values.yaml](../../helm/overlay-disk-cluster-tls-mtls-blacklist-values.yaml) (default) · [helm/base-dim-cluster-values.yaml](../../helm/base-dim-cluster-values.yaml) + [helm/overlay-dim-cluster-tls-mtls-blacklist-values.yaml](../../helm/overlay-dim-cluster-tls-mtls-blacklist-values.yaml) (`--dim`)
 
 ## References
 

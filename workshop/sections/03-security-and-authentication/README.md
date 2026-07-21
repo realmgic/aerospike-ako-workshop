@@ -14,7 +14,7 @@ Encrypt client traffic with Aerospike **service TLS**, then escalate to **mTLS**
 | 3.4 | Server certificate rotation | ~20 min | 3.3 |
 | 3.5 | Live client credential rotation | ~25 min | 3.4 |
 
-See [LAB_REGISTRY.yaml](../LAB_REGISTRY.yaml) for machine-readable metadata.
+See [LAB_REGISTRY.yaml](../../LAB_REGISTRY.yaml) for machine-readable metadata.
 
 ## Recommended order
 
