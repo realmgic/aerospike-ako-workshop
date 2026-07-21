@@ -9,6 +9,11 @@ else
   _LIB_SELF="$0"
 fi
 SCRIPT_DIR="$(cd "$(dirname "${_LIB_SELF}")" && pwd)"
+# Capture this lib's own directory separately from SCRIPT_DIR: callers (e.g.
+# prepare-lab.sh) reassign the shared SCRIPT_DIR to their own directory after
+# sourcing this file, so validate_baseline_local_ssd_pvs() below must not rely
+# on SCRIPT_DIR still pointing at scripts/lib by the time it runs.
+CLUSTER_STORAGE_LIB_DIR="$(cd "$(dirname "${_LIB_SELF}")" && pwd)"
 unset _LIB_SELF
 
 : "${CLUSTER_STORAGE:=disk}"
@@ -229,7 +234,7 @@ validate_cluster_storage_engine() {
 
 validate_baseline_local_ssd_pvs() {
   local expected_pods="${1:-3}"
-  source "${SCRIPT_DIR}/local-storage.sh"
+  source "${CLUSTER_STORAGE_LIB_DIR}/local-storage.sh"
   ensure_local_ssd_pvs_for_pool "${NODE_TYPE}" "${expected_pods}" "baseline (${NODE_TYPE})"
 }
 
