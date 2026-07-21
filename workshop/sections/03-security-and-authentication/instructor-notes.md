@@ -82,3 +82,7 @@ Rotation pitfalls:
 Generated PKI lives under `secrets/tls/` (gitignored). See [secrets/README.md](../../secrets/README.md) for the TLS secret layout. Kubernetes secrets: `tls-ca-secret`, `tls-server-secret`, `tls-client-*`, `tls-ako-client-secret`.
 
 Section scripts and manifests are linked from each lab guide under **Workshop artifacts**.
+
+## End-of-section teardown
+
+After Lab 3.5 (or when abandoning Section 3), run `./scripts/labs/teardown-section-3.sh` — deletes `aerocluster`, all `tls-*` secrets, and (by default) local `secrets/tls/`. Keeps `auth-*` and `aerospike-secret`. See [Section 03 README — Teardown](README.md#teardown). Use `--keep-local-pki` if you only want cluster cleanup.

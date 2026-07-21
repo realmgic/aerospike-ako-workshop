@@ -246,6 +246,10 @@ True zero-TPS client rollover would require overlapping clients (two Jobs) or ap
   - [manifests/disk-cluster-tls-mtls-blacklist.yaml](../../manifests/disk-cluster-tls-mtls-blacklist.yaml) (default) · [manifests/dim-cluster-tls-mtls-blacklist.yaml](../../manifests/dim-cluster-tls-mtls-blacklist.yaml) (`--dim`)
   - Path B (values only, no scripted Helm deploy for this lab): [helm/base-disk-cluster-values.yaml](../../helm/base-disk-cluster-values.yaml) + [helm/overlay-disk-cluster-tls-mtls-blacklist-values.yaml](../../helm/overlay-disk-cluster-tls-mtls-blacklist-values.yaml) (default) · [helm/base-dim-cluster-values.yaml](../../helm/base-dim-cluster-values.yaml) + [helm/overlay-dim-cluster-tls-mtls-blacklist-values.yaml](../../helm/overlay-dim-cluster-tls-mtls-blacklist-values.yaml) (`--dim`)
 
+## Teardown
+
+End of Section 3: run [`teardown-section-3.sh`](../../scripts/labs/teardown-section-3.sh) (documented in [Section 03 README](README.md#teardown)). Default removes in-cluster TLS secrets and workstation `secrets/tls/` — trainees need `generate-workshop-pki.sh` before the next 3.x run. Auth secrets from Lab 0.6 stay in the cluster.
+
 ## References
 
 - [Certificate blacklist](https://aerospike.com/docs/server/operations/configure/security/pki/)

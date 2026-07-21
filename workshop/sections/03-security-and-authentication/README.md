@@ -46,3 +46,27 @@ Wrapper scripts (`rotate-server-cert.sh`, `rotate-client-cert.sh`, `apply-cert-b
 ## Instructor notes
 
 See [instructor-notes.md](instructor-notes.md) for timing, PKIOnly migration order, and skip paths.
+
+## Teardown
+
+When you finish Section 3 (or want to abandon TLS labs and return to a plain baseline), remove the database and all Section 3 TLS/PKI material on the **main** cluster:
+
+```bash
+./scripts/labs/teardown-section-3.sh
+```
+
+| Flag | Effect |
+|------|--------|
+| `--yes` | Skip confirmation |
+| `--keep-local-pki` | Delete cluster + in-cluster TLS secrets only; keep `secrets/tls/` on your workstation |
+
+**Removed:** `AerospikeCluster` `aerocluster`; TLS secrets (`tls-ca-secret`, `tls-server-secret`, client TLS secrets, `tls-client-app-v1-secret`, `tls-cert-blacklist-secret`, etc.); by default, files under `secrets/tls/`.
+
+**Preserved:** EKS cluster, AKO, storage layer, and Lab 0.6 secrets (`aerospike-secret`, `auth-secret`, `auth-app-secret`, `auth-exporter-secret`).
+
+**Next steps:**
+
+- Section **1** or **2** again: `./scripts/labs/prepare-lab.sh 2.1` (or `deploy-cluster*.sh` after `teardown-cluster.sh`-equivalent — this script already deletes the CR).
+- Section **3** again: run `./scripts/setup/tls/generate-workshop-pki.sh` and [Lab 3.1](01-generate-pki-keys-and-certificates.md) from a clean PKI tree.
+
+For full EKS deletion, use [`../../scripts/cleanup-lab.sh`](../../scripts/cleanup-lab.sh) (see [workshop README](../../README.md#reset--teardown)).
