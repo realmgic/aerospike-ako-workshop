@@ -330,8 +330,8 @@ Use `--sequential` to delete one cluster at a time.
 
 - EKS reference config: [clusters/upgrade-lab-cluster.yaml](../../clusters/upgrade-lab-cluster.yaml)
 - **Baseline Aerospike cluster (3 nodes):**
-  - Path A: [manifests/upgrade-lab-disk-cluster.yaml](../../manifests/upgrade-lab-disk-cluster.yaml) (default) · [manifests/upgrade-lab-dim-cluster.yaml](../../manifests/upgrade-lab-dim-cluster.yaml) (`--dim`)
-  - Path B: [helm/upgrade-lab-disk-cluster-values.yaml](../../helm/upgrade-lab-disk-cluster-values.yaml) · [helm/upgrade-lab-dim-cluster-values.yaml](../../helm/upgrade-lab-dim-cluster-values.yaml)
+  - Path A: [manifests/disk-cluster.yaml](../../manifests/disk-cluster.yaml) (default) · [manifests/dim-cluster.yaml](../../manifests/dim-cluster.yaml) (`--dim`)
+  - Path B: [helm/base-disk-cluster-values.yaml](../../helm/base-disk-cluster-values.yaml) · [helm/base-dim-cluster-values.yaml](../../helm/base-dim-cluster-values.yaml)
 
 ## References
 

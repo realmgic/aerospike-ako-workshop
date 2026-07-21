@@ -1,4 +1,4 @@
-# Upgrade-lab in-memory storage — mirrors manifests/upgrade-lab-dim-cluster.yaml
+# Base cluster values (in-memory) — mirrors manifests/dim-cluster.yaml; layer lab overlays with additional -f flags
 replicas: 3
 enableDynamicConfigUpdate: true
 

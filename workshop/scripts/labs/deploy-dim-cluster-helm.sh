@@ -13,6 +13,6 @@ helm repo update
 helm upgrade --install "${HELM_CLUSTER_RELEASE}" aerospike/aerospike-cluster \
   --namespace "${NAMESPACE}" --create-namespace \
   --version="${chart_version}" \
-  -f "${WORKSHOP_ROOT}/helm/dim-cluster-values.yaml"
+  -f "${WORKSHOP_ROOT}/helm/base-dim-cluster-values.yaml"
 
 echo "Helm dim cluster deployed."

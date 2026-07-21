@@ -116,7 +116,9 @@ Skip on Karpenter if you prefer to watch auto-provision on Pending pods (see **O
    source scripts/lib/common.sh
    load_env
    helm upgrade aerocluster aerospike/aerospike-cluster \
-     -n aerospike -f helm/disk-cluster-scale-5-values.yaml \
+     -n aerospike \
+     -f helm/base-disk-cluster-values.yaml \
+     -f helm/overlay-cluster-scale-5-values.yaml \
      --version="$(resolve_cluster_helm_chart_version)"
    kubectl -n aerospike get pods -w
    ```
@@ -127,7 +129,7 @@ Skip on Karpenter if you prefer to watch auto-provision on Pending pods (see **O
 
    ```bash
    helm upgrade aerocluster aerospike/aerospike-cluster \
-     -n aerospike -f helm/disk-cluster-values.yaml \
+     -n aerospike -f helm/base-disk-cluster-values.yaml \
      --version="$(resolve_cluster_helm_chart_version)"
    kubectl -n aerospike get pods -w
    ```
@@ -182,10 +184,10 @@ Workshop YAML used in this lab (Path A = `kubectl apply`; Path B = `helm upgrade
 
 - **Baseline (3 nodes):**
   - Path A: [manifests/disk-cluster.yaml](../../manifests/disk-cluster.yaml) (default) · [manifests/dim-cluster.yaml](../../manifests/dim-cluster.yaml) (`--dim`)
-  - Path B: [helm/disk-cluster-values.yaml](../../helm/disk-cluster-values.yaml) · [helm/dim-cluster-values.yaml](../../helm/dim-cluster-values.yaml)
+  - Path B: [helm/base-disk-cluster-values.yaml](../../helm/base-disk-cluster-values.yaml) · [helm/base-dim-cluster-values.yaml](../../helm/base-dim-cluster-values.yaml)
 - **Scale to 5 nodes:**
   - Path A: [manifests/disk-cluster-scale-5.yaml](../../manifests/disk-cluster-scale-5.yaml) (default) · [manifests/dim-cluster-scale-5.yaml](../../manifests/dim-cluster-scale-5.yaml) (`--dim`)
-  - Path B: [helm/disk-cluster-scale-5-values.yaml](../../helm/disk-cluster-scale-5-values.yaml) · [helm/dim-cluster-scale-5-values.yaml](../../helm/dim-cluster-scale-5-values.yaml)
+  - Path B: [helm/base-disk-cluster-values.yaml](../../helm/base-disk-cluster-values.yaml) or [helm/base-dim-cluster-values.yaml](../../helm/base-dim-cluster-values.yaml) (`--dim`) + [helm/overlay-cluster-scale-5-values.yaml](../../helm/overlay-cluster-scale-5-values.yaml)
 
 ## References
 

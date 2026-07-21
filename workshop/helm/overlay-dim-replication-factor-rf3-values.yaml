@@ -1,0 +1,10 @@
+# Lab 1.4: replication-factor 3 — overlay for helm/base-dim-cluster-values.yaml
+aerospikeConfig:
+  namespaces:
+    - name: test
+      replication-factor: 3
+      migrate-sleep: 0 # For demo purposes only
+      indexes-memory-budget: 15461882265  # 25% of 57.6 GiB (90% of 64 GiB) = 14.4 GiB
+      storage-engine:
+        type: memory
+        data-size: 30923764531  # 50% of 57.6 GiB (90% of 64 GiB) = 28.8 GiB

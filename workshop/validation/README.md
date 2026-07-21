@@ -35,6 +35,9 @@ Run a full end-to-end walkthrough of every lab on a real EKS environment before 
 
 # Shared cluster health check
 ./scripts/verify-cluster.sh
+
+# Lint: confirm every script's relative `source` path resolves
+./scripts/validation/validate-script-paths.sh
 ```
 
 ## Recording results

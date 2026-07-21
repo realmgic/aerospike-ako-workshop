@@ -111,13 +111,14 @@ helm repo update
 helm upgrade --install "${HELM_CLUSTER_RELEASE}" aerospike/aerospike-cluster \
   --namespace "${NAMESPACE}" \
   --version="$(resolve_cluster_helm_chart_version)" \
-  -f helm/disk-pod-warm-restart-op-values.yaml
+  -f helm/base-disk-cluster-values.yaml \
+  -f helm/overlay-pod-warm-restart-op-values.yaml
 
 kubectl -n aerospike get pods -w
 kubectl -n aerospike describe aerospikecluster aerocluster | grep -A10 Operations
 ```
 
-In-memory variant: use `-f helm/pod-warm-restart-op-values.yaml` (with `--dim` / `CLUSTER_STORAGE=dim`).
+In-memory variant: use `-f helm/base-dim-cluster-values.yaml -f helm/overlay-pod-warm-restart-op-values.yaml` (with `--dim` / `CLUSTER_STORAGE=dim`).
 
 **Expected:** Same as Path A — operation reconciles; phase returns `Completed`.
 
@@ -175,13 +176,14 @@ helm repo update
 helm upgrade --install "${HELM_CLUSTER_RELEASE}" aerospike/aerospike-cluster \
   --namespace "${NAMESPACE}" \
   --version="$(resolve_cluster_helm_chart_version)" \
-  -f helm/disk-pod-restart-op-values.yaml
+  -f helm/base-disk-cluster-values.yaml \
+  -f helm/overlay-pod-restart-op-values.yaml
 
 kubectl -n aerospike get pods -w
 kubectl -n aerospike describe aerospikecluster aerocluster | grep -A10 Operations
 ```
 
-In-memory variant: use `-f helm/pod-restart-op-values.yaml` (with `--dim` / `CLUSTER_STORAGE=dim`).
+In-memory variant: use `-f helm/base-dim-cluster-values.yaml -f helm/overlay-pod-restart-op-values.yaml` (with `--dim` / `CLUSTER_STORAGE=dim`).
 
 **Expected:** Same as Path A — sequential pod restarts; operation completes; phase `Completed`.
 
@@ -247,13 +249,13 @@ Workshop YAML used in this lab (Path A = `kubectl apply`; Path B = `helm upgrade
 
 - **Baseline (3 nodes, 8.1.0.x):**
   - Path A: [manifests/disk-cluster.yaml](../../manifests/disk-cluster.yaml) (default) · [manifests/dim-cluster.yaml](../../manifests/dim-cluster.yaml) (`--dim`)
-  - Path B: [helm/disk-cluster-values.yaml](../../helm/disk-cluster-values.yaml) · [helm/dim-cluster-values.yaml](../../helm/dim-cluster-values.yaml)
+  - Path B: [helm/base-disk-cluster-values.yaml](../../helm/base-disk-cluster-values.yaml) · [helm/base-dim-cluster-values.yaml](../../helm/base-dim-cluster-values.yaml)
 - **WarmRestart operation:**
-  - Path A: [manifests/disk-pod-warm-restart-op.yaml](../../manifests/disk-pod-warm-restart-op.yaml) (default) · [manifests/pod-warm-restart-op.yaml](../../manifests/pod-warm-restart-op.yaml) (`--dim`)
-  - Path B: [helm/disk-pod-warm-restart-op-values.yaml](../../helm/disk-pod-warm-restart-op-values.yaml) · [helm/pod-warm-restart-op-values.yaml](../../helm/pod-warm-restart-op-values.yaml)
+  - Path A: [manifests/disk-pod-warm-restart-op.yaml](../../manifests/disk-pod-warm-restart-op.yaml) (default) · [manifests/dim-pod-warm-restart-op.yaml](../../manifests/dim-pod-warm-restart-op.yaml) (`--dim`)
+  - Path B: [helm/base-disk-cluster-values.yaml](../../helm/base-disk-cluster-values.yaml) or [helm/base-dim-cluster-values.yaml](../../helm/base-dim-cluster-values.yaml) (`--dim`) + [helm/overlay-pod-warm-restart-op-values.yaml](../../helm/overlay-pod-warm-restart-op-values.yaml)
 - **PodRestart operation:**
-  - Path A: [manifests/disk-pod-restart-op.yaml](../../manifests/disk-pod-restart-op.yaml) (default) · [manifests/pod-restart-op.yaml](../../manifests/pod-restart-op.yaml) (`--dim`)
-  - Path B: [helm/disk-pod-restart-op-values.yaml](../../helm/disk-pod-restart-op-values.yaml) · [helm/pod-restart-op-values.yaml](../../helm/pod-restart-op-values.yaml)
+  - Path A: [manifests/disk-pod-restart-op.yaml](../../manifests/disk-pod-restart-op.yaml) (default) · [manifests/dim-pod-restart-op.yaml](../../manifests/dim-pod-restart-op.yaml) (`--dim`)
+  - Path B: [helm/base-disk-cluster-values.yaml](../../helm/base-disk-cluster-values.yaml) or [helm/base-dim-cluster-values.yaml](../../helm/base-dim-cluster-values.yaml) (`--dim`) + [helm/overlay-pod-restart-op-values.yaml](../../helm/overlay-pod-restart-op-values.yaml)
 
 ## References
 

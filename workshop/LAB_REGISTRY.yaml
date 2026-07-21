@@ -157,7 +157,7 @@ labs:
     node_provisioning: [eksctl]
     node_provisioning_note: "Upgrade-lab cluster always uses eksctl MNG — independent of main cluster NODE_PROVISIONING"
     artifacts:
-      kubectl: [clusters/upgrade-lab-cluster.yaml, manifests/upgrade-lab-disk-cluster.yaml, manifests/upgrade-lab-dim-cluster.yaml]
+      kubectl: [clusters/upgrade-lab-cluster.yaml, manifests/disk-cluster.yaml, manifests/dim-cluster.yaml]
     scripts:
       - scripts/setup/upgrade-lab/00-bootstrap-eks.sh
       - scripts/setup/upgrade-lab/setup-upgrade-lab-post-bootstrap.sh
@@ -179,7 +179,7 @@ labs:
     karpenter_observe: [nodeclaims, nodes]
     artifacts:
       kubectl: [manifests/disk-cluster.yaml, manifests/dim-cluster.yaml, manifests/disk-cluster-scale-5.yaml, manifests/dim-cluster-scale-5.yaml]
-      helm: [helm/disk-cluster-values.yaml, helm/dim-cluster-values.yaml, helm/disk-cluster-scale-5-values.yaml, helm/dim-cluster-scale-5-values.yaml]
+      helm: [helm/base-disk-cluster-values.yaml, helm/base-dim-cluster-values.yaml, helm/overlay-cluster-scale-5-values.yaml]
     scripts: [scripts/labs/prepare-lab.sh, scripts/labs/lab-nodes.sh, scripts/labs/deploy-cluster.sh, scripts/labs/deploy-cluster-helm.sh, scripts/labs/deploy-dim-cluster.sh, scripts/labs/deploy-dim-cluster-helm.sh, scripts/labs/load-data.sh]
     depends_on: ["0.6"]
     doc_urls:
@@ -239,7 +239,7 @@ labs:
     node_provisioning: [eksctl, karpenter]
     artifacts:
       kubectl: [manifests/disk-cluster.yaml, manifests/dim-cluster.yaml, manifests/disk-replication-factor-rf3.yaml, manifests/dim-replication-factor-rf3.yaml]
-      helm: [helm/disk-cluster-values.yaml, helm/dim-cluster-values.yaml, helm/disk-replication-factor-rf3-values.yaml, helm/dim-replication-factor-rf3-values.yaml]
+      helm: [helm/base-disk-cluster-values.yaml, helm/base-dim-cluster-values.yaml, helm/overlay-disk-replication-factor-rf3-values.yaml, helm/overlay-dim-replication-factor-rf3-values.yaml]
     scripts: [scripts/labs/prepare-lab.sh, scripts/labs/lab-nodes.sh, scripts/labs/deploy-cluster.sh, scripts/labs/deploy-cluster-helm.sh, scripts/labs/deploy-dim-cluster.sh, scripts/labs/deploy-dim-cluster-helm.sh]
     depends_on: ["2.2"]
     doc_urls:
@@ -302,8 +302,8 @@ labs:
     deploy_paths: [kubectl, helm]
     node_provisioning: [eksctl, karpenter]
     artifacts:
-      kubectl: [manifests/pod-restart-op.yaml, manifests/pod-warm-restart-op.yaml, manifests/disk-pod-restart-op.yaml, manifests/disk-pod-warm-restart-op.yaml]
-      helm: [helm/pod-restart-op-values.yaml, helm/pod-warm-restart-op-values.yaml, helm/disk-pod-restart-op-values.yaml, helm/disk-pod-warm-restart-op-values.yaml]
+      kubectl: [manifests/dim-pod-restart-op.yaml, manifests/dim-pod-warm-restart-op.yaml, manifests/disk-pod-restart-op.yaml, manifests/disk-pod-warm-restart-op.yaml]
+      helm: [helm/base-disk-cluster-values.yaml, helm/base-dim-cluster-values.yaml, helm/overlay-pod-restart-op-values.yaml, helm/overlay-pod-warm-restart-op-values.yaml]
     scripts:
       - scripts/labs/prepare-lab.sh
       - scripts/labs/deploy-cluster.sh
@@ -327,8 +327,8 @@ labs:
     deploy_paths: [kubectl, helm]
     node_provisioning: [eksctl, karpenter]
     artifacts:
-      kubectl: [manifests/aerospike-upgrade.yaml, manifests/disk-aerospike-upgrade.yaml]
-      helm: [helm/aerospike-upgrade-values.yaml, helm/disk-aerospike-upgrade-values.yaml]
+      kubectl: [manifests/dim-aerospike-upgrade.yaml, manifests/disk-aerospike-upgrade.yaml]
+      helm: [helm/base-disk-cluster-values.yaml, helm/base-dim-cluster-values.yaml, helm/overlay-aerospike-upgrade-values.yaml]
     scripts:
       - scripts/labs/prepare-lab.sh
       - scripts/labs/deploy-cluster.sh
@@ -357,12 +357,12 @@ labs:
         - manifests/disk-cluster-maintenance.yaml
         - manifests/dim-cluster-maintenance.yaml
         - manifests/disk-node-blocklist.yaml
-        - manifests/node-blocklist.yaml
+        - manifests/dim-node-blocklist.yaml
       helm:
-        - helm/disk-cluster-maintenance-values.yaml
-        - helm/dim-cluster-maintenance-values.yaml
-        - helm/disk-node-blocklist-values.yaml
-        - helm/node-blocklist-values.yaml
+        - helm/base-disk-cluster-values.yaml
+        - helm/base-dim-cluster-values.yaml
+        - helm/overlay-cluster-maintenance-values.yaml
+        - helm/overlay-node-blocklist-values.yaml
     scripts:
       - scripts/labs/prepare-lab.sh
       - scripts/labs/verify-safe-pod-eviction.sh
@@ -386,7 +386,7 @@ labs:
     node_provisioning: [eksctl]
     node_provisioning_note: "Upgrade-lab cluster always uses eksctl MNG — independent of main cluster NODE_PROVISIONING"
     artifacts:
-      kubectl: [manifests/upgrade-lab-disk-cluster.yaml, manifests/upgrade-lab-dim-cluster.yaml, clusters/upgrade-lab-cluster.yaml]
+      kubectl: [manifests/disk-cluster.yaml, manifests/dim-cluster.yaml, clusters/upgrade-lab-cluster.yaml]
     scripts:
       - scripts/labs/prepare-lab.sh
       - scripts/setup/upgrade-lab/setup-upgrade-lab.sh

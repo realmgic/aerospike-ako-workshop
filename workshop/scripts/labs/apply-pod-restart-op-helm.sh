@@ -6,7 +6,7 @@ load_env
 ensure_main_kubecontext
 require_cmd helm
 
-values="$(resolve_cluster_helm_values pod-restart-op)"
+build_cluster_helm_value_args pod-restart-op
 chart_version="$(resolve_cluster_helm_chart_version)"
 
 helm repo add aerospike "${HELM_REPO}" 2>/dev/null || true
@@ -15,6 +15,6 @@ helm repo update
 helm upgrade --install "${HELM_CLUSTER_RELEASE}" aerospike/aerospike-cluster \
   --namespace "${NAMESPACE}" \
   --version="${chart_version}" \
-  -f "${values}"
+  "${CLUSTER_HELM_VALUE_ARGS[@]}"
 
 echo "Applied PodRestart operation (Helm, ${EFFECTIVE_CLUSTER_STORAGE:-${CLUSTER_STORAGE}})."

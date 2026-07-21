@@ -635,7 +635,7 @@ Workshop YAML used in this lab (Path A = `kubectl apply`; Path B = `helm upgrade
 
 - **Maintenance cluster (8.1.2.x, extended grace period):**
   - Path A: [manifests/disk-cluster-maintenance.yaml](../../manifests/disk-cluster-maintenance.yaml) (default) · [manifests/dim-cluster-maintenance.yaml](../../manifests/dim-cluster-maintenance.yaml) (`--dim`)
-  - Path B: [helm/disk-cluster-maintenance-values.yaml](../../helm/disk-cluster-maintenance-values.yaml) · [helm/dim-cluster-maintenance-values.yaml](../../helm/dim-cluster-maintenance-values.yaml)
+  - Path B: [helm/base-disk-cluster-values.yaml](../../helm/base-disk-cluster-values.yaml) or [helm/base-dim-cluster-values.yaml](../../helm/base-dim-cluster-values.yaml) (`--dim`) + [helm/overlay-cluster-maintenance-values.yaml](../../helm/overlay-cluster-maintenance-values.yaml)
 
 ## References
 

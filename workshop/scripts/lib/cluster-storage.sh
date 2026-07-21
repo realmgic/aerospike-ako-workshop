@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 # Cluster storage selection: disk (default) or dim (in-memory).
 
+if [[ -n "${BASH_VERSION:-}" ]]; then
+  _LIB_SELF="${BASH_SOURCE[0]}"
+elif [[ -n "${ZSH_VERSION:-}" ]]; then
+  _LIB_SELF="${(%):-%x}"
+else
+  _LIB_SELF="$0"
+fi
+SCRIPT_DIR="$(cd "$(dirname "${_LIB_SELF}")" && pwd)"
+unset _LIB_SELF
+
 : "${CLUSTER_STORAGE:=disk}"
 : "${CLUSTER_STORAGE_DIM_LABS:=}"
 : "${CLUSTER_STORAGE_DISK_LABS:=}"
@@ -68,8 +78,8 @@ log_cluster_storage_choice() {
 disk_manifest_basename() {
   local base="$1"
   case "${base}" in
+    dim-cluster|upgrade-lab-dim-cluster) echo "disk-cluster" ;;
     dim-cluster*) echo "disk-${base#dim-}" ;;
-    upgrade-lab-dim-cluster) echo "upgrade-lab-disk-cluster" ;;
     *) echo "disk-${base}" ;;
   esac
 }
@@ -77,9 +87,80 @@ disk_manifest_basename() {
 disk_helm_basename() {
   local base="$1"
   case "${base}" in
+    dim-cluster) echo "disk-cluster-values" ;;
     dim-cluster*) echo "disk-${base#dim-}-values" ;;
-    upgrade-lab-dim-cluster) echo "upgrade-lab-disk-cluster-values" ;;
+    upgrade-lab-dim-cluster) echo "disk-cluster-values" ;;
     *) echo "disk-${base}-values" ;;
+  esac
+}
+
+cluster_helm_base_path() {
+  local storage="$1"
+  if [[ "${storage}" == dim ]]; then
+    echo "${WORKSHOP_ROOT}/helm/base-dim-cluster-values.yaml"
+  else
+    echo "${WORKSHOP_ROOT}/helm/base-disk-cluster-values.yaml"
+  fi
+}
+
+cluster_helm_overlay_path() {
+  local storage="$1" name="$2"
+  case "${name}" in
+    replication-factor-rf3)
+      if [[ "${storage}" == dim ]]; then
+        echo "${WORKSHOP_ROOT}/helm/overlay-dim-replication-factor-rf3-values.yaml"
+      else
+        echo "${WORKSHOP_ROOT}/helm/overlay-disk-replication-factor-rf3-values.yaml"
+      fi
+      ;;
+    *)
+      echo "${WORKSHOP_ROOT}/helm/overlay-${name}-values.yaml"
+      ;;
+  esac
+}
+
+resolve_cluster_helm_value_files() {
+  local base="$1" storage="${2:-${EFFECTIVE_CLUSTER_STORAGE:-${CLUSTER_STORAGE}}}"
+  case "${base}" in
+    dim-cluster|upgrade-lab-dim-cluster)
+      cluster_helm_base_path "${storage}"
+      ;;
+    dim-cluster-maintenance)
+      cluster_helm_base_path "${storage}"
+      cluster_helm_overlay_path "${storage}" "cluster-maintenance"
+      ;;
+    dim-cluster-scale-5)
+      cluster_helm_base_path "${storage}"
+      cluster_helm_overlay_path "${storage}" "cluster-scale-5"
+      ;;
+    replication-factor-rf3)
+      cluster_helm_base_path "${storage}"
+      cluster_helm_overlay_path "${storage}" "replication-factor-rf3"
+      ;;
+    pod-warm-restart-op)
+      cluster_helm_base_path "${storage}"
+      cluster_helm_overlay_path "${storage}" "pod-warm-restart-op"
+      ;;
+    pod-restart-op)
+      cluster_helm_base_path "${storage}"
+      cluster_helm_overlay_path "${storage}" "pod-restart-op"
+      ;;
+    aerospike-upgrade)
+      cluster_helm_base_path "${storage}"
+      cluster_helm_overlay_path "${storage}" "aerospike-upgrade"
+      ;;
+    node-blocklist)
+      cluster_helm_base_path "${storage}"
+      cluster_helm_overlay_path "${storage}" "cluster-maintenance"
+      cluster_helm_overlay_path "${storage}" "node-blocklist"
+      ;;
+    *)
+      if [[ "${storage}" == dim ]]; then
+        echo "${WORKSHOP_ROOT}/helm/${base}-values.yaml"
+      else
+        echo "${WORKSHOP_ROOT}/helm/$(disk_helm_basename "${base}").yaml"
+      fi
+      ;;
   esac
 }
 
@@ -88,8 +169,8 @@ resolve_cluster_manifest() {
   if [[ "${storage}" == dim ]]; then
     case "${base}" in
       replication-factor-rf3) echo "${WORKSHOP_ROOT}/manifests/dim-replication-factor-rf3.yaml" ;;
+      upgrade-lab-dim-cluster|dim-cluster) echo "${WORKSHOP_ROOT}/manifests/dim-cluster.yaml" ;;
       dim-cluster*) echo "${WORKSHOP_ROOT}/manifests/${base}.yaml" ;;
-      upgrade-lab-dim-cluster) echo "${WORKSHOP_ROOT}/manifests/upgrade-lab-dim-cluster.yaml" ;;
       *) echo "${WORKSHOP_ROOT}/manifests/${base}.yaml" ;;
     esac
   else
@@ -98,21 +179,19 @@ resolve_cluster_manifest() {
 }
 
 resolve_cluster_helm_values() {
+  resolve_cluster_helm_value_files "$@" | head -n1
+}
+
+build_cluster_helm_value_args() {
   local base="$1" storage="${2:-${EFFECTIVE_CLUSTER_STORAGE:-${CLUSTER_STORAGE}}}"
-  if [[ "${storage}" == dim ]]; then
-    case "${base}" in
-      dim-cluster*) echo "${WORKSHOP_ROOT}/helm/${base}-values.yaml" ;;
-      upgrade-lab-dim-cluster) echo "${WORKSHOP_ROOT}/helm/upgrade-lab-dim-cluster-values.yaml" ;;
-      aerospike-upgrade) echo "${WORKSHOP_ROOT}/helm/aerospike-upgrade-values.yaml" ;;
-      pod-restart-op) echo "${WORKSHOP_ROOT}/helm/pod-restart-op-values.yaml" ;;
-      pod-warm-restart-op) echo "${WORKSHOP_ROOT}/helm/pod-warm-restart-op-values.yaml" ;;
-      node-blocklist) echo "${WORKSHOP_ROOT}/helm/node-blocklist-values.yaml" ;;
-      replication-factor-rf3) echo "${WORKSHOP_ROOT}/helm/dim-replication-factor-rf3-values.yaml" ;;
-      *) echo "${WORKSHOP_ROOT}/helm/${base}-values.yaml" ;;
-    esac
-  else
-    echo "${WORKSHOP_ROOT}/helm/$(disk_helm_basename "${base}").yaml"
-  fi
+  local f
+  CLUSTER_HELM_VALUE_FILES=()
+  CLUSTER_HELM_VALUE_ARGS=()
+  while IFS= read -r f; do
+    [[ -z "${f}" ]] && continue
+    CLUSTER_HELM_VALUE_FILES+=("${f}")
+    CLUSTER_HELM_VALUE_ARGS+=(-f "${f}")
+  done < <(resolve_cluster_helm_value_files "${base}" "${storage}")
 }
 
 cluster_storage_engine_type() {
@@ -134,7 +213,7 @@ validate_cluster_storage_engine() {
 
 validate_baseline_local_ssd_pvs() {
   local expected_pods="${1:-3}"
-  source "$(dirname "${BASH_SOURCE[0]}")/local-storage.sh"
+  source "${SCRIPT_DIR}/local-storage.sh"
   ensure_local_ssd_pvs_for_pool "${NODE_TYPE}" "${expected_pods}" "baseline (${NODE_TYPE})"
 }
 

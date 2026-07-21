@@ -1,10 +1,6 @@
-# Lab 2.3: WarmRestart — mirrors manifests/disk-pod-warm-restart-op.yaml / helm/disk-cluster-values.yaml
+# Base cluster values (device) — mirrors manifests/disk-cluster.yaml; layer lab overlays with additional -f flags
 replicas: 3
 enableDynamicConfigUpdate: true
-
-operations:
-  - kind: WarmRestart
-    id: warm-restart-1
 
 image:
   repository: aerospike/aerospike-server-enterprise
@@ -43,6 +39,7 @@ podSpec:
         limits:
           cpu: 100m
           memory: 128Mi
+
 
 storage:
   localStorageClasses:
@@ -94,6 +91,7 @@ aerospikeAccessControl:
     - name: exporter
       secretName: auth-exporter-secret
       roles: []
+
 
 aerospikeConfig:
   service:
