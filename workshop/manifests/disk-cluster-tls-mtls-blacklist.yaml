@@ -125,26 +125,22 @@ spec:
   aerospikeAccessControl:
     users:
     - name: admin
-      secretName: auth-secret
       authMode: PKIOnly
       roles:
       - sys-admin
       - user-admin
     - name: app
-      secretName: auth-app-secret
       authMode: PKIOnly
       roles:
       - read
       - write
     - name: exporter
-      secretName: auth-exporter-secret
       authMode: PKIOnly
       roles: []
   aerospikeConfig:
     service:
       feature-key-file: /etc/aerospike/secret/features.conf
-    security:
-      cert-blacklist: /etc/aerospike/tls/blacklist/revoked.txt
+    security: {}
     network:
       service:
         port: 3000
@@ -162,6 +158,7 @@ spec:
         cert-file: /etc/aerospike/tls/svc_chain.pem
         key-file: /etc/aerospike/tls/svc_key.pem
         ca-file: /etc/aerospike/tls/ca/cacert.pem
+        cert-blacklist: /etc/aerospike/tls/blacklist/revoked.txt
     namespaces:
     - name: test
       replication-factor: 2

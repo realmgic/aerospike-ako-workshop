@@ -33,6 +33,9 @@ Section 3 is **optional** and independent of Section 2 — only Lab **0.6** is r
 
 Pick **Path A (kubectl/OLM)** or **Path B (Helm)** in Section 0 and stay consistent. TLS manifests mirror the baseline cluster (`exporter` **1.33.0**, Aerospike **8.1.0.0**).
 
+- Lab **3.4** — secret-only server rotation; **same steps** on both paths (no new cluster YAML/values).
+- Lab **3.5** — Steps 1–3 are path-agnostic; Step 4 uses [`apply-cert-blacklist.sh`](../../scripts/labs/apply-cert-blacklist.sh) for the secret, then Path A/B [`deploy-cluster-tls-mtls-blacklist*.sh`](../../scripts/labs/deploy-cluster-tls-mtls-blacklist.sh) for the cluster spec.
+
 ## How to read commands
 
 Each lab labels command blocks with three lines:

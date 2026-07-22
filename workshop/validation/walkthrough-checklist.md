@@ -56,8 +56,10 @@ For **Karpenter path** runs, use [karpenter-walkthrough.md](karpenter-walkthroug
 - [ ] **3.1** PKI generation — `generate-workshop-pki.sh` + `deploy-tls-secrets.sh`; plain TCP cluster on 8.1.0.0
 - [ ] **3.2** TLS standard auth — connect on **4333** with CA only + password; plain **3000** still works
 - [ ] **3.3** mTLS + PKI — Phase A client cert required; Phase B `--auth PKI`; Phase C `PKIOnly` (app/exporter before admin)
-- [ ] **3.4** Server cert rotation — `rotate-server-cert.sh`; workload TPS uninterrupted
+- [ ] **3.4** Server cert rotation — `rotate-server-cert.sh`; workload TPS uninterrupted (same secret-only steps on Path A and Path B)
 - [ ] **3.5** Client rotation — overlap v1/v2; `apply-cert-blacklist.sh`; v1 rejected after blacklist
+- [ ] **3.5 Step 4 Path A** — blacklist via `DEPLOY_PATH=olm` (manifest / `deploy-cluster-tls-mtls-blacklist.sh`)
+- [ ] **3.5 Step 4 Path B** — blacklist via `DEPLOY_PATH=helm` (`deploy-cluster-tls-mtls-blacklist-helm.sh`; no manual blacklist manifest apply)
 
 ## Path coverage
 

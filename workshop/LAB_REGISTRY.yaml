@@ -495,7 +495,15 @@ labs:
     ako_min_version: "4.2.0"
     deploy_paths: [kubectl, helm]
     node_provisioning: [eksctl, karpenter]
-    artifacts: {}
+    artifacts:
+      kubectl:
+        - manifests/disk-cluster-tls-mtls-pki-only.yaml
+        - manifests/dim-cluster-tls-mtls-pki-only.yaml
+      helm:
+        - helm/base-disk-cluster-values.yaml
+        - helm/base-dim-cluster-values.yaml
+        - helm/overlay-disk-cluster-tls-mtls-pki-only-values.yaml
+        - helm/overlay-dim-cluster-tls-mtls-pki-only-values.yaml
     scripts:
       - scripts/labs/prepare-lab.sh
       - scripts/setup/tls/rotate-server-cert.sh
@@ -517,12 +525,18 @@ labs:
     node_provisioning: [eksctl, karpenter]
     artifacts:
       kubectl: [manifests/disk-cluster-tls-mtls-blacklist.yaml, manifests/dim-cluster-tls-mtls-blacklist.yaml]
-      helm: []
+      helm:
+        - helm/base-disk-cluster-values.yaml
+        - helm/base-dim-cluster-values.yaml
+        - helm/overlay-disk-cluster-tls-mtls-blacklist-values.yaml
+        - helm/overlay-dim-cluster-tls-mtls-blacklist-values.yaml
     scripts:
       - scripts/labs/prepare-lab.sh
       - scripts/setup/tls/rotate-client-cert.sh
       - scripts/labs/rotate-client-workload.sh
       - scripts/labs/apply-cert-blacklist.sh
+      - scripts/labs/deploy-cluster-tls-mtls-blacklist.sh
+      - scripts/labs/deploy-cluster-tls-mtls-blacklist-helm.sh
       - scripts/labs/run-lab-workload.sh
     depends_on: ["3.4"]
     doc_urls:

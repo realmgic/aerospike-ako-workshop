@@ -22,9 +22,9 @@ Client credential rotation is an **Aerospike PKI procedure** on top of K8s secre
 
 1. **Overlap** — v1 and v2 are both signed by the same CA, same CN (`app`), different serials. Aerospike accepts both until v1 is revoked.
 2. **Roll clients to v2** — patch `tls-client-app-secret` and restart the workload Job so it mounts the new cert material.
-3. **Revoke v1** — set `security.cert-blacklist` with the v1 serial. This is native **Aerospike** revocation, not an AKO feature.
+3. **Revoke v1** — set `network.tls[].cert-blacklist` with the v1 serial. This is native **Aerospike** revocation, not an AKO feature.
 
-[`apply-cert-blacklist.sh`](../../scripts/labs/apply-cert-blacklist.sh) applies [`manifests/*-cluster-tls-mtls-blacklist.yaml`](../../manifests/disk-cluster-tls-mtls-blacklist.yaml) — a **CR change** (blacklist volume + `security.cert-blacklist`). First-time blacklist setup may reconcile differently from a pure secret patch in Lab 3.4.
+[`apply-cert-blacklist.sh`](../../scripts/labs/apply-cert-blacklist.sh) **appends** the v1 serial to **`revoked.txt`** (preserving prior lines) and patches **`tls-cert-blacklist-secret`**. Step 4 then applies the blacklist **cluster spec** (blacklist volume + `network.tls[].cert-blacklist`) on your deploy path — Path A or Path B deploy scripts below. First-time blacklist setup may reconcile differently from a pure secret patch in Lab 3.4.
 
 **Scope:** this lab rotates the **`app`** client cert only. `admin`, `exporter`, and `ako-operator` use separate secrets and are not rotated here.
 
@@ -36,7 +36,8 @@ Not every step in this lab affects Aerospike DB pods the same way:
 |------|----------------|------------------------------|------------------------|
 | `rotate-client-cert.sh --save-v1` | `tls-client-app-secret` data | **No** — app client secret is not mounted on DB pods | Nothing (overlap: v1 still valid server-side) |
 | `rotate-client-workload.sh` | Workload picks up v2 from Secret | **No** | **asbench Job** stop/start (intentional) |
-| `apply-cert-blacklist.sh` | CR + `tls-cert-blacklist-secret` | **Possibly yes** — first-time blacklist volume + `security.cert-blacklist` is a **CR schema change** | AKO may rolling-restart to apply new volume/config |
+| `apply-cert-blacklist.sh` | `tls-cert-blacklist-secret` data only | **No** — blacklist secret is not on DB pods until Step 4 deploy | Nothing |
+| `deploy-cluster-tls-mtls-blacklist*.sh` | Blacklist volume + `network.tls[].cert-blacklist` | **Possibly yes** — first-time blacklist is a **CR schema change** | AKO may rolling-restart to apply new volume/config |
 
 Patching `tls-client-app-secret` alone follows the same Kubernetes pattern as Lab 3.4: the kubelet updates mounted files on pods that reference the Secret. The workshop workload Job is restarted separately so asbench reads the new cert — that is **client** pod recreation, not an AKO-driven DB pod roll.
 
@@ -67,30 +68,36 @@ rotate-client-cert.sh --save-v1 → tls-client-app-v1-secret + tls-client-app-se
 rotate-client-workload.sh       → asbench Job stop/start (reads v2 secret)
 ```
 
-### What Step 4 does (apply-cert-blacklist.sh)
+### What Step 4 does
 
-Step 4 runs **only after** Steps 2–3 prove v2 works and v1 still authenticates during overlap. It closes the overlap window by revoking v1 **server-side** via Aerospike **`security.cert-blacklist`** — not by deleting the old secret or rotating the CA. The v1 PEM can remain in **`tls-client-app-v1-secret`**; the server rejects client connections whose cert serial appears in `revoked.txt`.
+Step 4 runs **only after** Steps 2–3 prove v2 works and v1 still authenticates during overlap. It closes the overlap window by revoking v1 **server-side** via Aerospike **`network.tls[].cert-blacklist`** — not by deleting the old secret or rotating the CA. The v1 PEM can remain in **`tls-client-app-v1-secret`**; the server rejects client connections whose cert serial appears in `revoked.txt`.
 
-[`apply-cert-blacklist.sh`](../../scripts/labs/apply-cert-blacklist.sh) performs:
+**1.** [`apply-cert-blacklist.sh`](../../scripts/labs/apply-cert-blacklist.sh) — blacklist file + secret only:
 
 | Order | Action | Effect |
 |-------|--------|--------|
 | 1 | Read cert path (`--cert`, default `secrets/tls/app-v1.pem`) | Must exist (from Step 1 `--save-v1`) |
 | 2 | `openssl x509 … -serial` → normalized hex serial | Printed to stdout for verification |
-| 3 | Write **`secrets/tls/revoked.txt`**; `kubectl apply` **`tls-cert-blacklist-secret`** | Delivers blacklist file to the cluster |
-| 4 | `kubectl apply -f` blacklist **AerospikeCluster** manifest | [`disk-cluster-tls-mtls-blacklist.yaml`](../../manifests/disk-cluster-tls-mtls-blacklist.yaml) or dim variant per `CLUSTER_STORAGE` |
+| 3 | Append serial to **`secrets/tls/revoked.txt`**; `kubectl apply` **`tls-cert-blacklist-secret`** | Delivers updated blacklist file to the cluster (one hex serial per line) |
+
+**2.** Deploy blacklist cluster spec (path-specific — see [Deploy path](#deploy-path)):
+
+| Order | Action | Effect |
+|-------|--------|--------|
+| 4 | Path A: [`deploy-cluster-tls-mtls-blacklist.sh`](../../scripts/labs/deploy-cluster-tls-mtls-blacklist.sh) · Path B: [`deploy-cluster-tls-mtls-blacklist-helm.sh`](../../scripts/labs/deploy-cluster-tls-mtls-blacklist-helm.sh) | Adds volume mount + `network.tls[].cert-blacklist` (does **not** re-run on serial-only updates) |
 
 The blacklist manifest (vs PKI-only from Lab 3.3) adds:
 
 - Storage volume **`tls-cert-blacklist`** — mounts `tls-cert-blacklist-secret` at `/etc/aerospike/tls/blacklist`
-- `aerospikeConfig.security.cert-blacklist: /etc/aerospike/tls/blacklist/revoked.txt`
+- `aerospikeConfig.network.tls[].cert-blacklist: /etc/aerospike/tls/blacklist/revoked.txt`
 
 - **Not** a rotate script — does not regenerate certs or patch `tls-client-app-secret`.
 - **Is** a **CR spec change** — AKO may **rolling-restart** DB pods on first blacklist apply (see table above); unlike Lab 3.4 secret-only patches.
 - Blacklists **only** the serial from `--cert` (v1 in this lab); v2 is unaffected.
 
 ```text
-apply-cert-blacklist.sh → revoked.txt → tls-cert-blacklist-secret → CR apply → cert-blacklist on server
+apply-cert-blacklist.sh → revoked.txt → tls-cert-blacklist-secret
+deploy-cluster-tls-mtls-blacklist*.sh → volume + cert-blacklist config → v1 serial rejected on server
 ```
 
 ## Why access is preserved
@@ -110,6 +117,20 @@ apply-cert-blacklist.sh → revoked.txt → tls-cert-blacklist-secret → CR app
 | Instance | `i8g.2xlarge` baseline pool (same as Section 1) |
 | Reset | **Skip** (default) — client cert overlap on live cluster; reuses node pools |
 | Node pools | Unchanged from Labs 3.1–3.4 |
+
+## Deploy path
+
+Stay on the **same path** you chose in Section 0 (`DEPLOY_PATH` in [workshop.env](../../scripts/env/workshop.env.example) — see [Section 00 README](../00-environment-setup/README.md)).
+
+- **Steps 1–3:** identical for Path A and Path B (client Secret patches + asbench Job restart).
+- **Step 4:** (1) [`apply-cert-blacklist.sh`](../../scripts/labs/apply-cert-blacklist.sh) — serial + `tls-cert-blacklist-secret` only; (2) blacklist **cluster spec** on your path:
+
+```bash
+./scripts/labs/deploy-cluster-tls-mtls-blacklist.sh        # Path A
+./scripts/labs/deploy-cluster-tls-mtls-blacklist-helm.sh   # Path B
+```
+
+Run step (2) once when enabling blacklist on the cluster (after step 1 in the same Step 4). Re-running step (1) with a corrected serial does not require step (2) again if the blacklist volume and `network.tls[].cert-blacklist` are already applied.
 
 ## Phase 0 — Prepare lab
 
@@ -196,16 +217,19 @@ kubectl -n aerospike run aerospike-tool-v1 --rm --attach --restart=Never \
 
 ### Step 4 — Blacklist v1 serial
 
-**What:** Revoke v1 server-side by adding its serial to `security.cert-blacklist`. See [What Step 4 does (apply-cert-blacklist.sh)](#what-step-4-does-apply-cert-blacklistsh).
+**What:** Revoke v1 server-side: blacklist secret, then deploy path-specific cluster spec. See [What Step 4 does](#what-step-4-does).
 **Credential / mode:** Server rejects v1 serial; v2 still trusted.
 **Run:**
 
 ```bash
 ./scripts/labs/apply-cert-blacklist.sh --cert secrets/tls/app-v1.pem
 cat secrets/tls/revoked.txt
+
+./scripts/labs/deploy-cluster-tls-mtls-blacklist.sh        # Path A
+./scripts/labs/deploy-cluster-tls-mtls-blacklist-helm.sh   # Path B
 ```
 
-**Expect:** Script prints the blacklisted serial (matches v1 from Step 1). `revoked.txt` contains that serial. v2 workload and Step 2b asadm remain valid. Step 5 re-proves v1 is rejected.
+**Expect:** Script prints the blacklisted serial (matches v1 from Step 1). `revoked.txt` contains that serial. Deploy script reconciles blacklist volume + `network.tls[].cert-blacklist` (brief rolling restart possible on first apply). v2 workload and Step 2b asadm remain valid. Step 5 re-proves v1 is rejected.
 
 ### Step 5 — Prove v1 rejected
 
@@ -235,16 +259,21 @@ True zero-TPS client rollover would require overlapping clients (two Jobs) or ap
 | v1 still works after blacklist | Wrong serial in `revoked.txt` — re-run `apply-cert-blacklist.sh` with correct `--cert` path |
 | Aerospike pods rolled during client cert patch | Unexpected if only `tls-client-app-secret` changed — check for accidental CR edits |
 | Aerospike pods rolled during blacklist step | Expected on first blacklist CR apply — plan for brief reconcile; auth overlap should cover client access |
+| Blacklist has no effect on Path B cluster | Used Path A `kubectl apply` on a Helm-managed release, or skipped deploy script after secret — run [`deploy-cluster-tls-mtls-blacklist-helm.sh`](../../scripts/labs/deploy-cluster-tls-mtls-blacklist-helm.sh) |
 
 ## Workshop artifacts
 
 - [scripts/setup/tls/rotate-client-cert.sh](../../scripts/setup/tls/rotate-client-cert.sh) — overlap rotation (use `--save-v1`)
 - [scripts/labs/rotate-client-workload.sh](../../scripts/labs/rotate-client-workload.sh) — restart Job with new secret
-- [scripts/labs/apply-cert-blacklist.sh](../../scripts/labs/apply-cert-blacklist.sh) — deploy blacklist + CR patch
+- [scripts/labs/apply-cert-blacklist.sh](../../scripts/labs/apply-cert-blacklist.sh) — append serial to `revoked.txt` + `tls-cert-blacklist-secret` (no cluster spec change)
 - [scripts/labs/run-lab-workload.sh](../../scripts/labs/run-lab-workload.sh) — background PKI workload (`--pki`)
-- **Cert blacklist CR (Path A):**
-  - [manifests/disk-cluster-tls-mtls-blacklist.yaml](../../manifests/disk-cluster-tls-mtls-blacklist.yaml) (default) · [manifests/dim-cluster-tls-mtls-blacklist.yaml](../../manifests/dim-cluster-tls-mtls-blacklist.yaml) (`--dim`)
-  - Path B (values only, no scripted Helm deploy for this lab): [helm/base-disk-cluster-values.yaml](../../helm/base-disk-cluster-values.yaml) + [helm/overlay-disk-cluster-tls-mtls-blacklist-values.yaml](../../helm/overlay-disk-cluster-tls-mtls-blacklist-values.yaml) (default) · [helm/base-dim-cluster-values.yaml](../../helm/base-dim-cluster-values.yaml) + [helm/overlay-dim-cluster-tls-mtls-blacklist-values.yaml](../../helm/overlay-dim-cluster-tls-mtls-blacklist-values.yaml) (`--dim`)
+
+Workshop YAML used in Step 4 (Path A = `kubectl apply`; Path B = `helm upgrade -f`):
+
+- **Cert blacklist (Step 4):**
+  - Path A: [manifests/disk-cluster-tls-mtls-blacklist.yaml](../../manifests/disk-cluster-tls-mtls-blacklist.yaml) (default) · [manifests/dim-cluster-tls-mtls-blacklist.yaml](../../manifests/dim-cluster-tls-mtls-blacklist.yaml) (`--dim`)
+  - Path B: [helm/base-disk-cluster-values.yaml](../../helm/base-disk-cluster-values.yaml) + [helm/overlay-disk-cluster-tls-mtls-blacklist-values.yaml](../../helm/overlay-disk-cluster-tls-mtls-blacklist-values.yaml) (default) · [helm/base-dim-cluster-values.yaml](../../helm/base-dim-cluster-values.yaml) + [helm/overlay-dim-cluster-tls-mtls-blacklist-values.yaml](../../helm/overlay-dim-cluster-tls-mtls-blacklist-values.yaml) (`--dim`)
+- Deploy scripts: [scripts/labs/deploy-cluster-tls-mtls-blacklist.sh](../../scripts/labs/deploy-cluster-tls-mtls-blacklist.sh) · [scripts/labs/deploy-cluster-tls-mtls-blacklist-helm.sh](../../scripts/labs/deploy-cluster-tls-mtls-blacklist-helm.sh)
 
 ## Teardown
 

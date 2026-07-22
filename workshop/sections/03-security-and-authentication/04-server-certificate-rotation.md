@@ -101,6 +101,13 @@ During server cert rotation, clients and workloads stay authenticated because:
 | Reset | **Skip** (default) — rotates server cert on live cluster; reuses node pools |
 | Node pools | Unchanged from Labs 3.1–3.3 |
 
+## Deploy path
+
+Stay on the **same path** you chose in Section 0 (`DEPLOY_PATH` in [workshop.env](../../scripts/env/workshop.env.example) — see [Section 00 README](../00-environment-setup/README.md)).
+
+- **Prerequisite:** Lab **3.3 Phase C** (PKIOnly) on your path — [`deploy-cluster-tls-mtls-pki-only.sh`](../../scripts/labs/deploy-cluster-tls-mtls-pki-only.sh) (Path A) or [`deploy-cluster-tls-mtls-pki-only-helm.sh`](../../scripts/labs/deploy-cluster-tls-mtls-pki-only-helm.sh) (Path B).
+- **This lab:** no cluster redeploy and **no new manifests or Helm values**. Server rotation patches `tls-server-secret` only; every step below is **identical** for Path A and Path B.
+
 ## Phase 0 — Prepare lab
 
 **What:** Ensure PKI workload is running before rotating the server cert.
@@ -194,6 +201,13 @@ kubectl -n aerospike get pod "${POD}" -o jsonpath='Container ID: {.status.contai
 - [scripts/setup/tls/rotate-server-cert.sh](../../scripts/setup/tls/rotate-server-cert.sh) — regenerate + patch `tls-server-secret`
 - [scripts/setup/tls/generate-workshop-pki.sh](../../scripts/setup/tls/generate-workshop-pki.sh) — use `--server-only` for OpenSSL server cert only
 - [scripts/labs/run-lab-workload.sh](../../scripts/labs/run-lab-workload.sh) — background PKI workload (`--pki`)
+
+**Baseline cluster (from Lab 3.3 Phase C — unchanged in this lab):**
+
+- Path A: [manifests/disk-cluster-tls-mtls-pki-only.yaml](../../manifests/disk-cluster-tls-mtls-pki-only.yaml) (default) · [manifests/dim-cluster-tls-mtls-pki-only.yaml](../../manifests/dim-cluster-tls-mtls-pki-only.yaml) (`--dim`)
+- Path B: [helm/base-disk-cluster-values.yaml](../../helm/base-disk-cluster-values.yaml) + [helm/overlay-disk-cluster-tls-mtls-pki-only-values.yaml](../../helm/overlay-disk-cluster-tls-mtls-pki-only-values.yaml) (default) · [helm/base-dim-cluster-values.yaml](../../helm/base-dim-cluster-values.yaml) + [helm/overlay-dim-cluster-tls-mtls-pki-only-values.yaml](../../helm/overlay-dim-cluster-tls-mtls-pki-only-values.yaml) (`--dim`)
+
+Lab **3.4** adds no new YAML or values files.
 
 ## References
 
