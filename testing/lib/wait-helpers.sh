@@ -176,6 +176,34 @@ run_asadm() {
     asadm -h aerocluster -U "${user}" -P "${pass}" -e "${cmd}" 2>/dev/null || true
 }
 
+# Plain-TCP asadm that FAILS the test (non-zero) if the pod errors or the
+# output is empty / contains an obvious asadm error. Unlike run_asadm (which
+# is best-effort "|| true" evidence logging), callers should chain this with
+# `|| fail_lab`. An optional third argument is a substring the output must
+# contain to be considered a success.
+run_asadm_expect_success() {
+  local cmd="$1" expect="${2:-}"
+  local user="${AEROSPIKE_AUTH_USER:-admin}" pass="${AEROSPIKE_AUTH_PASSWORD:-admin123}"
+  local out
+  if ! out="$(kubectl run "asadm-test-$$-${RANDOM}" -n "${NAMESPACE}" --restart=Never --rm -i \
+      --image=aerospike/aerospike-tools:latest -- \
+      asadm -h aerocluster -U "${user}" -P "${pass}" -e "${cmd}" 2>/dev/null)"; then
+    log_fail "asadm command failed (plain): ${cmd}"
+    return 1
+  fi
+  echo "${out}"
+  if grep -qiE 'error|not able to connect|failed|no credential' <<<"${out}"; then
+    log_fail "asadm output reported an error (plain): ${cmd}"
+    return 1
+  fi
+  if [[ -n "${expect}" && "${out}" != *"${expect}"* ]]; then
+    log_fail "asadm output missing expected token '${expect}' (plain): ${cmd}"
+    return 1
+  fi
+  log_pass "asadm (plain) succeeded: ${cmd}"
+  return 0
+}
+
 pod_exec() {
   local pod="$1"; shift
   kubectl -n "${NAMESPACE}" exec "${pod}" -c aerospike-server -- "$@" 2>/dev/null || true

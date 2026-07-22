@@ -21,8 +21,9 @@
 # Usage:
 #   ./testing/test-matrix.sh [--matrix-id <id>] [--configs olm:eksctl,helm:eksctl,helm:karpenter]
 #
-# This launches real EKS infrastructure (~4-5h per config, ~12-15h total across
-# all three). Run as a background/nohup process, not interactively.
+# This launches real EKS infrastructure (~6-8h per config with Section 3,
+# ~18-24h total across all three). Run as a background/nohup process, not
+# interactively.
 set -uo pipefail
 TESTING_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSHOP_ROOT="$(cd "${TESTING_ROOT}/../workshop" && pwd)"

@@ -13,7 +13,7 @@ Kubernetes administrators and platform engineers new to AKO.
 | [0 — Environment Setup](sections/00-environment-setup/) | ~1–1.5 h (or pre-staged) |
 | [1 — Scaling & Capacity](sections/01-scaling-and-capacity/) | ~2–2.5 h |
 | [2 — Maintenance & Upgrade](sections/02-maintenance-and-upgrade/) | ~1.5–2 h |
-| [3 — Security & Authentication](sections/03-security-and-authentication/) (optional) | ~1.5–2 h |
+| [3 — Security & Authentication](sections/03-security-and-authentication/) | ~1.5–2 h |
 
 ## Deploy path selection
 

@@ -15,6 +15,11 @@ case "${LAB_ID}" in
     "$(dirname "$0")/../verify-cluster.sh"
     ;;
   1.*|2.*) "$(dirname "$0")/../verify-cluster.sh" ;;
+  3.*)
+    echo "Section 3 (TLS/PKI) has a scripted end-to-end test: ./testing/run-lab.sh ${LAB_ID}"
+    echo "(run 3.1 first — it generates the PKI/TLS secrets later 3.x labs depend on)."
+    exit 0
+    ;;
   *)
     echo "No automated verify for lab ${LAB_ID}; run guide Verify section manually."
     exit 0

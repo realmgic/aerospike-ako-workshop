@@ -51,7 +51,7 @@ For **Karpenter path** runs, use [karpenter-walkthrough.md](karpenter-walkthroug
 - [ ] **2.5 (Karpenter only) add-on** — do-not-disrupt graduation + `terminationGracePeriod` (instructor-led)
 - [ ] **2.6** K8s control plane upgrade — Phase 1 data + `run-lab-workload.sh --upgrade-lab` in Terminal B; 3 pods Running through CP upgrade; nodegroup rolling replace with CR/migrate observe; `validate-post-upgrade.sh` PASS (upgrade-lab eksctl cluster)
 
-## Section 3 — Security & Authentication (optional)
+## Section 3 — Security & Authentication
 
 - [ ] **3.1** PKI generation — `generate-workshop-pki.sh` + `deploy-tls-secrets.sh`; plain TCP cluster on 8.1.0.0
 - [ ] **3.2** TLS standard auth — connect on **4333** with CA only + password; plain **3000** still works

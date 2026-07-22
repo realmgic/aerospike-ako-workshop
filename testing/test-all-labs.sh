@@ -2,9 +2,10 @@
 # testing/test-all-labs.sh
 #
 # Single-configuration orchestrator: runs every non-optional lab from 1.1
-# through 2.5 (curriculum order, per workshop/LAB_REGISTRY.yaml — Lab 2.6 is
+# through 3.5 (curriculum order, per workshop/LAB_REGISTRY.yaml — Lab 2.6 is
 # out of scope and never invoked) against whatever environment is already
 # bootstrapped (Section 0 / setup-all.sh) and configured (workshop.env).
+# Section 3 (3.1-3.5) is part of the curriculum and always runs.
 #
 # Usage:
 #   ./testing/test-all-labs.sh [--run-id <id>] [--resume]
@@ -15,7 +16,8 @@
 #                   (reads testing/runs/<id>/.checkpoint)
 #
 # On the first failing lab: stops immediately (fail-fast — later labs depend
-# on earlier state, e.g. 1.4/2.3/2.4 need 2.2's AKO version), writes
+# on earlier state, e.g. 1.4/2.3/2.4 need 2.2's AKO version, and 3.2-3.5 each
+# build on the cluster state left by the prior 3.x lab), writes
 # report.md with the failure, and exits non-zero. The live cluster is left
 # up for debugging (nothing here tears anything down — that's test-matrix.sh's
 # job).
@@ -23,8 +25,9 @@ set -uo pipefail
 TESTING_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Curriculum order for this automation, per workshop/LAB_REGISTRY.yaml
-# curriculum_order — starts at 1.1, stops before 2.6 (tested separately).
-LAB_ORDER=(1.1 1.2 1.3 2.1 2.2 1.4 2.3 2.4 2.5)
+# curriculum_order — starts at 1.1, runs Section 3 (3.1-3.5), and only skips
+# 2.6 (K8s control plane upgrade, tested separately on the upgrade-lab cluster).
+LAB_ORDER=(1.1 1.2 1.3 2.1 2.2 1.4 2.3 2.4 2.5 3.1 3.2 3.3 3.4 3.5)
 
 RUN_ID=""
 RESUME=false
