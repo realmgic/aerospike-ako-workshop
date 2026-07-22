@@ -85,10 +85,10 @@ In the registry, `deploy_paths: [kubectl]` means **Path A** (OLM + `kubectl appl
 → 1.1 → 1.2 → 1.3
 → 2.1 → 2.2 (through AKO 4.5.0) → 1.4
 → 2.3 → 2.4 → 2.5 → 2.6
-→ 3.1 → 3.2 → 3.3 → 3.4 → 3.5   (optional — independent of Section 2)
+→ 3.1 → 3.2 → 3.3 → 3.4 → 3.5
 ```
 
-Section **3** is optional and requires only Lab **0.6**. In a full workshop, teach it **after Lab 2.5**. Lab **2.6** is optional and may precede or follow Section 3.
+Section **3** is part of the full curriculum (after **2.5**; Lab **3.1** light-resets the cluster for PKI/TLS). Lab **2.6** is optional and uses the upgrade-lab cluster — it may precede or follow Section 3.
 
 Note: Lab **1.4** (replication factor) requires AKO **4.4.0+** — run after **2.2** reaches 4.4.1 (or complete the full ladder to 4.5.0). Lab **2.3** (on-demand operations) requires AKO **4.4.0+**. Lab **2.4** (DB upgrade to 8.1.2.x) requires AKO **4.5.0+**.
 
@@ -161,11 +161,10 @@ Before delivery, run every lab end-to-end on EKS. See [validation/README.md](val
 
 ## Upcoming sections
 
-Registered in `LAB_REGISTRY.yaml` as stubs — not yet implemented:
+Registered in `LAB_REGISTRY.yaml` as `future_sections` — not yet implemented:
 
-- Backup & Restore
 - Monitoring & Observability
-- Security and TLS
+- Backup & Restore
 - Strong Consistency
 
 ## Official documentation
